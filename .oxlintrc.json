@@ -1,6 +1,9 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "categories": { "correctness": "error" },
+  "plugins": ["typescript", "unicorn", "oxc", "react", "jsx-a11y"],
+  "categories": {
+    "correctness": "error"
+  },
   "ignorePatterns": [
     "node_modules/**",
     ".looky/**",
@@ -9,5 +12,19 @@
     "dist/**",
     "coverage/**"
   ],
-  "rules": { "no-debugger": "error" }
+  "rules": {
+    "no-debugger": "error",
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "error",
+    "react/jsx-key": "error",
+    "react/no-danger": "error",
+    "jsx-a11y/no-autofocus": "error",
+    "jsx-a11y/label-has-associated-control": [
+      "error",
+      {
+        "depth": 3
+      }
+    ],
+    "jsx-a11y/prefer-tag-over-role": "off"
+  }
 }
