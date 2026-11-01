@@ -15,3 +15,16 @@ jobs:
           bun-version: "1.4.4"
       - run: bun install --frozen-lockfile
       - run: bun run check
+  browser:
+    # The production browser app against the real Looky service, temporary Git
+    # repositories and SQLite, with a scripted provider: no credentials needed.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.4"
+      - run: bun install --frozen-lockfile
+      - run: bun node_modules/playwright-core/cli.js install --with-deps chromium-headless-shell
+      - run: bun run test:e2e

@@ -269,6 +269,9 @@ describe("interrupted and repeated questions", () => {
     const { page } = await page1();
     await ask(page, question, "fast");
     const held = await hold.started;
+    // The page knows its question id once it shows the question running. A reload
+    // before that leaves cancelling to Looky's 45 second abandonment sweep instead.
+    await statusTitle(page, "Working on the Fast answer");
     await page.reload();
     await waitIndexReady(page);
     expect(await pinnedSha(page)).toBe(repos.pilotSha);
