@@ -1,3 +1,5 @@
+import { ModelOutputError } from "../answer/model-output";
+import { hasExplanatoryProse } from "../answer/prose";
 import type { LookyAskConfig } from "../config";
 import { tightenBudget, type ModeBudget } from "../contract/budgets";
 import { checkContext, type LookyRequestContext } from "../contract/context";
@@ -279,6 +281,20 @@ export async function askProject(
         ...usage,
       };
     }
+    if (error instanceof ModelOutputError) {
+      // The model's reply was unusable even after a repair attempt; nothing is delivered.
+      return {
+        status: "failed",
+        requestId,
+        mode: executed,
+        limitations: [],
+        stage: "answer",
+        code: "model_output_invalid",
+        message: error.message,
+        retryable: true,
+        ...usage,
+      };
+    }
     if (error instanceof ProviderConfigError) {
       return {
         status: "failed",
@@ -452,16 +468,6 @@ function indexingLimitations(
   return limitations;
 }
 
-/** Strip fenced code blocks and quoted snippet lines, leaving the explanatory prose. */
-function proseOf(text: string): string {
-  return text
-    .replace(/```[\s\S]*?(?:```|$)/g, " ")
-    .split("\n")
-    .filter((line) => !/^\s*(?:>|\d+[:|]\s)/.test(line))
-    .join(" ")
-    .trim();
-}
-
 function validEvidenceRef(ref: EvidenceRef): boolean {
   return (
     typeof ref.path === "string" &&
@@ -489,7 +495,7 @@ function validateAnswer(
   const text = typeof answer.text === "string" ? answer.text.trim() : "";
   if (text.length === 0) throw new ContractViolationError("Answer text is empty");
   // Snippets alone are not an answer: require a sentence of explanatory prose.
-  if (!/[A-Za-z]{2,}[^.!?]*[.!?]/.test(proseOf(text))) {
+  if (!hasExplanatoryProse(text)) {
     throw new ContractViolationError(
       "Answer text has no explanatory prose; code snippets alone are not an answer",
     );

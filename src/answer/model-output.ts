@@ -2,6 +2,7 @@
  * Parse model replies. Model output is untrusted: only known fields with the
  * expected types are kept, and anything else is discarded.
  */
+import { hasExplanatoryProse } from "./prose";
 import { ANSWER_OUTCOMES, type AnswerOutcome } from "../contract/response";
 import { EVIDENCE_KINDS, type EvidenceKind, type RetrievalOptions } from "../contract/ports";
 import type { FollowUpRequest } from "../retrieval/research";
@@ -52,6 +53,10 @@ function shortStrings(value: unknown, max: number, maxLength: number): string[] 
 export function parseDraft(value: Record<string, unknown>): DraftAnswer {
   const answer = typeof value.answer === "string" ? value.answer.trim() : "";
   if (answer.length === 0) throw new ModelOutputError("The model reply has no answer text");
+  // Code or matching snippets alone are not an answer; ask for prose instead.
+  if (!hasExplanatoryProse(answer)) {
+    throw new ModelOutputError("The model reply quotes code without explaining it in sentences");
+  }
   const outcome = (ANSWER_OUTCOMES as readonly unknown[]).includes(value.outcome)
     ? (value.outcome as AnswerOutcome)
     : "partial";

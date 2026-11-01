@@ -39,7 +39,10 @@ export function askProjectToolDefinition(config: Pick<LookyAskConfig, "maxQuesti
 }
 
 export interface AskProjectToolResult {
-  /** Human-readable text: the full answer prose, or a status message that is not an answer. */
+  /**
+   * Human-readable text: the full answer prose followed by its limitations,
+   * or a status message that is not an answer.
+   */
   readonly content: readonly [{ readonly type: "text"; readonly text: string }];
   /** The complete typed response, including evidence metadata separate from the prose. */
   readonly structuredContent: AskProjectResponse;
@@ -58,7 +61,11 @@ export function toToolResult(response: AskProjectResponse): AskProjectToolResult
 function statusText(response: AskProjectResponse): string {
   switch (response.status) {
     case "answered":
-      return response.answer.text;
+      // Scope disclosures (excluded worktree changes, excluded files, a moved
+      // ref) travel with the prose, so a caller reading only text sees them.
+      return response.limitations.length === 0
+        ? response.answer.text
+        : `${response.answer.text}\n\nLimitations:\n${response.limitations.map((item) => `- ${item}`).join("\n")}`;
     case "invalid_request":
       return `Invalid ask_project request (${response.error.code}): ${response.error.message}`;
     case "denied":

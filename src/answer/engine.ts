@@ -205,7 +205,9 @@ export class LookyAnswerEngine implements AnswerEngine {
       if (left.maxModelCalls < 1 || left.maxOutputTokens < 1) throw error;
       const retry = await session.model({
         system,
-        prompt: `${prompt}\n\nYour previous reply could not be parsed. Reply with only the JSON object.`,
+        prompt:
+          `${prompt}\n\nYour previous reply was rejected: ${error.message}. Reply with only the ` +
+          "JSON object, with the answer written as explanatory sentences.",
         maxOutputTokens: left.maxOutputTokens,
       });
       return parseAnswerReply(retry.text);
