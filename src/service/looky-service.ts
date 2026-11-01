@@ -88,6 +88,7 @@ export interface AskOptions {
 }
 
 export interface LookyServiceOptions {
+  /** Looky's database. The service owns it from now on and closes it in {@link LookyService.close}. */
   readonly db: Database;
   /** Directory holding the database, reported as the index storage location. */
   readonly dataDir: string;
@@ -830,7 +831,11 @@ export class LookyService {
     const pending = [...this.#works.values()];
     for (const work of pending) work.controller.abort(new Error("The Looky service is stopping"));
     await Promise.allSettled(pending.map((work) => work.promise));
-    await this.index.close();
+    try {
+      await this.index.close();
+    } finally {
+      this.#options.db.close();
+    }
   }
 }
 
