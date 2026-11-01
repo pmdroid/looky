@@ -1,0 +1,16 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 100,
+  "ignorePatterns": [
+    "node_modules/**",
+    "bun.lock",
+    ".looky/**",
+    "data/**",
+    "index-artifacts/**",
+    "dist/**",
+    "coverage/**",
+    ".env*",
+    "*.sqlite*",
+    "*.db*"
+  ]
+}

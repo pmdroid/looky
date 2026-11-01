@@ -1,0 +1,14 @@
+node_modules/
+.looky/
+data/
+index-artifacts/
+dist/
+coverage/
+*.sqlite*
+*.db
+*.db-*
+.env
+.env.*
+!.env.example
+*.pem
+*.key

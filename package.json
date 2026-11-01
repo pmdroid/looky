@@ -1,0 +1,26 @@
+{
+  "name": "looky",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/main.ts",
+    "format:check": "oxfmt --check .",
+    "format:fix": "oxfmt --write .",
+    "lint": "oxlint --deny-warnings .",
+    "lint:fix": "oxlint --fix .",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "check": "bun run format:check && bun run lint && bun run typecheck && bun run test"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.4",
+    "oxfmt": "0.75.0",
+    "oxlint": "1.90.0",
+    "typescript": "7.0.2"
+  },
+  "engines": {
+    "bun": "1.4.4"
+  },
+  "packageManager": "bun@1.4.4"
+}
