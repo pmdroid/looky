@@ -149,8 +149,10 @@ export async function ask(page: Page, question: string, mode: "fast" | "deep" = 
 /** The answer article once it is shown. */
 export async function answer(page: Page, mode: "fast" | "deep" = "fast") {
   const article = page.locator("article.answer");
-  await page
-    .getByRole("heading", { name: `${mode === "fast" ? "Fast" : "Deep"} answer` })
+  // Exact, and inside the answer: the running status heading "Working on the
+  // Fast answer" would otherwise match before any answer exists.
+  await article
+    .getByRole("heading", { name: `${mode === "fast" ? "Fast" : "Deep"} answer`, exact: true })
     .waitFor();
   return article;
 }
