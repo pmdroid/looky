@@ -1,8 +1,9 @@
 # Looky
 
-Bun/TypeScript foundations for Looky's indexed Fast/Deep code answers. This bootstrap
-provides tooling and durable SQLite storage. Indexing, retrieval, answers, and MCP
-are subsequent work in PAS-966 through PAS-973.
+Bun/TypeScript foundations for Looky's indexed Fast/Deep code answers. The repository
+provides tooling, durable SQLite storage and the `ask_project` contract described below.
+Indexing, retrieval, answer synthesis and the MCP server are subsequent work in PAS-967
+through PAS-973.
 
 ## Prerequisites and installation
 
@@ -82,3 +83,116 @@ entrypoint in a child process with its own temporary data directory.
 Generated databases, `.looky/`, `data/`, `index-artifacts/`, and local `.env`
 files are ignored. Keep any custom data directory outside the checkout or add
 it to your local Git excludes. No secrets are needed for this bootstrap.
+
+## The ask_project contract
+
+`ask_project({ question, mode?: "fast" | "deep" })` is the single tool for indexed
+code questions. The contract, validated types and enforcing orchestrator live in
+`src/contract/` and `src/ask/`; `src/index.ts` exports them for clients and engines.
+
+### Arguments and trusted context
+
+Tool arguments contain only `question` and `mode`. `mode` defaults to `fast`; `deep`
+must be requested explicitly. Empty questions, questions over the configured length
+and any other argument, such as `repositoryId` or `sha`, are rejected as
+`invalid_request`. Arguments can never select a repository, revision or client scope.
+
+A client adapter derives a `LookyRequestContext` from its authenticated session:
+client id and generation (for Paws, the task/run generation), caller id, authorized
+repository and optional snapshot, the exact committed SHA, the display-only ref it
+came from and whether the worktree was dirty. Only full lowercase commit SHAs are
+accepted; branch names and short SHAs return `unsupported_revision`. The adapter
+resolves the SHA once. Looky never re-resolves the ref, so branch movement during a
+request has no effect.
+
+The adapter's `authorize` runs before index lookup, before every retrieval, source
+read and model call, and before delivery. A denial returns `denied` with reason
+`unauthorized`, `revoked` or `stale_session`, and no answer text is delivered after
+revocation. A malformed context fails closed as `denied` with `invalid_context`.
+
+### Pinned index generation
+
+The `IndexCatalog` port resolves exactly one generation for the repository and SHA.
+A generation for any other SHA is refused as a contract violation. If no ready
+generation exists, the response is `indexing` with the request id, build id,
+progress, `retryAfterMs` and any stale generation that was deliberately not used.
+Index failures return `failed` with stage `index` and the build id. Engines receive
+only a guarded `ResearchSession` that pins repository, SHA and generation, rejects
+retrieval hits from another generation and refuses calls after the request ends.
+
+### Responses
+
+Every response carries `requestId`, `mode: { requested, executed }` and explicit
+`limitations`. `executed` is null when no research ran and otherwise equals
+`requested`; Looky never upgrades or downgrades a mode.
+
+| Status                 | Meaning                                                        |
+| ---------------------- | -------------------------------------------------------------- |
+| `answered`             | Complete prose answer with outcome, evidence and identity      |
+| `invalid_request`      | Arguments failed validation                                    |
+| `denied`               | Unauthorized, revoked, stale session or invalid context        |
+| `unsupported_revision` | The revision is not an exact committed SHA the index can serve |
+| `indexing`             | No ready index for the SHA yet; retry with the given build id  |
+| `failed`               | Index or answer failure, including `budget_exhausted`          |
+| `unavailable`          | A dependency, such as the provider, cannot serve right now     |
+| `cancelled`            | The caller cancelled the request                               |
+| `timed_out`            | The mode's elapsed-time limit was reached                      |
+
+Only `answered` has `answer.text`. Its `answer.outcome` is `supported`, `partial`,
+`conflicting` or `unknown`. `unknown` is a factual result about the indexed code,
+distinct from execution failures. Evidence references are separate metadata and
+must lie within source ranges the session read at the pinned SHA. Non-`unknown`
+outcomes require evidence. Text consisting only of code snippets is rejected. A
+Fast answer may set `suggestedMode: "deep"`; the caller decides whether to retry.
+
+`scope` states that only committed source at the SHA was used and whether
+uncommitted changes were `none`, `excluded` or `unknown`. Dirty and unknown
+worktrees, and the ref the SHA came from, are disclosed in `limitations`.
+
+The MCP result from `callAskProjectTool` puts the answer prose, or a "Not answered"
+status message, in `content` and the full typed response in `structuredContent`.
+Every status except `answered` sets `isError`.
+
+### Mode budgets
+
+Each request runs under finite limits enforced by the guarded session. Exceeding
+one returns `failed` with `code: "budget_exhausted"` and `exhaustedLimit`, plus
+`suggestedMode: "deep"` for Fast. Engines can check `session.remaining()` to stop
+early with a `partial` answer instead. Elapsed time covers the whole request.
+
+<!-- budgets:start -->
+
+| Limit                | Fast  | Deep   | Fast variable                     |
+| -------------------- | ----- | ------ | --------------------------------- |
+| `maxRetrievalPasses` | 2     | 8      | `LOOKY_FAST_MAX_RETRIEVAL_PASSES` |
+| `maxResultsPerPass`  | 10    | 20     | `LOOKY_FAST_MAX_RESULTS_PER_PASS` |
+| `maxSourceReads`     | 8     | 48     | `LOOKY_FAST_MAX_SOURCE_READS`     |
+| `maxSourceBytes`     | 65536 | 524288 | `LOOKY_FAST_MAX_SOURCE_BYTES`     |
+| `maxModelCalls`      | 2     | 10     | `LOOKY_FAST_MAX_MODEL_CALLS`      |
+| `maxInputTokens`     | 24000 | 200000 | `LOOKY_FAST_MAX_INPUT_TOKENS`     |
+| `maxOutputTokens`    | 1500  | 8000   | `LOOKY_FAST_MAX_OUTPUT_TOKENS`    |
+| `maxAnswerChars`     | 6000  | 24000  | `LOOKY_FAST_MAX_ANSWER_CHARS`     |
+| `maxElapsedMs`       | 30000 | 180000 | `LOOKY_FAST_MAX_ELAPSED_MS`       |
+
+<!-- budgets:end -->
+
+Deep variables use the `LOOKY_DEEP_` prefix. Values must be positive integers.
+Deep must be at least as large as Fast in every limit and allow more retrieval
+passes. `LOOKY_MAX_QUESTION_CHARS` (default 4000) and `LOOKY_INDEX_RETRY_AFTER_MS`
+(default 5000) configure question length and the indexing retry hint. A client
+adapter's `budgetLimits` can only tighten these limits, never raise them.
+
+### Adapter boundary
+
+| Port            | Implemented by        | Responsibility                                        |
+| --------------- | --------------------- | ----------------------------------------------------- |
+| `ClientAdapter` | Client, such as Paws  | Session context, generation, authorization, limits    |
+| `IndexCatalog`  | Looky index (PAS-967) | Exact-SHA generation lookup and build status          |
+| `Retriever`     | Looky (PAS-973)       | Search within the pinned generation                   |
+| `SourceReader`  | Looky or client       | Committed source ranges at the SHA                    |
+| `ModelProvider` | Selected provider     | Model calls; `LookyUnavailableError` when unavailable |
+| `AnswerEngine`  | Looky (PAS-968)       | Fast or Deep research and synthesis via the session   |
+
+Cancellation flows through the `AbortSignal` passed to every port. `GitSourceReader`
+reads blobs with `git cat-file` at the SHA, so it never reads worktree files, checks
+out, stashes or commits.
