@@ -45,6 +45,26 @@ runtime and commands. Runtime code uses Bun built-ins only.
 Tool configurations exclude dependencies, build output, coverage, and local
 database/index directories. The formatter also excludes the generated lockfile.
 
+### Acceptance tests
+
+`test/acceptance` verifies the release end to end. Each test uses a real temporary
+Git repository, real SQLite storage and the real HTTP MCP endpoint and operational
+API. Only the model provider is scripted, so no test calls Linear, GitHub or a model.
+The tests check delivered evidence and every line shown to a model against
+`git cat-file` at the pinned commit, so they check budgets and grounding without
+scoring answer quality.
+
+| File                | Covers                                                                                                                                                                          |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lifecycle.test.ts` | Initial indexing, restart reuse, rebuild, failed-build retry, a process killed inside the publish transaction, stale and lost indexes                                           |
+| `freshness.test.ts` | Incremental add, edit, delete and rename with chunk reuse; concurrent old and new revisions; a branch advancing during Deep research                                            |
+| `grounding.test.ts` | Dirty worktrees, unsupported revisions, excluded and oversized files, coverage, prompt injection, fabricated citations, unsupported rationale, complete answers versus snippets |
+| `safety.test.ts`    | Repository and workspace isolation, revocation, path escapes, Fast and Deep budgets, quota, cancellation, retry, duplicates, stale generations, one-slot admission              |
+
+The kill test runs `test/support/publish-crash-child.ts` in a child process. The
+child builds a real index, stops inside the publish transaction once every entry is
+staged, and is killed with `SIGKILL`.
+
 ## Local storage
 
 `bun start` creates `.looky/looky.sqlite` relative to the working directory.
@@ -577,9 +597,16 @@ calls.
 uncommitted changes were `none`, `excluded` or `unknown`. Dirty and unknown
 worktrees, and the ref the SHA came from, are disclosed in `limitations`.
 
+`coverage` reports what the pinned generation covers: `indexedFiles`, `excludedFiles`
+and `excludedByReason`, using the [eligibility](#eligibility) reasons. When any tracked
+entry was excluded, `limitations` also says how many and why, because excluded files
+were never searched, read or sent to a model.
+
 The MCP result from `callAskProjectTool` puts the answer prose, or a "Not answered"
 status message, in `content` and the full typed response in `structuredContent`.
-Every status except `answered` sets `isError`.
+For an answer with limitations, the text ends with a `Limitations:` list, so a
+caller that reads only text still sees excluded worktree changes, excluded files and
+a moved ref. Every status except `answered` sets `isError`.
 
 ### Mode budgets
 
@@ -762,6 +789,13 @@ Every model call is still charged to the mode budget. Evidence that does not fit
 input token budget is left out and disclosed, never cut mid-range. An answer over
 `maxAnswerChars` is shortened at a paragraph or sentence boundary and says so.
 
+An answer must explain in sentences. A draft that only quotes code, or only quotes
+code and cites it, is treated like an unparseable reply: Fast asks for a repair once,
+then the request fails with `code: "model_output_invalid"`, which is retryable.
+`askProject` applies the same check to every engine's text before delivery and
+rejects snippets with `contract_violation`. Fenced and numbered code, inline code,
+links, citation markers and file names do not count as sentences.
+
 ### Grounding and citations
 
 Repository and index text is untrusted. Evidence goes to the model in fenced,
@@ -793,6 +827,11 @@ answer with no valid citation is delivered as `unknown`, never as verified. Set
   stopped early or the outcome is partial, the prose ends with one sentence saying so.
 - **No evidence.** When research finds nothing, the answer is `unknown` and no
   synthesis call is made.
+
+The guarded session reads only paths that a search of the pinned generation returned.
+A secret, oversized or otherwise excluded file is never in the index, so no engine can
+read it even though it is committed. `GitSourceReader` also refuses any path that is
+not a plain repository path, such as `./a`, `../a`, `/a` or `.git/config`.
 
 Authorization runs before every search, read and model call and again before delivery.
 Cancellation, revocation or a stale client generation stops research immediately and

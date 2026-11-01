@@ -12,6 +12,7 @@ import type { Mode } from "./input";
 import type {
   AnswerOutcome,
   EvidenceRef,
+  IndexCoverage,
   IndexIdentity,
   IndexProgress,
   SuggestedHumanQuestion,
@@ -77,6 +78,8 @@ export type IndexResolution =
       readonly generation: IndexIdentity;
       /** Pins the generation for the request. `askProject` releases it when the request ends. */
       readonly lease?: GenerationLease;
+      /** What the generation indexed and excluded, disclosed with the answer. */
+      readonly coverage?: IndexCoverage;
     }
   | {
       readonly state: "building";

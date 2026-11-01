@@ -1,3 +1,4 @@
+import { hasExplanatoryProse } from "../src/answer/prose";
 import { describe, expect, test } from "bun:test";
 import { validateCitations } from "../src/answer/citations";
 import { DEFAULT_FOLLOW_UP_LIMITS } from "../src/answer/engine";
@@ -120,7 +121,7 @@ describe("model replies are parsed defensively", () => {
   test("check replies", () => {
     expect(parseCheckReply('{"verdict": "ok"}')).toEqual({ verdict: "ok" });
     const revised = parseCheckReply(
-      '{"verdict": "revised", "answer": "Better [E1].", "issues": ["x"]}',
+      '{"verdict": "revised", "answer": "It is better [E1].", "issues": ["x"]}',
     );
     expect(revised.verdict).toBe("revised");
   });
@@ -229,5 +230,18 @@ describe("documented follow-up limits", () => {
         `\`${followUpLimitEnvName(field)}\``,
       ]);
     }
+  });
+});
+
+describe("explanatory prose", () => {
+  test("sentences count; code, citations and file names do not", () => {
+    expect(hasExplanatoryProse("Recovery reads the checkpoint first.")).toBe(true);
+    expect(hasExplanatoryProse("It is loaded from src/storage/checkpoints.ts:5.")).toBe(true);
+    expect(hasExplanatoryProse("```ts\nload();\n```\n(`src/recovery/recover-run.ts:1-25`)")).toBe(
+      false,
+    );
+    expect(hasExplanatoryProse("```ts\nload();\n```\n[E1] src/a.ts:3.")).toBe(false);
+    expect(hasExplanatoryProse("12| const x = load();\n13| return x.")).toBe(false);
+    expect(hasExplanatoryProse("Done.")).toBe(false);
   });
 });

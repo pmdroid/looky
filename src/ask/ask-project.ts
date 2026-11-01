@@ -1,3 +1,5 @@
+import { ModelOutputError } from "../answer/model-output";
+import { hasExplanatoryProse } from "../answer/prose";
 import type { LookyAskConfig } from "../config";
 import { tightenBudget, type ModeBudget } from "../contract/budgets";
 import { checkContext, type LookyRequestContext } from "../contract/context";
@@ -21,6 +23,7 @@ import {
   type AskProjectResponse,
   type EvidenceRef,
   type FailureStage,
+  type IndexCoverage,
   type IndexIdentity,
   type ModeReport,
   type RevisionIdentity,
@@ -101,6 +104,7 @@ export async function askProject(
   const ran: ModeReport = { requested: mode, executed: mode };
   let session: GuardedSession | undefined;
   let lease: GenerationLease | undefined;
+  let coverage: IndexCoverage | undefined;
   let stage: FailureStage = "context";
 
   try {
@@ -171,6 +175,7 @@ export async function askProject(
         };
       case "ready":
         lease = resolution.lease;
+        coverage = resolution.coverage;
         break;
     }
     const generation = resolution.generation;
@@ -210,7 +215,7 @@ export async function askProject(
       status: "answered",
       requestId,
       mode: ran,
-      limitations: scopeLimitations(context),
+      limitations: [...scopeLimitations(context), ...coverageLimitations(context, coverage)],
       answer: {
         text: answer.text,
         outcome: answer.outcome,
@@ -219,6 +224,7 @@ export async function askProject(
       evidence: answer.evidence.map((ref) => ({ ...ref })),
       revision,
       index: { generationId: generation.generationId, sha: generation.sha },
+      ...(coverage ? { coverage: copyCoverage(coverage) } : {}),
       scope: scopeOf(context),
       usage: session.usage(),
       providers: session.providers(),
@@ -272,6 +278,20 @@ export async function askProject(
         retryable: mode === "fast",
         exhaustedLimit: error.limit,
         ...(mode === "fast" ? { suggestedMode: "deep" as const } : {}),
+        ...usage,
+      };
+    }
+    if (error instanceof ModelOutputError) {
+      // The model's reply was unusable even after a repair attempt; nothing is delivered.
+      return {
+        status: "failed",
+        requestId,
+        mode: executed,
+        limitations: [],
+        stage: "answer",
+        code: "model_output_invalid",
+        message: error.message,
+        retryable: true,
         ...usage,
       };
     }
@@ -406,6 +426,32 @@ function scopeLimitations(context: LookyRequestContext): string[] {
   return limitations;
 }
 
+/** Excluded files are stated, so an answer never implies it covered them. */
+function coverageLimitations(
+  context: LookyRequestContext,
+  coverage: IndexCoverage | undefined,
+): string[] {
+  if (!coverage || coverage.excludedFiles === 0) return [];
+  const reasons = Object.entries(coverage.excludedByReason)
+    .toSorted(([a], [b]) => a.localeCompare(b))
+    .map(([reason, files]) => `${reason}: ${files}`)
+    .join(", ");
+  const files =
+    coverage.excludedFiles === 1 ? "1 tracked entry" : `${coverage.excludedFiles} tracked entries`;
+  return [
+    `The index of commit ${context.sha.slice(0, 12)} excludes ${files} (${reasons}). ` +
+      "Excluded files were not searched, read or sent to a model, so this answer does not cover them.",
+  ];
+}
+
+function copyCoverage(coverage: IndexCoverage): IndexCoverage {
+  return {
+    indexedFiles: coverage.indexedFiles,
+    excludedFiles: coverage.excludedFiles,
+    excludedByReason: { ...coverage.excludedByReason },
+  };
+}
+
 function indexingLimitations(
   context: LookyRequestContext,
   stale: IndexIdentity | undefined,
@@ -420,16 +466,6 @@ function indexingLimitations(
     );
   }
   return limitations;
-}
-
-/** Strip fenced code blocks and quoted snippet lines, leaving the explanatory prose. */
-function proseOf(text: string): string {
-  return text
-    .replace(/```[\s\S]*?(?:```|$)/g, " ")
-    .split("\n")
-    .filter((line) => !/^\s*(?:>|\d+[:|]\s)/.test(line))
-    .join(" ")
-    .trim();
 }
 
 function validEvidenceRef(ref: EvidenceRef): boolean {
@@ -459,7 +495,7 @@ function validateAnswer(
   const text = typeof answer.text === "string" ? answer.text.trim() : "";
   if (text.length === 0) throw new ContractViolationError("Answer text is empty");
   // Snippets alone are not an answer: require a sentence of explanatory prose.
-  if (!/[A-Za-z]{2,}[^.!?]*[.!?]/.test(proseOf(text))) {
+  if (!hasExplanatoryProse(text)) {
     throw new ContractViolationError(
       "Answer text has no explanatory prose; code snippets alone are not an answer",
     );

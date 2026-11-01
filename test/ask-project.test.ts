@@ -256,15 +256,15 @@ describe("askProject authorization", () => {
     const engine: AnswerEngine = {
       async answer(session) {
         await session.retrieve("q");
-        await session.read({ path: "src/a.ts", startLine: 1, endLine: 2 });
-        await session.read({ path: "src/b.ts", startLine: 1, endLine: 2 });
+        await session.read({ path: "src/recovery.ts", startLine: 1, endLine: 2 });
+        await session.read({ path: "src/recovery.ts", startLine: 3, endLine: 4 });
         throw new Error("unreachable");
       },
     };
     const { services, recorded } = makeServices({ engine });
     const response = expectStatus(await askProject({ question: "q" }, adapter, services), "denied");
     expect(response.reason).toBe("revoked");
-    expect(recorded.reads.map((read) => read.path)).toEqual(["src/a.ts"]);
+    expect(recorded.reads).toHaveLength(1);
     expect(JSON.stringify(response)).not.toContain("Recovery restarts");
   });
 
@@ -343,6 +343,7 @@ describe("askProject answer contract", () => {
   async function answerWith(answer: Awaited<ReturnType<AnswerEngine["answer"]>>, mode = "fast") {
     const engine: AnswerEngine = {
       async answer(session) {
+        await session.retrieve("q");
         await session.read({ path: "src/recovery.ts", startLine: 1, endLine: 10 });
         return answer;
       },
@@ -409,6 +410,7 @@ describe("askProject budgets", () => {
   test("source reads beyond the Fast limit are refused and Deep is suggested", async () => {
     const engine: AnswerEngine = {
       async answer(session) {
+        await session.retrieve("q");
         for (;;) await session.read({ path: "src/recovery.ts", startLine: 1, endLine: 1 });
       },
     };
@@ -430,6 +432,7 @@ describe("askProject budgets", () => {
     const engine: AnswerEngine = {
       async answer(session) {
         const reads = [];
+        await session.retrieve("q");
         while (session.remaining().maxSourceReads > 0) {
           reads.push(await session.read({ path: "src/recovery.ts", startLine: 1, endLine: 2 }));
         }
@@ -487,6 +490,7 @@ describe("askProject budgets", () => {
     const adapter = makeAdapter(makeContext(), { budgetLimits: { fast: { maxSourceBytes: 30 } } });
     const bytesEngine: AnswerEngine = {
       async answer(s) {
+        await s.retrieve("q");
         for (;;) await s.read({ path: "src/recovery.ts", startLine: 1, endLine: 1 });
       },
     };

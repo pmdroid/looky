@@ -101,6 +101,8 @@ export class GuardedSession implements ResearchSession {
 
   readonly #deps: GuardedSessionDeps;
   readonly #reads: SourceText[] = [];
+  /** Paths the pinned generation returned. Only these are indexed and eligible to read. */
+  readonly #retrievedPaths = new Set<string>();
   readonly #providers: string[] = [];
   #closed = false;
   #retrievalPasses = 0;
@@ -215,12 +217,20 @@ export class GuardedSession implements ResearchSession {
       }
       checkRange(hit);
     }
+    for (const hit of hits) this.#retrievedPaths.add(hit.path);
     return hits;
   }
 
   async read(range: SourceRange): Promise<SourceText> {
     await this.#gate();
     checkRange(range);
+    // Excluded files (secrets, oversized, generated) and arbitrary paths are
+    // never in the index, so a read must name a path retrieval returned.
+    if (!this.#retrievedPaths.has(range.path)) {
+      throw new ContractViolationError(
+        `${range.path} was not returned by the pinned index generation and cannot be read`,
+      );
+    }
     if (this.#sourceReads >= this.budget.maxSourceReads) {
       throw new BudgetExhaustedError("maxSourceReads");
     }
