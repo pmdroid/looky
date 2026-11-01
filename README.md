@@ -171,8 +171,10 @@ A repository's index is reachable wherever the service is reachable. A client on
 host connects to the same service URL instead of assuming a local cache. When a client
 asks for a commit the service's clone does not have yet, such as a commit pushed from
 another machine, a configured `FETCH_REMOTE` fetches exactly that commit before
-indexing. Without one, the request is `unsupported_revision`; Looky never substitutes
-another SHA. The fetch runs with hooks disabled and the `ext` transport refused, writes
+indexing. The fetch is shared and limited by `LOOKY_FETCH_TIMEOUT_MS`, but a request waits
+for it only within its index wait. If the wait ends first, the result is `unavailable`
+with `code: "fetching_revision"` and `retryAfterMs`. Without a fetch remote, the request
+is `unsupported_revision`. Looky never substitutes another SHA. The fetch runs with hooks disabled and the `ext` transport refused, writes
 no refs, and uses only credentials the clone itself is configured with. Point
 `_PATH` at a clone Looky owns when you enable fetching.
 
@@ -245,7 +247,7 @@ therefore never deadlocks on Looky. It gets an answer or a typed retryable resul
 1. **Index.** A ready index for exactly the session's SHA is reused. Otherwise the call starts or joins the build, an incremental refresh when an ancestor is ready, and waits up to `LOOKY_INDEX_WAIT_MS`. If the build is still running, the result is `indexing` with the build id, progress and `retryAfterMs`. A failed build is `failed` with stage `index`.
 2. **Admission.** Research and synthesis take one of `LOOKY_MAX_CONCURRENT_ASKS` slots. Waiting for an index takes none. When every slot and queue place is taken, or no slot frees within `LOOKY_ADMISSION_WAIT_MS`, the result is `unavailable` with `code: "busy"` and `retryAfterMs`.
 3. **Per session.** One session may have `LOOKY_MAX_ASKS_PER_SESSION` distinct questions in flight. Another is `unavailable` with `code: "session_limit"`. Looky never starts other agents or nested sessions.
-4. **Coalescing.** The same question and mode from the same session joins the running work and receives the same `requestId`. A `tools/call` may carry `_meta: { "looky/requestKey": "<id>" }`. A redelivery with that key joins the running work, or receives the stored result for `LOOKY_RESULT_TTL_MS`. A key reused for another question is `invalid_request`.
+4. **Coalescing.** The same question and mode from the same session, at the same commit, joins the running work and receives the same `requestId`. A `tools/call` may carry `_meta: { "looky/requestKey": "<id>" }`. A redelivery with that key joins the running work, or receives the stored result for `LOOKY_RESULT_TTL_MS`. A key reused for another question is `invalid_request`.
 5. **Cancellation.** `notifications/cancelled`, a closed HTTP request or closed stdin detaches that caller with `cancelled`. The work stops when its last caller detaches, and its slot is released. Index builds are not cancelled by a question; they are shared and durable.
 6. **Delivery.** Before a result is returned, the session must still be current. A revoked or superseded session receives `denied`, never an answer computed for it earlier.
 

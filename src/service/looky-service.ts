@@ -43,7 +43,12 @@ import {
   type ModelProvider,
   type ProviderPolicy,
 } from "../contract/ports";
-import type { AskProjectResponse, IndexProgress, ModeReport } from "../contract/response";
+import type {
+  AskProjectResponse,
+  IndexProgress,
+  ModeReport,
+  UnavailableCode,
+} from "../contract/response";
 import { fetchCommit } from "../indexing/git-snapshot";
 import { IndexService, progressOf } from "../indexing/index-service";
 import { getBuild, type BuildRecord, type ScopeStatus } from "../indexing/store";
@@ -254,10 +259,13 @@ export class LookyService {
     }
 
     const fingerprint = `${mode}\n${question}`;
+    // The pinned revision is part of the identity: a principal whose ref moved
+    // must never join work or receive a stored result for another commit.
+    const pinned = `${principal.key}\0${principal.context.repositoryId}\0${principal.context.sha}`;
     const key =
       options.requestKey !== undefined
-        ? `${principal.key}\0key\0${options.requestKey}`
-        : `${principal.key}\0question\0${fingerprint}`;
+        ? `${pinned}\0key\0${options.requestKey}`
+        : `${pinned}\0question\0${fingerprint}`;
     this.#dropExpiredResults();
     const stored = this.#results.get(key);
     const running = this.#works.get(key);
@@ -365,7 +373,17 @@ export class LookyService {
     const adapter = this.#adapter(principal);
 
     try {
-      await this.#awaitIndex(scope, signal);
+      if ((await this.#awaitIndex(scope, signal)) === "fetching") {
+        // Not unsupported yet: the commit is still being fetched for this host.
+        return unavailable(
+          work.requestId,
+          { requested: input.mode, executed: null },
+          `Commit ${scope.sha} is not on this host yet and is being fetched from the ` +
+            `repository's remote; retry shortly`,
+          "fetching_revision",
+          this.#options.ask.indexRetryAfterMs,
+        );
+      }
     } catch (error) {
       // Cancellation is reported by askProject below; other lookup errors are
       // raised again, and reported, by its own catalog resolution.
@@ -416,20 +434,35 @@ export class LookyService {
   async #awaitIndex(
     scope: { readonly repositoryId: string; readonly sha: string },
     signal: AbortSignal,
-  ): Promise<void> {
+  ): Promise<"settled" | "fetching"> {
     const deadline = this.#now() + this.#options.capacity.indexWaitMs;
     let fetched = false;
     for (;;) {
       signal.throwIfAborted();
       const started = await this.index.startBuild(scope, { signal });
       if (started.state === "unsupported_revision") {
-        if (fetched || !(await this.#fetchMissing(scope, signal))) return;
+        if (fetched) return "settled";
+        // The shared fetch continues in the background; this caller waits only
+        // for what is left of its index-wait budget.
+        const fetch = this.#fetchMissing(scope);
+        if (fetch === undefined) return "settled";
+        const budget = Math.max(0, deadline - this.#now());
+        const wait = AbortSignal.any([signal, AbortSignal.timeout(budget)]);
+        let found: boolean;
+        try {
+          found = await raceSignal(fetch, wait);
+        } catch (error) {
+          signal.throwIfAborted();
+          if (wait.aborted) return "fetching";
+          throw error;
+        }
+        if (!found) return "settled";
         fetched = true;
         continue;
       }
-      if (started.state !== "building") return;
+      if (started.state !== "building") return "settled";
       const remaining = deadline - this.#now();
-      if (remaining <= 0) return;
+      if (remaining <= 0) return "settled";
       const wait = AbortSignal.any([signal, AbortSignal.timeout(remaining)]);
       try {
         const build = await this.index.waitForBuild(started.build.id, wait);
@@ -438,19 +471,23 @@ export class LookyService {
         }
       } catch (error) {
         signal.throwIfAborted();
-        if (wait.aborted) return;
+        if (wait.aborted) return "settled";
         throw error;
       }
     }
   }
 
-  /** Fetch an exact missing commit once per repository and SHA at a time. */
-  #fetchMissing(
-    scope: { readonly repositoryId: string; readonly sha: string },
-    signal: AbortSignal,
-  ): Promise<boolean> {
+  /**
+   * Fetch an exact missing commit once per repository and SHA at a time.
+   * Returns the shared fetch, bounded only by `fetchTimeoutMs`, or undefined
+   * when the repository has no fetch remote.
+   */
+  #fetchMissing(scope: {
+    readonly repositoryId: string;
+    readonly sha: string;
+  }): Promise<boolean> | undefined {
     const repository = this.#options.repositories.get(scope.repositoryId);
-    if (!repository?.fetchRemote) return Promise.resolve(false);
+    if (!repository?.fetchRemote) return undefined;
     const key = `${scope.repositoryId}\0${scope.sha}`;
     let pending = this.#fetches.get(key);
     if (!pending) {
@@ -471,7 +508,7 @@ export class LookyService {
         .finally(() => this.#fetches.delete(key));
       this.#fetches.set(key, pending);
     }
-    return raceSignal(pending, signal);
+    return pending;
   }
 
   async #join(
@@ -629,7 +666,7 @@ export class LookyService {
       const started = await this.index.startBuild(scope);
       if (started.state === "unsupported_revision") {
         // A host that lacks the commit fetches it in the background, if allowed.
-        void this.#fetchMissing(scope, NEVER).then((found) =>
+        void this.#fetchMissing(scope)?.then((found) =>
           found ? this.index.startBuild(scope).catch(logPrewarm) : undefined,
         );
       }
@@ -857,7 +894,7 @@ function unavailable(
   requestId: string,
   mode: ModeReport,
   message: string,
-  code?: "busy" | "session_limit",
+  code?: UnavailableCode,
   retryAfterMs?: number,
 ): AskProjectResponse {
   return {

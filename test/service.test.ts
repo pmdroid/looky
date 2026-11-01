@@ -7,7 +7,7 @@ import type {
 import { DEFAULT_INDEX_LIMITS, indexKey } from "../src/indexing/policy";
 import { insertQueuedBuild } from "../src/indexing/store";
 import { ProviderRouter } from "../src/providers/router";
-import type { LookyService } from "../src/service/looky-service";
+import type { LookyService, Principal } from "../src/service/looky-service";
 import { RegistrationError } from "../src/service/sessions";
 import { openDatabase } from "../src/storage/database";
 import { join } from "node:path";
@@ -139,6 +139,30 @@ describe("index readiness before answering", () => {
 });
 
 describe("execution host", () => {
+  test("a remote that never answers cannot hold a request past its index wait", async () => {
+    const mirror = join(fixture.root, "mirror.git");
+    git(fixture.root, "clone", "--quiet", "--bare", fixture.repo, mirror);
+    const next = refreshPilotRepo(fixture.repo);
+    // An HTTP remote that accepts the connection and never replies.
+    const silent = Bun.serve({ port: 0, fetch: () => new Promise<Response>(() => undefined) });
+    try {
+      git(mirror, "remote", "set-url", "origin", `http://127.0.0.1:${silent.port}/repo.git`);
+      const service = fixture.service({
+        repositories: new Map([["pilot", { id: "pilot", path: mirror, fetchRemote: "origin" }]]),
+        capacity: { indexWaitMs: 200, fetchTimeoutMs: 30_000 },
+      });
+      const { principal } = await session(service, { sha: next });
+      const started = Date.now();
+      const response = await service.ask(principal, { question: QUESTION });
+      expect(Date.now() - started).toBeLessThan(5_000);
+      expect(response.status).toBe("unavailable");
+      expect(response.status === "unavailable" && response.code).toBe("fetching_revision");
+      expect(response.status === "unavailable" && response.retryable).toBe(true);
+    } finally {
+      void silent.stop(true);
+    }
+  });
+
   test("a host whose clone lacks the requested commit fetches it before indexing", async () => {
     const mirror = join(fixture.root, "mirror.git");
     git(fixture.root, "clone", "--quiet", "--bare", fixture.repo, mirror);
@@ -262,6 +286,42 @@ describe("bounded capacity", () => {
 });
 
 describe("request identity, cancellation and fencing", () => {
+  test("a principal whose commit moved never shares work or results across revisions", async () => {
+    const model = citingModel();
+    const service = fixture.service({ provider: model });
+    const at = (sha: string): Principal => ({
+      key: "local:pilot",
+      context: {
+        clientId: "local",
+        clientGeneration: "stdio",
+        callerId: "me",
+        repositoryId: "pilot",
+        sha,
+        ref: "HEAD",
+        worktree: { state: "unknown" },
+      },
+      authorize: () => ({ allowed: true }),
+    });
+    const before = answered(
+      await service.ask(at(fixture.sha), { question: QUESTION }, { requestKey: "k1" }),
+    );
+    const next = refreshPilotRepo(fixture.repo);
+    const after = answered(
+      await service.ask(at(next), { question: QUESTION }, { requestKey: "k1" }),
+    );
+    expect(after.requestId).not.toBe(before.requestId);
+    expect(after.index.sha).toBe(next);
+
+    // Running work for one commit is not joined by the same question at another.
+    const [old, moved] = await Promise.all([
+      service.ask(at(fixture.sha), { question: QUESTION, mode: "deep" }),
+      service.ask(at(next), { question: QUESTION, mode: "deep" }),
+    ]);
+    expect(answered(old).index.sha).toBe(fixture.sha);
+    expect(answered(moved).index.sha).toBe(next);
+    expect(answered(old).requestId).not.toBe(answered(moved).requestId);
+  });
+
   test("duplicate deliveries share one piece of work and one request id", async () => {
     const model = citingModel();
     const service = fixture.service({ provider: model });

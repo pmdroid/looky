@@ -161,14 +161,15 @@ export interface FailedResponse extends ResponseBase {
  * Why a request was refused before research for capacity reasons:
  * - busy: every question slot and queue place is taken, or the wait for one ran out.
  * - session_limit: this session already has its maximum of distinct questions in flight.
+ * - fetching_revision: the requested commit is still being fetched to this host.
  */
-export type UnavailableCode = "busy" | "session_limit";
+export type UnavailableCode = "busy" | "session_limit" | "fetching_revision";
 
 export interface UnavailableResponse extends ResponseBase {
   readonly status: "unavailable";
   readonly message: string;
   readonly retryable: true;
-  /** Set when Looky refused the request for capacity; absent for dependency outages. */
+  /** Set when Looky refused the request for capacity or a pending fetch; absent for outages. */
   readonly code?: UnavailableCode;
   /** Suggested delay before retrying, when Looky can estimate one. */
   readonly retryAfterMs?: number;
