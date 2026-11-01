@@ -4,8 +4,8 @@ Bun/TypeScript foundations for Looky's indexed Fast/Deep code answers. The repos
 provides tooling, durable SQLite storage, a persistent codebase index with versioned
 refresh and recovery, Fast/Deep evidence retrieval,
 [natural-language answers](#answers) through a [configurable model
-provider](#model-providers) and the `ask_project` contract described below. The MCP
-server is subsequent work in PAS-969.
+provider](#model-providers), the `ask_project` contract described below and Looky's own
+[MCP service](#mcp-service) that agents connect to.
 
 ## Prerequisites and installation
 
@@ -39,6 +39,7 @@ runtime and commands. Runtime code uses Bun built-ins only.
 | `bun test`             | Run isolated database and entrypoint tests                                        |
 | `bun test --watch`     | Rerun tests during development                                                    |
 | `bun start`            | Open storage, verify FTS5, migrate, report readiness, and close                   |
+| `bun run serve`        | Run the [MCP service](#mcp-service) over HTTP                                     |
 | `bun run looky …`      | Build, inspect and search codebase indexes; see [Codebase index](#codebase-index) |
 
 Tool configurations exclude dependencies, build output, coverage, and local
@@ -86,6 +87,205 @@ entrypoint in a child process with its own temporary data directory.
 Generated databases, `.looky/`, `data/`, `index-artifacts/`, and local `.env`
 files are ignored. Keep any custom data directory outside the checkout or add
 it to your local Git excludes. No secrets are needed for this bootstrap.
+
+## MCP service
+
+Looky serves `ask_project` through its own MCP server. It needs no Paws process.
+
+| Entrypoint                       | Transport                                     | Who supplies the trusted context              |
+| -------------------------------- | --------------------------------------------- | --------------------------------------------- |
+| `bun run serve`                  | MCP Streamable HTTP at `/mcp`, JSON responses | A client adapter registers a session per task |
+| `bun run looky mcp --repo <dir>` | MCP over stdio, one JSON-RPC message per line | The local user; `--ref` (default `HEAD`)      |
+
+Both expose two tools. `ask_project` takes only `question` and `mode`. `index_status`
+reports the index of the session's own repository and SHA and starts nothing. The server
+speaks MCP `2025-06-18`, `2025-03-26` and `2024-11-05`, handles `notifications/cancelled`
+and returns the typed response in `structuredContent`.
+
+### Local use over stdio
+
+```sh
+LOOKY_PROVIDER=… bun run looky mcp --repo /path/to/repo [--id <repository-id>] [--ref HEAD]
+```
+
+Each call resolves `--ref` to a commit once and pins it, so new commits are picked up by
+the next question. Uncommitted changes are never read and the answer discloses the
+worktree state as unknown. An MCP client configuration looks like this:
+
+```json
+{
+  "mcpServers": {
+    "looky": {
+      "command": "bun",
+      "args": ["run", "/path/to/looky/src/cli.ts", "mcp", "--repo", "/path/to/repo"],
+      "env": { "LOOKY_DATA_DIR": "/path/to/looky-data", "LOOKY_PROVIDER": "…" }
+    }
+  }
+}
+```
+
+The stdio process owns index builds for its data directory. Give it its own
+`LOOKY_DATA_DIR`, or stop `serve` on that directory first; a second owner on the same
+host is refused with an explicit error.
+
+### Running the HTTP service
+
+```sh
+LOOKY_DATA_DIR=/var/lib/looky \
+LOOKY_REPOSITORIES=paws-app \
+LOOKY_REPOSITORY_PAWS_APP_PATH=/var/lib/looky/repos/paws-app.git \
+LOOKY_REPOSITORY_PAWS_APP_FETCH_REMOTE=origin \
+LOOKY_CLIENTS=paws \
+LOOKY_CLIENT_PAWS_TOKEN=<random secret, at least 32 characters> \
+LOOKY_CLIENT_PAWS_REPOSITORIES=paws-app \
+LOOKY_PROVIDER=… \
+bun run serve
+```
+
+It listens on `127.0.0.1:7341` by default and stops on SIGINT or SIGTERM. `GET /healthz`
+needs no token and reports the protocol versions.
+
+| Variable                             | Meaning                                                                   |
+| ------------------------------------ | ------------------------------------------------------------------------- |
+| `LOOKY_HOST`, `LOOKY_PORT`           | Listen address, default `127.0.0.1` and `7341`                            |
+| `LOOKY_REPOSITORIES`                 | Comma-separated repository ids this service may index                     |
+| `LOOKY_REPOSITORY_<ID>_PATH`         | Local Git directory of that repository on this host, bare or not          |
+| `LOOKY_REPOSITORY_<ID>_FETCH_REMOTE` | Optional remote to fetch an exact missing commit from                     |
+| `LOOKY_CLIENTS`                      | Comma-separated client adapter ids, such as `paws`                        |
+| `LOOKY_CLIENT_<ID>_TOKEN`            | The adapter's secret, at least 32 characters                              |
+| `LOOKY_CLIENT_<ID>_REPOSITORIES`     | Repository ids the adapter may register sessions for, or `*`              |
+| `LOOKY_ALLOWED_ORIGINS`              | Browser origins allowed to call; requests with any other `Origin` get 403 |
+
+`<ID>` is the id upper-cased, with `-` and `.` written as `_`. Provider, index, budget
+and research variables are the same as for the CLI. Every setting is validated before
+storage is opened.
+
+### Ownership, storage and host
+
+One Looky service process owns the index of its `LOOKY_DATA_DIR`, on the host it runs
+on. Builds run on that process's worker threads, never on a client's runner.
+`GET /v1/service` and every session registration report the host, process id, data
+directory and index key, so it is explicit where an index lives.
+
+A repository's index is reachable wherever the service is reachable. A client on any
+host connects to the same service URL instead of assuming a local cache. When a client
+asks for a commit the service's clone does not have yet, such as a commit pushed from
+another machine, a configured `FETCH_REMOTE` fetches exactly that commit before
+indexing. The fetch is shared and limited by `LOOKY_FETCH_TIMEOUT_MS`, but a request waits
+for it only within its index wait. If the wait ends first, the result is `unavailable`
+with `code: "fetching_revision"` and `retryAfterMs`. Without a fetch remote, the request
+is `unsupported_revision`. Looky never substitutes another SHA. The fetch runs with hooks disabled and the `ext` transport refused, writes
+no refs, and uses only credentials the clone itself is configured with. Point
+`_PATH` at a clone Looky owns when you enable fetching.
+
+### Client adapters and sessions
+
+A client adapter, such as Paws, holds the client token and never gives it to an agent.
+For each task generation it registers a session with the trusted context it derived:
+
+```http
+POST /v1/sessions
+Authorization: Bearer <client token>
+Looky-Protocol-Version: 1
+
+{
+  "taskId": "PAS-123",
+  "sequence": 4,
+  "clientGeneration": "run-4",
+  "callerId": "agent-run-4",
+  "repositoryId": "paws-app",
+  "sha": "<full commit SHA>",
+  "ref": "main",
+  "worktree": { "state": "dirty", "changedPaths": 3 },
+  "providerPolicy": { "selected": "local", "fallback": ["hosted"] },
+  "budgetLimits": { "deep": { "maxModelCalls": 6 } }
+}
+```
+
+The response holds a session `token`, the session, the index status and the service
+location. The agent's MCP client connects to `<service URL>/mcp` with
+`Authorization: Bearer <session token>`. Arguments still carry only the question and
+mode; repository, SHA and scope always come from the session.
+
+- **Prewarm.** Registration starts or joins the index build for the SHA, so it runs while the agent works.
+- **Fencing.** Each client task has at most one active session. A higher `sequence` supersedes the previous one; its in-flight questions stop, and its later calls and results are denied as `stale_session`. A lower sequence is refused with 409.
+- **Duplicate delivery.** Repeating a registration with the same sequence and body returns the same session and token. The same sequence with a different body is refused with 409.
+- **Provider policy.** `providerPolicy` chooses among providers this service configured. Registration fails if it names another. `budgetLimits` can only tighten budgets. Unknown fields, such as an API key, are rejected and never echoed or stored.
+- **Lifetime.** Sessions expire after `LOOKY_SESSION_TTL_MS` (default 12 hours). Tokens survive a service restart. Revoke a session with `DELETE /v1/sessions/:id` when the task generation ends.
+
+Revocation, expiry or supersession also cancels the session's index build when no other
+live session needs that repository and SHA and no operator started it. A build shared
+with another session keeps running. Ready indexes are never deleted by this.
+
+`src/client/looky-client.ts` is a dependency-free typed client for this API. Its
+`LookyClient.connect` refuses a service that does not speak protocol version `1`. A
+service refuses requests without a supported `Looky-Protocol-Version` header with
+`unsupported_protocol_version`.
+
+### Operational API
+
+Every route needs the client token and the protocol header, and works only on the
+client's authorized repositories. A build of another repository is reported as not found.
+
+| Route                            | Operation                                                                 |
+| -------------------------------- | ------------------------------------------------------------------------- |
+| `GET /v1/service`                | Version, protocol versions, host, data directory, repositories, capacity  |
+| `GET /v1/sessions/:id`           | Session state, sequence, expiry and index status                          |
+| `DELETE /v1/sessions/:id`        | Revoke the session                                                        |
+| `GET /v1/index?repositoryId&sha` | `not_indexed`, `building` with progress, `ready`, or `failed` with reason |
+| `POST /v1/index/rebuild`         | Full rebuild of `{ repositoryId, sha }`; the ready index keeps serving    |
+| `GET /v1/builds/:id`             | One build with progress, refresh report and failure                       |
+| `POST /v1/builds/:id/retry`      | New attempt after a failed or cancelled build                             |
+| `POST /v1/builds/:id/cancel`     | Cancel a queued or running build                                          |
+
+### Readiness, capacity and cancellation
+
+Every `ask_project` call ends within a bound: the index wait, then the admission wait,
+then the mode's `maxElapsedMs`. An agent that holds the only runner slot of its client
+therefore never deadlocks on Looky. It gets an answer or a typed retryable result.
+
+1. **Index.** A ready index for exactly the session's SHA is reused. Otherwise the call starts or joins the build, an incremental refresh when an ancestor is ready, and waits up to `LOOKY_INDEX_WAIT_MS`. If the build is still running, the result is `indexing` with the build id, progress and `retryAfterMs`. A failed build is `failed` with stage `index`.
+2. **Admission.** Research and synthesis take one of `LOOKY_MAX_CONCURRENT_ASKS` slots. Waiting for an index takes none. When every slot and queue place is taken, or no slot frees within `LOOKY_ADMISSION_WAIT_MS`, the result is `unavailable` with `code: "busy"` and `retryAfterMs`.
+3. **Per session.** One session may have `LOOKY_MAX_ASKS_PER_SESSION` distinct questions in flight. Another is `unavailable` with `code: "session_limit"`. Looky never starts other agents or nested sessions.
+4. **Coalescing.** The same question and mode from the same session, at the same commit, joins the running work and receives the same `requestId`. A `tools/call` may carry `_meta: { "looky/requestKey": "<id>" }`. A redelivery with that key joins the running work, or receives the stored result for `LOOKY_RESULT_TTL_MS`. A key reused for another question is `invalid_request`.
+5. **Cancellation.** `notifications/cancelled`, a closed HTTP request or closed stdin detaches that caller with `cancelled`. The work stops when its last caller detaches, and its slot is released. Index builds are not cancelled by a question; they are shared and durable.
+6. **Delivery.** Before a result is returned, the session must still be current. A revoked or superseded session receives `denied`, never an answer computed for it earlier.
+
+Looky only returns tool results. It never completes, fails or resumes a client's task;
+a failed question is a typed result for the caller to handle.
+
+| Setting             | Default  | Variable                     |
+| ------------------- | -------- | ---------------------------- |
+| `maxConcurrentAsks` | 2        | `LOOKY_MAX_CONCURRENT_ASKS`  |
+| `maxQueuedAsks`     | 8        | `LOOKY_MAX_QUEUED_ASKS`      |
+| `maxAsksPerSession` | 2        | `LOOKY_MAX_ASKS_PER_SESSION` |
+| `admissionWaitMs`   | 10000    | `LOOKY_ADMISSION_WAIT_MS`    |
+| `indexWaitMs`       | 20000    | `LOOKY_INDEX_WAIT_MS`        |
+| `sessionTtlMs`      | 43200000 | `LOOKY_SESSION_TTL_MS`       |
+| `resultTtlMs`       | 600000   | `LOOKY_RESULT_TTL_MS`        |
+| `fetchTimeoutMs`    | 120000   | `LOOKY_FETCH_TIMEOUT_MS`     |
+
+`maxQueuedAsks`, `admissionWaitMs` and `indexWaitMs` may be 0, which returns the
+retryable result at once. Index build concurrency is `LOOKY_INDEX_MAX_CONCURRENT_BUILDS`.
+HTTP connections stay open up to 255 seconds, above the default Deep budget plus both
+waits; keep custom budgets within that.
+
+### Restart
+
+Stopping the service cancels queued and running builds and in-flight questions. On the
+next start, ready indexes and sessions are served again from the database. Builds left
+behind by a crash are marked `failed` with code `interrupted`, which is retryable, and the
+next request starts a new build that refreshes from the last ready index.
+
+### Paws integration
+
+Paws is the first client. Its adapter lives in pmdroid/paws-app and stays thin: derive
+the task, run generation, authorized repository and resolved commit SHA from the task;
+register a session with the next `sequence` and the selected provider policy; give the
+agent the MCP URL and session token; forward index status, retry and rebuild if needed;
+revoke the session when the run ends. It must not copy credentials into the
+registration or import Looky internals, and should gate on protocol version `1` with
+`LookyClient.connect`.
 
 ## Codebase index
 
@@ -358,7 +558,7 @@ Every response carries `requestId`, `mode: { requested, executed }` and explicit
 | `unsupported_revision` | The revision is not an exact committed SHA the index can serve |
 | `indexing`             | No ready index for the SHA yet; retry with the given build id  |
 | `failed`               | Index or answer failure, including `budget_exhausted`          |
-| `unavailable`          | A dependency, such as the provider, cannot serve right now     |
+| `unavailable`          | A dependency cannot serve, or Looky is at capacity (`code`)    |
 | `cancelled`            | The caller cancelled the request                               |
 | `timed_out`            | The mode's elapsed-time limit was reached                      |
 

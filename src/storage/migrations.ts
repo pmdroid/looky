@@ -142,6 +142,33 @@ export const migrations: readonly Migration[] = [
     ) STRICT;
     CREATE INDEX index_leases_build ON index_leases (build_id, expires_at);`,
   },
+  {
+    // Client sessions for the MCP service (PAS-969). A trusted client adapter
+    // registers one session per task generation; agents present its token.
+    // At most one session per client task is active. A higher sequence
+    // supersedes it, so obsolete generations are fenced. `registration` is the
+    // validated JSON the adapter sent; it never contains credentials.
+    version: 4,
+    sql: `CREATE TABLE client_sessions (
+      id TEXT PRIMARY KEY NOT NULL,
+      client_id TEXT NOT NULL,
+      task_id TEXT NOT NULL,
+      sequence INTEGER NOT NULL,
+      repository_id TEXT NOT NULL,
+      sha TEXT NOT NULL,
+      registration TEXT NOT NULL,
+      state TEXT NOT NULL CHECK (state IN ('active', 'superseded', 'revoked', 'expired')),
+      created_at TEXT NOT NULL,
+      expires_at INTEGER NOT NULL,
+      ended_at TEXT
+    ) STRICT;
+    CREATE UNIQUE INDEX client_sessions_one_active
+      ON client_sessions (client_id, task_id) WHERE state = 'active';
+    CREATE UNIQUE INDEX client_sessions_sequence
+      ON client_sessions (client_id, task_id, sequence);
+    CREATE INDEX client_sessions_scope
+      ON client_sessions (repository_id, sha, state, expires_at);`,
+  },
 ];
 
 export function schemaVersion(db: Database): number {

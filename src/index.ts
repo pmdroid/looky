@@ -88,3 +88,44 @@ export {
   type ProviderConfig,
   type ProviderSettings,
 } from "./providers/config";
+export {
+  LOOKY_PROTOCOL_VERSION,
+  LOOKY_VERSION,
+  LookyService,
+  OperationError,
+  SUPPORTED_PROTOCOL_VERSIONS,
+  type AskOptions,
+  type IndexView,
+  type LookyServiceOptions,
+  type Principal,
+} from "./service/looky-service";
+export { Admission, type AdmissionResult } from "./service/admission";
+export {
+  DEFAULT_CAPACITY,
+  DEFAULT_PORT,
+  loadCapacityConfig,
+  loadServerConfig,
+  type CapacityConfig,
+  type ClientConfig,
+  type RepositoryConfig,
+  type ServerConfig,
+} from "./service/config";
+export {
+  parseRegistration,
+  RegistrationError,
+  SessionStore,
+  type SessionRecord,
+  type SessionRegistration,
+} from "./service/sessions";
+export { createLookyService, localPrincipal } from "./service/bootstrap";
+export {
+  INDEX_STATUS_TOOL_NAME,
+  lookyToolHost,
+  McpConnection,
+  MCP_PROTOCOL_VERSIONS,
+  REQUEST_KEY_META,
+  type ToolHost,
+} from "./mcp/protocol";
+export { startHttpServer, type HttpServerOptions, type RunningHttpServer } from "./mcp/http";
+export { serveStdio } from "./mcp/stdio";
+export * from "./client/looky-client";
