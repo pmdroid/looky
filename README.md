@@ -1,11 +1,11 @@
 # Looky
 
 Bun/TypeScript foundations for Looky's indexed Fast/Deep code answers. The repository
-provides tooling, durable SQLite storage, a persistent codebase index, Fast/Deep
-evidence retrieval, [natural-language answers](#answers) through a
-[configurable model provider](#model-providers) and the `ask_project` contract
-described below. Index refresh and the MCP server are subsequent work in PAS-969
-through PAS-972.
+provides tooling, durable SQLite storage, a persistent codebase index with versioned
+refresh and recovery, Fast/Deep evidence retrieval,
+[natural-language answers](#answers) through a [configurable model
+provider](#model-providers) and the `ask_project` contract described below. The MCP
+server is subsequent work in PAS-969.
 
 ## Prerequisites and installation
 
@@ -100,18 +100,24 @@ repository scripts. Dirty or untracked files therefore never enter an index.
 
 ```sh
 bun run looky index --repo /path/to/repo --sha <full-commit-sha> [--id <repository-id>] [--rebuild]
+bun run looky retry <build-id> --repo /path/to/repo
 bun run looky status [<build-id>] [--id <repository-id>] [--sha <sha>]
 bun run looky coverage <build-id> [--excluded]
 bun run looky search <build-id> <words…> [--limit <n>]
 bun run looky retrieve --repo /path/to/repo --sha <sha> [--id <repository-id>] [--mode fast|deep] [--text] <question…>
 bun run looky ask --repo /path/to/repo --sha <sha> [--id <repository-id>] [--mode fast|deep] <question…>
 bun run looky cancel <build-id>
+bun run looky gc
 ```
 
-Every command prints JSON and uses `LOOKY_DATA_DIR` like `bun start`. `index` waits
-for the build, prints progress to stderr and exits non-zero unless the build is ready.
-`--id` defaults to the repository directory name. `coverage` reports indexed files by
-language, exclusions by reason and, with `--excluded`, every excluded path. `retrieve`
+Every command prints JSON and uses `LOOKY_DATA_DIR` like `bun start`. `index` and
+`retry` wait for the build, print progress to stderr and exit non-zero unless the
+build is ready. `index --rebuild` runs a full build even when the SHA is ready. `--id`
+defaults to the repository directory name. `status` with `--id` and `--sha` reports
+that scope's lifecycle state: `not_indexed`, `building`, `ready` or `failed`, with the
+ready, active and latest builds. Without both it lists builds. `coverage` reports
+indexed files by language, exclusions by reason, how the build was refreshed and, with
+`--excluded`, every excluded path. `gc` applies retention immediately. `retrieve`
 runs [evidence research](#evidence-retrieval) against the ready index of exactly that
 SHA, without calling a model, and prints the evidence bundle; `--text` includes the
 source text of each range. `ask` answers the question through the full `ask_project`
@@ -124,9 +130,14 @@ ids; there is no global index. `resolve` returns the ready build for exactly the
 requested SHA, or starts or joins one shared build for that scope and returns its
 progress. It never substitutes another SHA, though it discloses a ready build of
 another SHA as `staleGeneration`. A SHA that is not a commit in the repository is
-`unsupported_revision`. `status`, `builds`, `coverage` and `cancel` expose the same
-diagnostics as the CLI. `listChunks` and `searchChunks` read ready builds only and
-throw `IndexNotReadyError` for anything else.
+`unsupported_revision`. A ready result carries a lease that pins the generation;
+`askProject` releases it when the request ends. `startBuild` prewarms a SHA, for
+example at task admission, through the same shared build. `rebuild`, `retry`,
+`indexStatus`, `status`, `builds`, `coverage`, `cancel` and `collectGarbage` expose the
+same operations as the CLI. The service's `listChunks` and `searchChunks` check that
+the repository is still authorized on every call and throw `IndexAccessDeniedError`
+once the `repositories` callback stops returning it. The store functions of the same
+names read ready builds only and throw `IndexNotReadyError` for anything else.
 
 ### Eligibility
 
@@ -167,7 +178,9 @@ Each chunk records the repository id, build id, commit SHA, path, blob id, 1-bas
 inclusive line range, SHA-256 of its text, the text and its symbols. Reading those
 lines at that SHA with `GitSourceReader` returns the chunk text byte for byte,
 including CRLF line endings and a UTF-8 BOM. Chunk content is stored once per blob and
-chunker, so a later build reuses unchanged blobs without reading them again. Full-text
+chunker, where the chunker id includes the chunking limits, so a later build reuses
+unchanged blobs without reading them again. Content whose chunk rows are incomplete is
+never reused; the next build reads the blob again and repairs it. Full-text
 search uses FTS5 over symbols, chunk text and the parts of compound identifiers, so
 `getUserById` matches both the whole name and `user`.
 
@@ -176,28 +189,104 @@ search uses FTS5 over symbols, chunk text and the parts of compound identifiers,
 | State       | Meaning                                                            | Served |
 | ----------- | ------------------------------------------------------------------ | ------ |
 | `queued`    | Waiting for a build slot                                           | No     |
-| `running`   | Enumerating or indexing; `filesDone`/`filesTotal` show progress    | No     |
+| `running`   | Planning or indexing; `filesDone`/`filesTotal` show progress       | No     |
 | `ready`     | Every tracked entry is recorded; published in a single transaction | Yes    |
 | `failed`    | `errorCode` and `retryable` explain why; nothing is published      | No     |
 | `cancelled` | Cancelled by a caller, the CLI or service shutdown                 | No     |
 
+A build is one immutable generation of exactly one repository, commit SHA and index
+key. The index key combines the policy version in `src/indexing/policy.ts` with every
+limit that changes eligibility or chunking: `maxFileBytes`, `maxLineBytes`,
+`chunkLines`, `chunkBytes` and `chunkOverlapLines`. Only ready builds under the
+service's current key are served. Changing one of those limits or bumping the policy
+version therefore rebuilds every index on request instead of serving incompatible
+data. Bump the policy version when eligibility, chunking or symbol extraction code
+changes. Builds made before the key existed carry the key `legacy` and are never
+served. The database schema itself is versioned by the migrations above.
+
 Builds run on a worker thread with their own database connection, off the service's
-event loop, and at most `LOOKY_INDEX_MAX_CONCURRENT_BUILDS` run at once. Exceeding
-`maxFiles` or `maxIndexedBytes` fails the build with `limit_exceeded` rather than
-publishing partial coverage. Such deterministic failures are reported to later
-requests instead of retried; `index --rebuild` or `startBuild(..., { rebuild: true })`
-starts a new attempt. Cancelled and retryable failures start a new build on the next
-request. A build cancelled from another process stops at its next batch write.
+event loop, and at most `LOOKY_INDEX_MAX_CONCURRENT_BUILDS` run at once. Concurrent
+requests for the same scope join one build, and a unique database index on queued and
+running builds per scope prevents a second publisher. Exceeding `maxFiles` or
+`maxIndexedBytes` fails the build with `limit_exceeded` rather than publishing partial
+coverage. Such deterministic failures are reported to later requests instead of
+retried; `retry` starts a new attempt for the scope. Cancelled and retryable failures
+start a new build on the next request. A build cancelled from another process stops
+at its next batch write. Failure messages are written by Looky and never contain file
+content or matched secrets.
 
 One process owns index builds for a database. A second `IndexService` on the same
 database fails while the owner's process is alive on the same host. On startup, builds
 left queued or running by a process that died are marked `failed` with code
-`interrupted`, and the next request rebuilds them.
+`interrupted`, their staged rows are deleted, and the next request starts a new build
+that refreshes from the last ready generation.
 
-The policy version in `src/indexing/policy.ts` is recorded on every build. Bump it
-when eligibility, chunking or symbol extraction changes; builds made under another
-version are never served and are rebuilt on request. The schema itself is versioned by
-the migrations above.
+### Refresh
+
+A request for an unindexed SHA starts a build for exactly that SHA. If a ready build of
+the same repository and index key exists at an ancestor commit, the build refreshes
+from the nearest one. `git diff-tree --no-renames` lists the changed paths. Every
+unchanged entry of the new tree must match the base manifest by path, blob id, mode
+and size; its manifest row is then copied without reading or classifying the blob.
+Only added and modified paths are classified and read, and deleted paths are dropped.
+A rename is a deletion plus an addition. When the blob is unchanged its stored chunks
+are reused, and its chunks carry the new path. Entries the base could not read are
+read again.
+
+A build falls back to a full build when the SHA has no ready ancestor, when history was
+rewritten or a ref was force-moved so no ready commit is an ancestor, when the diff
+fails, when the base manifest does not match the new tree, when the base snapshot is
+incomplete, or for an explicit rebuild. Full builds are still bounded by `maxFiles`
+and `maxIndexedBytes` and reuse stored chunks of identical blobs.
+
+Each build reports `refresh`: `mode` (`incremental` or `full`), `reason` for a full
+build (`no_base`, `not_ancestor`, `diff_failed`, `base_mismatch` or
+`rebuild_requested`), the base build and SHA, and how many paths were `added`,
+`modified`, `deleted`, `renamed` and `carried`. `filesReused` counts indexed files
+whose chunks were not re-read.
+
+### Publication and readers
+
+All rows of a build are staged under its own build id and are never visible to
+readers. Publication checks that every tracked entry is recorded and marks the build
+`ready` in one transaction. For an explicit rebuild of a ready SHA, the same
+transaction retires the previous generation, so readers see either the old complete
+generation or the new one. The old one keeps serving until then, and cancelling or
+failing the rebuild leaves it untouched.
+
+A ready generation is served only for its own SHA. Before serving, the service checks
+once per process that its manifest and chunk rows are complete. A generation with
+missing rows is retired and rebuilt, never reported as ready. An empty or new data
+directory has no ready generations, so every SHA is rebuilt on request.
+
+Readers pin one generation with a lease. `resolve` acquires it together with the
+lookup and `askProject` releases it when the request ends. A retired generation stays
+readable by its lease holders until they release it. Leases expire after
+`LOOKY_INDEX_LEASE_TTL_MS` so a crashed reader cannot pin storage forever.
+
+### Retention and cleanup
+
+Garbage collection runs on startup, when builds go idle, when the last lease on a
+retired generation is released, and with `looky gc`. It never runs while a build is
+queued or running. In one transaction it:
+
+1. Expires leases past their deadline.
+2. Retires ready generations of another index key, and generations beyond
+   `LOOKY_INDEX_RETAIN_READY` per repository, least recently used first. A retired
+   SHA is rebuilt on its next request.
+3. Deletes retired generations that no reader holds a lease on.
+4. Deletes staged rows of failed and cancelled builds, and keeps at most
+   `LOOKY_INDEX_RETAIN_FAILED` of their records per repository.
+5. Deletes stored chunk content that no remaining build references.
+
+| Setting                     | Default | Variable                    |
+| --------------------------- | ------- | --------------------------- |
+| `retainReadyPerRepository`  | 3       | `LOOKY_INDEX_RETAIN_READY`  |
+| `retainFailedPerRepository` | 20      | `LOOKY_INDEX_RETAIN_FAILED` |
+| `leaseTtlMs`                | 1800000 | `LOOKY_INDEX_LEASE_TTL_MS`  |
+
+SQLite reuses the pages freed by deleted rows for later builds; the file does not
+shrink on its own.
 
 ### Index limits
 
@@ -215,7 +304,7 @@ the migrations above.
 `LOOKY_INDEX_MAX_CONCURRENT_BUILDS` defaults to 1. Values must be positive integers,
 except that `chunkOverlapLines` may be 0. `chunkBytes` must be at least `maxLineBytes`
 and the overlap must be below `chunkLines`. `maxFiles` and `maxIndexedBytes` also
-bound the disk an index uses.
+bound the disk one generation uses; retention bounds how many generations are kept.
 
 ## The ask_project contract
 
@@ -246,7 +335,9 @@ revocation. A malformed context fails closed as `denied` with `invalid_context`.
 ### Pinned index generation
 
 The `IndexCatalog` port resolves exactly one generation for the repository and SHA.
-A generation for any other SHA is refused as a contract violation. If no ready
+A generation for any other SHA is refused as a contract violation. A ready resolution
+may carry a lease, which `askProject` releases when the request ends, so retention
+never deletes the generation a request is reading. If no ready
 generation exists, the response is `indexing` with the request id, build id,
 progress, `retryAfterMs` and any stale generation that was deliberately not used.
 Index failures return `failed` with stage `index` and the build id. Engines receive
