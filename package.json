@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "bun run src/main.ts",
+    "looky": "bun run src/cli.ts",
     "format:check": "oxfmt --check .",
     "format:fix": "oxfmt --write .",
     "lint": "oxlint --deny-warnings .",

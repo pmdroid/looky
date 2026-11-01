@@ -1,9 +1,9 @@
 # Looky
 
 Bun/TypeScript foundations for Looky's indexed Fast/Deep code answers. The repository
-provides tooling, durable SQLite storage and the `ask_project` contract described below.
-Indexing, retrieval, answer synthesis and the MCP server are subsequent work in PAS-967
-through PAS-973.
+provides tooling, durable SQLite storage, a persistent codebase index and the
+`ask_project` contract described below. Retrieval, answer synthesis, index refresh and
+the MCP server are subsequent work in PAS-968 through PAS-973.
 
 ## Prerequisites and installation
 
@@ -26,17 +26,18 @@ runtime and commands. Runtime code uses Bun built-ins only.
 
 ## Development commands
 
-| Command                | Operation                                                                |
-| ---------------------- | ------------------------------------------------------------------------ |
-| `bun run check`        | Format check, lint, TypeScript check, and tests, without rewriting files |
-| `bun run format:check` | Check formatting with oxfmt                                              |
-| `bun run format:fix`   | Rewrite formatting with oxfmt                                            |
-| `bun run lint`         | Check with oxlint and reject warnings                                    |
-| `bun run lint:fix`     | Apply oxlint's automatic fixes                                           |
-| `bun run typecheck`    | Check TypeScript without emitting files                                  |
-| `bun test`             | Run isolated database and entrypoint tests                               |
-| `bun test --watch`     | Rerun tests during development                                           |
-| `bun start`            | Open storage, verify FTS5, migrate, report readiness, and close          |
+| Command                | Operation                                                                 |
+| ---------------------- | ------------------------------------------------------------------------- |
+| `bun run check`        | Format check, lint, TypeScript check, and tests, without rewriting files  |
+| `bun run format:check` | Check formatting with oxfmt                                               |
+| `bun run format:fix`   | Rewrite formatting with oxfmt                                             |
+| `bun run lint`         | Check with oxlint and reject warnings                                     |
+| `bun run lint:fix`     | Apply oxlint's automatic fixes                                            |
+| `bun run typecheck`    | Check TypeScript without emitting files                                   |
+| `bun test`             | Run isolated database and entrypoint tests                                |
+| `bun test --watch`     | Rerun tests during development                                            |
+| `bun start`            | Open storage, verify FTS5, migrate, report readiness, and close           |
+| `bun run looky …`      | Build and inspect codebase indexes; see [Codebase index](#codebase-index) |
 
 Tool configurations exclude dependencies, build output, coverage, and local
 database/index directories. The formatter also excludes the generated lockfile.
@@ -83,6 +84,129 @@ entrypoint in a child process with its own temporary data directory.
 Generated databases, `.looky/`, `data/`, `index-artifacts/`, and local `.env`
 files are ignored. Keep any custom data directory outside the checkout or add
 it to your local Git excludes. No secrets are needed for this bootstrap.
+
+## Codebase index
+
+Looky indexes one exact commit of an explicitly authorized local Git repository into
+the SQLite database. Only Git objects are read: `git ls-tree` enumerates the commit's
+tree and `git cat-file --batch` reads blobs by object id. The worktree, Git index,
+checkout filters, textconv, hooks, replace refs, lazy fetches from promisor remotes and
+system/global Git config are never used, and no command goes through a shell or runs
+repository scripts. Dirty or untracked files therefore never enter an index.
+
+### Building and inspecting indexes
+
+```sh
+bun run looky index --repo /path/to/repo --sha <full-commit-sha> [--id <repository-id>] [--rebuild]
+bun run looky status [<build-id>] [--id <repository-id>] [--sha <sha>]
+bun run looky coverage <build-id> [--excluded]
+bun run looky search <build-id> <words…> [--limit <n>]
+bun run looky cancel <build-id>
+```
+
+Every command prints JSON and uses `LOOKY_DATA_DIR` like `bun start`. `index` waits
+for the build, prints progress to stderr and exits non-zero unless the build is ready.
+`--id` defaults to the repository directory name. `coverage` reports indexed files by
+language, exclusions by reason and, with `--excluded`, every excluded path.
+
+In code, `IndexService` implements the `IndexCatalog` port. Its `repositories`
+callback maps an authorized repository id to a local Git directory and refuses unknown
+ids; there is no global index. `resolve` returns the ready build for exactly the
+requested SHA, or starts or joins one shared build for that scope and returns its
+progress. It never substitutes another SHA, though it discloses a ready build of
+another SHA as `staleGeneration`. A SHA that is not a commit in the repository is
+`unsupported_revision`. `status`, `builds`, `coverage` and `cancel` expose the same
+diagnostics as the CLI. `listChunks` and `searchChunks` read ready builds only and
+throw `IndexNotReadyError` for anything else.
+
+### Eligibility
+
+Every tracked entry is recorded as `indexed` or `excluded` with one reason. Path rules
+run before any bytes are read. Content rules run on the read bytes before anything is
+stored. A file with a secret is excluded whole, so no part of it is stored or reaches a
+provider, and diagnostics never include the matched value.
+
+| Reason           | Rule                                                                                            |
+| ---------------- | ----------------------------------------------------------------------------------------------- |
+| `unsafe_path`    | Absolute, `..`, empty or `.git` segments, backslashes, control characters or non-UTF-8 names    |
+| `symlink`        | Symbolic links are never followed                                                               |
+| `submodule`      | Gitlinks; their contents are another repository                                                 |
+| `dependency`     | Under `node_modules`, `vendor`, `bower_components`, `.yarn`, `.venv` and similar directories    |
+| `secret_path`    | `.env*`, `*.env`, keys and certificates such as `*.pem` or `id_rsa`, `.npmrc`, credential files |
+| `generated`      | Under `dist`, `build`, `out`, `coverage`, `target` and similar; lockfiles, `*.min.js`, `*.map`  |
+| `binary`         | Binary extensions, NUL bytes or invalid UTF-8                                                   |
+| `oversized`      | Blob larger than `maxFileBytes`; never read                                                     |
+| `empty`          | Empty or whitespace-only content                                                                |
+| `long_lines`     | A line longer than `maxLineBytes`, typical of minified or data files                            |
+| `secret_content` | Private key blocks, cloud, GitHub, Slack, npm and API tokens, URLs with real passwords          |
+| `generated`      | `@generated`, `DO NOT EDIT` or `auto-generated by` in the first lines                           |
+| `unreadable`     | The blob is missing from the object database                                                    |
+
+Everything else is indexed: source, tests, configuration and docs in any language.
+The full rules are in `src/indexing/policy.ts`.
+
+### Chunks and provenance
+
+Chunks are whole, unmodified source lines. TypeScript and JavaScript break before
+top-level declarations, keeping their leading comments and decorators, and record the
+declared names as symbols. Markdown breaks before headings. Every other language gets
+faithful sliding line windows that overlap by `chunkOverlapLines`. A declaration or
+section over the size bounds is split into overlapping windows. No chunk exceeds
+`chunkLines` lines or `chunkBytes` bytes.
+
+Each chunk records the repository id, build id, commit SHA, path, blob id, 1-based
+inclusive line range, SHA-256 of its text, the text and its symbols. Reading those
+lines at that SHA with `GitSourceReader` returns the chunk text byte for byte,
+including CRLF line endings and a UTF-8 BOM. Chunk content is stored once per blob and
+chunker, so a later build reuses unchanged blobs without reading them again. Full-text
+search uses FTS5 over symbols, chunk text and the parts of compound identifiers, so
+`getUserById` matches both the whole name and `user`.
+
+### Build lifecycle
+
+| State       | Meaning                                                            | Served |
+| ----------- | ------------------------------------------------------------------ | ------ |
+| `queued`    | Waiting for a build slot                                           | No     |
+| `running`   | Enumerating or indexing; `filesDone`/`filesTotal` show progress    | No     |
+| `ready`     | Every tracked entry is recorded; published in a single transaction | Yes    |
+| `failed`    | `errorCode` and `retryable` explain why; nothing is published      | No     |
+| `cancelled` | Cancelled by a caller, the CLI or service shutdown                 | No     |
+
+Builds run on a worker thread with their own database connection, off the service's
+event loop, and at most `LOOKY_INDEX_MAX_CONCURRENT_BUILDS` run at once. Exceeding
+`maxFiles` or `maxIndexedBytes` fails the build with `limit_exceeded` rather than
+publishing partial coverage. Such deterministic failures are reported to later
+requests instead of retried; `index --rebuild` or `startBuild(..., { rebuild: true })`
+starts a new attempt. Cancelled and retryable failures start a new build on the next
+request. A build cancelled from another process stops at its next batch write.
+
+One process owns index builds for a database. A second `IndexService` on the same
+database fails while the owner's process is alive on the same host. On startup, builds
+left queued or running by a process that died are marked `failed` with code
+`interrupted`, and the next request rebuilds them.
+
+The policy version in `src/indexing/policy.ts` is recorded on every build. Bump it
+when eligibility, chunking or symbol extraction changes; builds made under another
+version are never served and are rebuilt on request. The schema itself is versioned by
+the migrations above.
+
+### Index limits
+
+| Limit               | Default    | Variable                          |
+| ------------------- | ---------- | --------------------------------- |
+| `maxFileBytes`      | 1048576    | `LOOKY_INDEX_MAX_FILE_BYTES`      |
+| `maxLineBytes`      | 4000       | `LOOKY_INDEX_MAX_LINE_BYTES`      |
+| `maxFiles`          | 200000     | `LOOKY_INDEX_MAX_FILES`           |
+| `maxIndexedBytes`   | 1073741824 | `LOOKY_INDEX_MAX_INDEXED_BYTES`   |
+| `chunkLines`        | 80         | `LOOKY_INDEX_CHUNK_LINES`         |
+| `chunkBytes`        | 8000       | `LOOKY_INDEX_CHUNK_BYTES`         |
+| `chunkOverlapLines` | 8          | `LOOKY_INDEX_CHUNK_OVERLAP_LINES` |
+| `readConcurrency`   | 4          | `LOOKY_INDEX_READ_CONCURRENCY`    |
+
+`LOOKY_INDEX_MAX_CONCURRENT_BUILDS` defaults to 1. Values must be positive integers,
+except that `chunkOverlapLines` may be 0. `chunkBytes` must be at least `maxLineBytes`
+and the overlap must be below `chunkLines`. `maxFiles` and `maxIndexedBytes` also
+bound the disk an index uses.
 
 ## The ask_project contract
 
@@ -184,15 +308,15 @@ adapter's `budgetLimits` can only tighten these limits, never raise them.
 
 ### Adapter boundary
 
-| Port            | Implemented by        | Responsibility                                        |
-| --------------- | --------------------- | ----------------------------------------------------- |
-| `ClientAdapter` | Client, such as Paws  | Session context, generation, authorization, limits    |
-| `IndexCatalog`  | Looky index (PAS-967) | Exact-SHA generation lookup and build status          |
-| `Retriever`     | Looky (PAS-973)       | Search within the pinned generation                   |
-| `SourceReader`  | Looky or client       | Committed source ranges at the SHA                    |
-| `ModelProvider` | Selected provider     | Model calls; `LookyUnavailableError` when unavailable |
-| `AnswerEngine`  | Looky (PAS-968)       | Fast or Deep research and synthesis via the session   |
+| Port            | Implemented by       | Responsibility                                        |
+| --------------- | -------------------- | ----------------------------------------------------- |
+| `ClientAdapter` | Client, such as Paws | Session context, generation, authorization, limits    |
+| `IndexCatalog`  | Looky `IndexService` | Exact-SHA generation lookup and build status          |
+| `Retriever`     | Looky (PAS-973)      | Search within the pinned generation                   |
+| `SourceReader`  | Looky or client      | Committed source ranges at the SHA                    |
+| `ModelProvider` | Selected provider    | Model calls; `LookyUnavailableError` when unavailable |
+| `AnswerEngine`  | Looky (PAS-968)      | Fast or Deep research and synthesis via the session   |
 
 Cancellation flows through the `AbortSignal` passed to every port. `GitSourceReader`
-reads blobs with `git cat-file` at the SHA, so it never reads worktree files, checks
-out, stashes or commits.
+reads blobs with `git cat-file` at the SHA, with the same hardened Git invocation as
+the indexer, so it never reads worktree files, checks out, stashes or commits.

@@ -31,7 +31,15 @@ export function openDatabase(options: { dataDir?: string } = {}): Database {
   if (!configuredDir.trim()) throw new Error("LOOKY_DATA_DIR must not be empty");
   const dataDir = resolve(configuredDir);
   mkdirSync(dataDir, { recursive: true, mode: 0o700 });
-  const db = new Database(join(dataDir, "looky.sqlite"), { create: true, strict: true });
+  return openDatabaseFile(join(dataDir, "looky.sqlite"));
+}
+
+/**
+ * Open a specific database file with Looky's pragmas, FTS5 check and
+ * migrations. Index build workers use this to open the service's file.
+ */
+export function openDatabaseFile(filename: string): Database {
+  const db = new Database(filename, { create: true, strict: true });
   try {
     db.exec("PRAGMA busy_timeout = 5000; PRAGMA foreign_keys = ON;");
     verifyFullTextSupport(db);
