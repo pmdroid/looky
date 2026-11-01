@@ -117,6 +117,47 @@ export async function commitExists(
   return result.exitCode === 0 && new TextDecoder().decode(result.stdout).trim() === "commit";
 }
 
+/**
+ * Fetch exactly one commit from a configured remote of a Looky-owned clone,
+ * for a request whose SHA this host has not seen yet. Only the object is
+ * fetched: no tags, no submodules, no refs updated and no FETCH_HEAD, and
+ * hooks stay disabled. The `ext` transport, which runs commands, is refused.
+ * Returns whether the commit exists afterwards.
+ */
+export async function fetchCommit(
+  directory: string,
+  remote: string,
+  sha: string,
+  signal: AbortSignal,
+): Promise<boolean> {
+  if (!isFullCommitSha(sha) || !/^[A-Za-z0-9._-]+$/.test(remote)) return false;
+  signal.throwIfAborted();
+  const child = Bun.spawn(
+    [
+      "git",
+      "-c",
+      "core.hooksPath=/dev/null",
+      "-c",
+      "core.fsmonitor=false",
+      "-c",
+      "protocol.ext.allow=never",
+      "-C",
+      directory,
+      "fetch",
+      "--quiet",
+      "--no-tags",
+      "--no-recurse-submodules",
+      "--no-write-fetch-head",
+      remote,
+      sha,
+    ],
+    { stdin: "ignore", stdout: "ignore", stderr: "pipe", env: gitEnv(), signal },
+  );
+  await Promise.all([new Response(child.stderr).text(), child.exited]);
+  signal.throwIfAborted();
+  return commitExists(directory, sha, signal);
+}
+
 /** True when the directory is a readable Git repository (bare or not). */
 export async function repositoryAccessible(
   directory: string,
