@@ -67,7 +67,7 @@ export async function askProject(
   options: AskProjectOptions = {},
 ): Promise<AskProjectResponse> {
   const now = services.now ?? Date.now;
-  const requestId = (services.newRequestId ?? crypto.randomUUID)();
+  const requestId = services.newRequestId ? services.newRequestId() : crypto.randomUUID();
   const startedAt = now();
 
   const parsed = parseAskProjectInput(rawArgs, {

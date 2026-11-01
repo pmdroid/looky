@@ -83,6 +83,7 @@ export function createHttpProvider(options: HttpProviderOptions): ModelProvider 
       );
       const combined = AbortSignal.any([signal, timeout.signal]);
       let response: Response;
+      let text: string;
       try {
         response = await doFetch(url, {
           method: "POST",
@@ -91,8 +92,7 @@ export function createHttpProvider(options: HttpProviderOptions): ModelProvider 
           signal: combined,
           redirect: "error",
         });
-        const text = await response.text();
-        return parseResponse(options, request, response, text);
+        text = await response.text();
       } catch (error) {
         if (signal.aborted) throw signal.reason ?? error;
         if (timeout.signal.aborted) {
@@ -105,6 +105,8 @@ export function createHttpProvider(options: HttpProviderOptions): ModelProvider 
       } finally {
         clearTimeout(timer);
       }
+      // Outside the network handler, so a rejected request is not mistaken for an outage.
+      return parseResponse(options, request, response, text);
     },
   };
 }
