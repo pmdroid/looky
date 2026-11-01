@@ -1,6 +1,7 @@
 import { isFullCommitSha } from "../contract/context";
 import { LookyUnavailableError, type SourceReader, type SourceText } from "../contract/ports";
 import { BudgetExhaustedError } from "../ask/session";
+import { runGit } from "../indexing/git-snapshot";
 
 /** The requested path or line range does not exist at the pinned commit. */
 export class SourceRangeError extends Error {
@@ -11,6 +12,7 @@ export class SourceRangeError extends Error {
  * Reads committed blobs from a local Git object database with
  * `git cat-file blob <sha>:<path>`. It never reads worktree files, checks out,
  * stashes or commits, so dirty or moving worktrees cannot affect results.
+ * Replace refs, lazy fetches, hooks and system/global config are disabled.
  */
 export class GitSourceReader implements SourceReader {
   constructor(
@@ -64,15 +66,10 @@ export class GitSourceReader implements SourceReader {
   }
 }
 
+const decoder = new TextDecoder("utf-8", { ignoreBOM: true });
+
+/** Same hardened, shell-free invocation the indexer uses, so reads match indexed bytes. */
 async function git(directory: string, args: string[], signal: AbortSignal) {
-  const child = Bun.spawn(["git", "-C", directory, ...args], {
-    stdout: "pipe",
-    stderr: "pipe",
-    stdin: "ignore",
-    signal,
-    env: { ...process.env, GIT_OPTIONAL_LOCKS: "0", GIT_TERMINAL_PROMPT: "0" },
-  });
-  const [stdout, exitCode] = await Promise.all([new Response(child.stdout).text(), child.exited]);
-  signal.throwIfAborted();
-  return { stdout, exitCode };
+  const result = await runGit(directory, args, signal);
+  return { stdout: decoder.decode(result.stdout), exitCode: result.exitCode };
 }

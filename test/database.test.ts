@@ -57,10 +57,10 @@ describe("file-backed SQLite", () => {
     db.exec("INSERT INTO app_metadata VALUES ('keep', 'value')");
     migrate(db);
     migrate(db);
-    expect(schemaVersion(db)).toBe(1);
+    expect(schemaVersion(db)).toBe(migrations.length);
     expect(db.query("SELECT * FROM app_metadata").all()).toHaveLength(1);
     db.close();
-    expect(schemaVersion(open())).toBe(1);
+    expect(schemaVersion(open())).toBe(migrations.length);
   });
 
   test("failed migrations roll back DDL, data, and schema version", () => {
@@ -69,17 +69,20 @@ describe("file-backed SQLite", () => {
       migrate(db, [
         ...migrations,
         {
-          version: 2,
+          version: migrations.length + 1,
           sql: "CREATE TABLE partial (id INTEGER); INSERT INTO app_metadata VALUES ('partial', 'no');",
         },
-        { version: 3, sql: "INSERT INTO missing_table VALUES (1)" },
+        { version: migrations.length + 2, sql: "INSERT INTO missing_table VALUES (1)" },
       ]),
     ).toThrow();
-    expect(schemaVersion(db)).toBe(1);
+    expect(schemaVersion(db)).toBe(migrations.length);
     expect(db.query("SELECT * FROM app_metadata").all()).toEqual([]);
     expect(db.query("SELECT name FROM sqlite_master WHERE name = 'partial'").all()).toEqual([]);
-    migrate(db, [...migrations, { version: 2, sql: "CREATE TABLE recovered (id INTEGER)" }]);
-    expect(schemaVersion(db)).toBe(2);
+    migrate(db, [
+      ...migrations,
+      { version: migrations.length + 1, sql: "CREATE TABLE recovered (id INTEGER)" },
+    ]);
+    expect(schemaVersion(db)).toBe(migrations.length + 1);
   });
 
   test("rejects future schemas and invalid migration ordering", () => {
@@ -117,7 +120,7 @@ describe("file-backed SQLite", () => {
       env: { ...process.env, LOOKY_DATA_DIR: directory },
     });
     expect(result.exitCode).toBe(0);
-    expect(result.stdout.toString()).toContain("schema 1, FTS5 verified");
+    expect(result.stdout.toString()).toContain(`schema ${migrations.length}, FTS5 verified`);
     expect(existsSync(join(directory, "looky.sqlite"))).toBe(true);
   });
 

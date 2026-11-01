@@ -7,6 +7,7 @@ import {
   validateBudgets,
 } from "./contract/budgets";
 import { DEFAULT_MAX_QUESTION_CHARS, MODES } from "./contract/input";
+import { DEFAULT_INDEX_LIMITS, type IndexLimits, validateLimits } from "./indexing/policy";
 
 export interface LookyAskConfig {
   readonly maxQuestionChars: number;
@@ -61,5 +62,41 @@ export function loadAskConfig(
     indexRetryAfterMs:
       readPositiveInt(env, "LOOKY_INDEX_RETRY_AFTER_MS") ?? DEFAULT_INDEX_RETRY_AFTER_MS,
     budgets,
+  };
+}
+
+export interface LookyIndexConfig {
+  readonly limits: IndexLimits;
+  /** Index builds that may run at once; further builds wait in a queue. */
+  readonly maxConcurrentBuilds: number;
+}
+
+export const DEFAULT_MAX_CONCURRENT_BUILDS = 1;
+
+/** Environment variable for one index limit, such as `LOOKY_INDEX_MAX_FILE_BYTES`. */
+export function indexLimitEnvName(field: keyof IndexLimits): string {
+  return `LOOKY_INDEX_${field.replace(/[A-Z]/g, (letter) => `_${letter}`).toUpperCase()}`;
+}
+
+/** Load index limits from `LOOKY_INDEX_*` environment variables over documented defaults. */
+export function loadIndexConfig(
+  env: Record<string, string | undefined> = process.env,
+): LookyIndexConfig {
+  const limits: Record<string, number> = { ...DEFAULT_INDEX_LIMITS };
+  for (const field of Object.keys(DEFAULT_INDEX_LIMITS) as (keyof IndexLimits)[]) {
+    const name = indexLimitEnvName(field);
+    if (field === "chunkOverlapLines" && env[name]?.trim() === "0") {
+      limits[field] = 0;
+      continue;
+    }
+    const value = readPositiveInt(env, name);
+    if (value !== undefined) limits[field] = value;
+  }
+  const result = limits as unknown as IndexLimits;
+  validateLimits(result);
+  return {
+    limits: result,
+    maxConcurrentBuilds:
+      readPositiveInt(env, "LOOKY_INDEX_MAX_CONCURRENT_BUILDS") ?? DEFAULT_MAX_CONCURRENT_BUILDS,
   };
 }
