@@ -6,6 +6,9 @@ import {
   type ModeBudgets,
   validateBudgets,
 } from "./contract/budgets";
+import type { AnswerEngineOptions } from "./answer/engine";
+import { DEFAULT_FOLLOW_UP_LIMITS } from "./answer/engine";
+import { sourceLinkFromTemplate } from "./answer/citations";
 import { DEFAULT_MAX_QUESTION_CHARS, MODES } from "./contract/input";
 import { DEFAULT_INDEX_LIMITS, type IndexLimits, validateLimits } from "./indexing/policy";
 import {
@@ -130,4 +133,42 @@ export function loadResearchConfig(
   ) as unknown as ResearchLimitsByMode;
   validateResearchLimits(limits);
   return limits;
+}
+
+/** Environment variable for one Deep follow-up limit, such as `LOOKY_DEEP_FOLLOW_UP_MAX_READS`. */
+export function followUpLimitEnvName(field: ResearchLimitField): string {
+  return `LOOKY_DEEP_FOLLOW_UP_${field.replace(/[A-Z]/g, (letter) => `_${letter}`).toUpperCase()}`;
+}
+
+/**
+ * Load answer engine settings: Deep follow-up rounds and limits, and an
+ * optional source link template. Research limits come from
+ * {@link loadResearchConfig}.
+ */
+export function loadAnswerConfig(
+  env: Record<string, string | undefined> = process.env,
+): Omit<AnswerEngineOptions, "research" | "now"> {
+  const followUp: Record<ResearchLimitField, number> = { ...DEFAULT_FOLLOW_UP_LIMITS };
+  for (const field of RESEARCH_LIMIT_FIELDS) {
+    const value = readPositiveInt(env, followUpLimitEnvName(field));
+    if (value !== undefined) followUp[field] = value;
+  }
+  const rawRounds = env.LOOKY_DEEP_ROUNDS?.trim();
+  let deepRounds: number | undefined;
+  if (rawRounds !== undefined) {
+    if (!/^[0-9]+$/.test(rawRounds) || Number(rawRounds) > 10) {
+      throw new Error(
+        `LOOKY_DEEP_ROUNDS must be an integer from 0 to 10, got ${JSON.stringify(rawRounds)}`,
+      );
+    }
+    deepRounds = Number(rawRounds);
+  }
+  const maxFollowUpsPerRound = readPositiveInt(env, "LOOKY_DEEP_MAX_FOLLOW_UPS_PER_ROUND");
+  const template = env.LOOKY_SOURCE_LINK_TEMPLATE?.trim();
+  return {
+    followUp,
+    ...(deepRounds !== undefined ? { deepRounds } : {}),
+    ...(maxFollowUpsPerRound !== undefined ? { maxFollowUpsPerRound } : {}),
+    ...(template ? { sourceLink: sourceLinkFromTemplate(template) } : {}),
+  };
 }

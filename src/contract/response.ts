@@ -23,6 +23,17 @@ export interface EvidenceRef {
   readonly note?: string;
 }
 
+/**
+ * A question for people, produced when the code and docs cannot establish
+ * something such as design intent or business rationale. The caller decides
+ * whether to ask it; Looky never posts it anywhere.
+ */
+export interface SuggestedHumanQuestion {
+  readonly question: string;
+  /** Why the indexed revision could not answer it. */
+  readonly reason: string;
+}
+
 export interface RevisionIdentity {
   readonly repositoryId: string;
   readonly snapshotId?: string;
@@ -87,7 +98,11 @@ export interface AnsweredResponse extends ResponseBase {
   readonly scope: SourceScope;
   /** Present only for Fast: Deep may establish more. Never acted on automatically. */
   readonly suggestedMode?: "deep";
+  /** Missing intent or rationale the caller may ask people about. Never posted by Looky. */
+  readonly suggestedHumanQuestion?: SuggestedHumanQuestion;
   readonly usage: UsageCounters;
+  /** Configured providers that served model calls, in first-use order. */
+  readonly providers: readonly string[];
 }
 
 export interface InvalidRequestResponse extends ResponseBase {

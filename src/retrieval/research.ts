@@ -153,7 +153,9 @@ export type ResearchPurpose =
   | "tests"
   | "config_docs"
   | "docs_check"
-  | "refine";
+  | "refine"
+  /** A lead the answer engine requested after reviewing evidence, such as a model research plan. */
+  | "follow_up";
 
 export type ResearchStep =
   | {
@@ -232,6 +234,26 @@ export interface ResearchOptions {
   readonly now?: () => number;
 }
 
+/**
+ * One read-only follow-up search requested by an answer engine. It runs as a
+ * scoped retrieval pass on the session; hits are read and verified exactly
+ * like research's own leads. Nothing else can be requested.
+ */
+export interface FollowUpRequest {
+  readonly query: string;
+  readonly options?: RetrievalOptions;
+  /** Why the engine wants it; recorded as the evidence reason. */
+  readonly reason: string;
+  /** Reads to spend on its hits. Default 2. */
+  readonly reads?: number;
+}
+
+export interface FollowUpOptions {
+  /** Limits for this follow-up stage, clamped to the session's remaining budget. */
+  readonly limits: ResearchLimits;
+  readonly now?: () => number;
+}
+
 interface Lead {
   readonly purpose: ResearchPurpose;
   readonly query: string;
@@ -277,8 +299,32 @@ export async function researchEvidence(
   session: ResearchSession,
   options: ResearchOptions = {},
 ): Promise<EvidenceBundle> {
-  const research = new Research(session, options);
+  const configured = (options.limits ?? DEFAULT_RESEARCH_LIMITS)[session.mode];
+  const research = new Research(session, configured, options.now);
   return research.run();
+}
+
+/**
+ * Run engine-requested follow-up searches on top of an existing bundle from
+ * the same session. Evidence ids, passes and usage continue from `bundle`;
+ * reads skip lines it already covers. Requests left when a limit is reached
+ * are recorded as `not_followed`.
+ */
+export async function followUpEvidence(
+  session: ResearchSession,
+  bundle: EvidenceBundle,
+  requests: readonly FollowUpRequest[],
+  options: FollowUpOptions,
+): Promise<EvidenceBundle> {
+  if (
+    bundle.repositoryId !== session.repositoryId ||
+    bundle.sha !== session.generation.sha ||
+    bundle.generationId !== session.generation.generationId
+  ) {
+    throw new Error("A follow-up must use the session that produced the evidence bundle");
+  }
+  const research = new Research(session, options.limits, options.now, bundle);
+  return research.runFollowUps(requests);
 }
 
 class Research {
@@ -295,15 +341,25 @@ class Research {
   private passes = 0;
   private reads = 0;
   private bytes = 0;
+  /** Usage of the bundle this research continues, if any. */
+  private readonly prior: ResearchUsage = { passes: 0, reads: 0, bytes: 0, elapsedMs: 0 };
 
   constructor(
     private readonly session: ResearchSession,
-    options: ResearchOptions,
+    configured: ResearchLimits,
+    now: (() => number) | undefined,
+    seed?: EvidenceBundle,
   ) {
-    this.now = options.now ?? Date.now;
+    this.now = now ?? Date.now;
     this.startedAt = this.now();
     this.analysis = analyzeQuery(session.question);
-    const configured = (options.limits ?? DEFAULT_RESEARCH_LIMITS)[session.mode];
+    if (seed) {
+      this.evidence.push(...seed.evidence);
+      this.trace.push(...seed.trace);
+      this.gaps.push(...seed.gaps);
+      this.conflicts.push(...seed.conflicts);
+      this.prior = seed.usage;
+    }
     const remaining = session.remaining();
     this.limits = {
       maxPasses: Math.min(configured.maxPasses, remaining.maxRetrievalPasses),
@@ -315,10 +371,41 @@ class Research {
     };
   }
 
+  /** Pass number across this research and the bundle it continues. */
+  private get pass(): number {
+    return this.prior.passes + this.passes;
+  }
+
   async run(): Promise<EvidenceBundle> {
+    return this.execute(() => (this.session.mode === "fast" ? this.fast() : this.deep()), true);
+  }
+
+  async runFollowUps(requests: readonly FollowUpRequest[]): Promise<EvidenceBundle> {
+    requests.forEach((request, index) => {
+      this.enqueue({
+        purpose: "follow_up",
+        query: request.query,
+        ...(request.options ? { options: request.options } : {}),
+        reason: request.reason,
+        priority: index,
+        reads: Math.max(1, Math.floor(request.reads ?? 2)),
+        depth: 0,
+        fromQuestion: request.options?.definitionOf !== undefined,
+      });
+    });
+    return this.execute(async () => {
+      for (;;) {
+        const lead = this.leads.shift();
+        if (!lead) break;
+        await this.follow(lead);
+      }
+    }, false);
+  }
+
+  private async execute(plan: () => Promise<void>, initial: boolean): Promise<EvidenceBundle> {
     let stop: ResearchStop = { reason: "complete" };
     try {
-      await (this.session.mode === "fast" ? this.fast() : this.deep());
+      await plan();
     } catch (error) {
       if (error instanceof StopResearch) stop = error.stop;
       else if (error instanceof BudgetExhaustedError)
@@ -333,8 +420,8 @@ class Research {
         reason: stop.reason === "complete" ? `${this.session.mode} research plan` : stop.reason,
       });
     }
-    if (this.session.mode === "fast") this.docsNotes();
-    this.finalGaps(stop);
+    if (initial && this.session.mode === "fast") this.docsNotes();
+    this.finalGaps(stop, initial);
     const notFollowed = this.trace.some((step) => step.type === "not_followed");
     return {
       mode: this.session.mode,
@@ -347,10 +434,10 @@ class Research {
       conflicts: [...this.conflicts],
       trace: [...this.trace],
       usage: {
-        passes: this.passes,
-        reads: this.reads,
-        bytes: this.bytes,
-        elapsedMs: Math.max(0, this.now() - this.startedAt),
+        passes: this.prior.passes + this.passes,
+        reads: this.prior.reads + this.reads,
+        bytes: this.prior.bytes + this.bytes,
+        elapsedMs: this.prior.elapsedMs + Math.max(0, this.now() - this.startedAt),
       },
       limits: this.limits,
       stop,
@@ -405,18 +492,21 @@ class Research {
 
   private async follow(lead: Lead): Promise<void> {
     const hits = await this.retrieve(lead);
-    const isDefinition = lead.purpose === "definition" || lead.purpose === "docs_check";
+    const definitionOf = lead.purpose === "follow_up" ? lead.options?.definitionOf : lead.query;
+    const isDefinition =
+      lead.purpose === "definition" ||
+      lead.purpose === "docs_check" ||
+      (lead.purpose === "follow_up" && definitionOf !== undefined);
     // Docs describing a name do not define it; only code or configuration can.
-    if (isDefinition && !hits.some((hit) => hit.kind !== "docs")) {
-      this.recordDocsConflicts(lead.query);
+    if (isDefinition && definitionOf !== undefined && !hits.some((hit) => hit.kind !== "docs")) {
+      this.recordDocsConflicts(definitionOf);
       if (lead.fromQuestion) {
-        this.gaps.push(
-          `No definition of \`${lead.query}\` was found in the index at this revision.`,
-        );
+        const gap = `No definition of \`${definitionOf}\` was found in the index at this revision.`;
+        if (!this.gaps.includes(gap)) this.gaps.push(gap);
       }
       if (lead.purpose === "docs_check" || hits.length === 0) return;
     }
-    await this.inspect(hits, lead.reads, lead.reason, this.passes);
+    await this.inspect(hits, lead.reads, lead.reason, this.pass);
   }
 
   /** Docs evidence naming an identifier that code at this revision does not define. */
@@ -639,8 +729,8 @@ class Research {
     }
   }
 
-  private finalGaps(stop: ResearchStop): void {
-    if (this.evidence.length === 0) {
+  private finalGaps(stop: ResearchStop, initial: boolean): void {
+    if (initial && this.evidence.length === 0) {
       this.gaps.unshift(
         "No indexed source at this revision matched the question. Lexical retrieval may have " +
           "missed context phrased differently from the code.",
@@ -673,7 +763,7 @@ class Research {
     const hits = await this.session.retrieve(lead.query, this.limits.maxHitsPerPass, lead.options);
     this.trace.push({
       type: "retrieve",
-      pass: this.passes,
+      pass: this.pass,
       purpose: lead.purpose,
       query: lead.query,
       ...(lead.options ? { options: lead.options } : {}),

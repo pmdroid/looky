@@ -55,7 +55,7 @@ export const DEFAULT_BUDGETS: ModeBudgets = {
     maxElapsedMs: 30_000,
   },
   deep: {
-    maxRetrievalPasses: 8,
+    maxRetrievalPasses: 14,
     maxResultsPerPass: 20,
     maxSourceReads: 48,
     maxSourceBytes: 512 * 1024,

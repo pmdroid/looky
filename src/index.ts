@@ -47,3 +47,35 @@ export {
   type CoverageReport,
   type IndexedChunk,
 } from "./indexing/store";
+export {
+  DEFAULT_FOLLOW_UP_LIMITS,
+  LookyAnswerEngine,
+  type AnswerEngineOptions,
+} from "./answer/engine";
+export {
+  sourceLinkFromTemplate,
+  validateCitations,
+  type CitedAnswer,
+  type SourceLinkBuilder,
+} from "./answer/citations";
+export { ModelOutputError } from "./answer/model-output";
+export {
+  ProviderRouter,
+  type ProviderEntry,
+  type ProviderQuota,
+  type ProviderRouterOptions,
+} from "./providers/router";
+export {
+  createHttpProvider,
+  DEFAULT_BASE_URLS,
+  PROVIDER_KINDS,
+  type HttpProviderOptions,
+  type ProviderKind,
+} from "./providers/http";
+export {
+  createConfiguredProvider,
+  loadProviderConfig,
+  providerEnvName,
+  type ProviderConfig,
+  type ProviderSettings,
+} from "./providers/config";

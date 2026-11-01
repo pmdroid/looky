@@ -6,17 +6,21 @@
  *   bun run looky coverage <build-id> [--excluded]
  *   bun run looky search <build-id> <query> [--limit <n>]
  *   bun run looky retrieve --repo <git-dir> --sha <commit> [--id <id>] [--mode fast|deep] [--text] <question…>
+ *   bun run looky ask --repo <git-dir> --sha <commit> [--id <id>] [--mode fast|deep] <question…>
  *   bun run looky cancel <build-id>
  *
  * Output is JSON on stdout. Data lives in LOOKY_DATA_DIR (default `.looky`).
  */
 import { basename, resolve } from "node:path";
 import { parseArgs } from "node:util";
+import { LookyAnswerEngine } from "./answer/engine";
+import { askProject } from "./ask/ask-project";
 import { GuardedSession } from "./ask/session";
-import { loadAskConfig, loadIndexConfig, loadResearchConfig } from "./config";
+import { loadAnswerConfig, loadAskConfig, loadIndexConfig, loadResearchConfig } from "./config";
 import type { LookyRequestContext } from "./contract/context";
 import { DEFAULT_MODE, isMode } from "./contract/input";
 import { LookyUnavailableError } from "./contract/ports";
+import { createConfiguredProvider } from "./providers/config";
 import { IndexService, progressOf } from "./indexing/index-service";
 import {
   coverageReport,
@@ -37,6 +41,7 @@ const USAGE = `Usage:
   looky coverage <build-id> [--excluded]
   looky search <build-id> <query> [--limit <n>]
   looky retrieve --repo <git-dir> --sha <commit> [--id <id>] [--mode fast|deep] [--text] <question>
+  looky ask --repo <git-dir> --sha <commit> [--id <id>] [--mode fast|deep] <question>
   looky cancel <build-id>`;
 
 function print(value: unknown): void {
@@ -109,6 +114,8 @@ async function main(argv: string[]): Promise<number> {
       }
       case "retrieve":
         return await retrieve(db, values, rest.join(" "));
+      case "ask":
+        return await ask(db, values, rest.join(" "));
       case "cancel": {
         const buildId = rest[0];
         if (!buildId) return fail("cancel needs a build id");
@@ -249,6 +256,72 @@ async function retrieve(
     return 0;
   } finally {
     session.close();
+  }
+}
+
+/**
+ * Answer a question with the configured provider against the ready index of
+ * exactly one commit, through the same ask_project path clients use. Prints
+ * the typed response. Ctrl-C cancels the request.
+ */
+async function ask(
+  db: ReturnType<typeof openDatabase>,
+  values: {
+    repo?: string | undefined;
+    id?: string | undefined;
+    sha?: string | undefined;
+    mode?: string | undefined;
+  },
+  question: string,
+): Promise<number> {
+  if (!values.repo || !values.sha) return fail("ask needs --repo and --sha");
+  const mode = values.mode ?? DEFAULT_MODE;
+  if (!isMode(mode)) return fail(`--mode must be fast or deep, got ${mode}`);
+  const provider = createConfiguredProvider();
+  if (!provider) return fail("ask needs a model provider; set LOOKY_PROVIDER (see README)");
+  const directory = resolve(values.repo);
+  const repositoryId = values.id ?? basename(directory);
+  const build = findReadyBuild(db, repositoryId, values.sha);
+  if (!build) {
+    return fail(`No ready index for ${repositoryId}@${values.sha}; run \`looky index\` first`);
+  }
+  const context: LookyRequestContext = {
+    clientId: "looky-cli",
+    clientGeneration: "cli",
+    callerId: "cli",
+    repositoryId,
+    sha: values.sha,
+    worktree: { state: "unknown" },
+  };
+  const controller = new AbortController();
+  const interrupt = () => controller.abort(new Error("Interrupted"));
+  process.once("SIGINT", interrupt);
+  try {
+    const response = await askProject(
+      { question, mode },
+      { resolveContext: async () => context, authorize: async () => ({ allowed: true }) },
+      {
+        config: loadAskConfig(),
+        catalog: {
+          resolve: async () => ({
+            state: "ready",
+            generation: { generationId: build.id, sha: build.sha },
+          }),
+        },
+        retriever: new IndexRetriever({ db }),
+        sourceReader: new GitSourceReader((id) => (id === repositoryId ? directory : undefined)),
+        provider,
+        engine: new LookyAnswerEngine({
+          ...loadAnswerConfig(),
+          research: loadResearchConfig(),
+        }),
+      },
+      { signal: controller.signal },
+    );
+    print(response);
+    return response.status === "answered" ? 0 : 1;
+  } finally {
+    process.off("SIGINT", interrupt);
   }
 }
 

@@ -9,7 +9,13 @@
 import type { BudgetOverrides, ModeBudget } from "./budgets";
 import type { LookyRequestContext } from "./context";
 import type { Mode } from "./input";
-import type { AnswerOutcome, EvidenceRef, IndexIdentity, IndexProgress } from "./response";
+import type {
+  AnswerOutcome,
+  EvidenceRef,
+  IndexIdentity,
+  IndexProgress,
+  SuggestedHumanQuestion,
+} from "./response";
 
 // ---------------------------------------------------------------------------
 // Client adapter
@@ -37,6 +43,20 @@ export interface ClientAdapter {
   authorize(context: LookyRequestContext, signal: AbortSignal): Promise<AuthorizationDecision>;
   /** Optional limits that can only tighten Looky's configured budgets. */
   readonly budgetLimits?: BudgetOverrides;
+  /**
+   * Optional provider choice for this client, such as Paws' existing provider
+   * policy. It selects among providers Looky has configured; it can never add
+   * a provider, credentials or an endpoint.
+   */
+  readonly providerPolicy?: ProviderPolicy;
+}
+
+/** Which configured provider serves model calls, and which may stand in when it cannot. */
+export interface ProviderPolicy {
+  /** Configured provider id tried first for every call. */
+  readonly selected: string;
+  /** Configured provider ids tried in order only when the selected one cannot serve. */
+  readonly fallback?: readonly string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -170,12 +190,27 @@ export interface ModelResult {
   readonly text: string;
   readonly inputTokens: number;
   readonly outputTokens: number;
+  /** Configured provider that actually served the call, when routed. */
+  readonly providerId?: string;
 }
 
-/** Selected model provider. Throw {@link LookyUnavailableError} when it cannot serve. */
+/**
+ * Selected model provider. Throw {@link LookyUnavailableError} when it cannot
+ * serve, or {@link ProviderQuotaError} when its quota or rate limit is spent.
+ */
 export interface ModelProvider {
   readonly id: string;
   complete(request: ModelRequest, signal: AbortSignal): Promise<ModelResult>;
+}
+
+/** A provider that can apply a client's {@link ProviderPolicy} for one request. */
+export interface PolicyAwareProvider extends ModelProvider {
+  /** Throws {@link ProviderConfigError} when the policy names a provider that is not configured. */
+  withPolicy(policy: ProviderPolicy): ModelProvider;
+}
+
+export function isPolicyAwareProvider(provider: ModelProvider): provider is PolicyAwareProvider {
+  return typeof (provider as Partial<PolicyAwareProvider>).withPolicy === "function";
 }
 
 // ---------------------------------------------------------------------------
@@ -208,6 +243,11 @@ export interface EngineAnswer {
   readonly caveats?: readonly string[];
   /** Fast only: the engine believes Deep could establish more. */
   readonly suggestDeep?: boolean;
+  /**
+   * A question only people can answer, such as missing design intent. Returned
+   * to the caller as data (for example for Paws ask_team), never posted.
+   */
+  readonly suggestedHumanQuestion?: SuggestedHumanQuestion;
 }
 
 /** Runs the mode-specific research and synthesis using only the session tools. */
@@ -221,4 +261,21 @@ export interface AnswerEngine {
 /** A dependency (provider, index store, source access) cannot serve right now. */
 export class LookyUnavailableError extends Error {
   override readonly name = "LookyUnavailableError";
+}
+
+/** A provider's quota or rate limit is spent. Another configured provider may still serve. */
+export class ProviderQuotaError extends LookyUnavailableError {
+  constructor(
+    readonly providerId: string,
+    message: string,
+    /** How long the provider asked callers to wait, when it said. */
+    readonly retryAfterMs?: number,
+  ) {
+    super(message);
+  }
+}
+
+/** A provider policy or provider configuration is invalid. Not retryable. */
+export class ProviderConfigError extends Error {
+  override readonly name = "ProviderConfigError";
 }
