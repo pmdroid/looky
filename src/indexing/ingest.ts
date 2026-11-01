@@ -190,7 +190,7 @@ async function ingest({
   }
 
   const readers = Array.from(
-    { length: Math.min(limits.readConcurrency, Math.max(toRead.length, 1)) },
+    { length: Math.min(limits.readConcurrency, toRead.length) },
     () => new BlobReader(directory, signal),
   );
   try {
