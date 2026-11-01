@@ -218,3 +218,10 @@ export async function pageFetch(
     { path, init },
   );
 }
+
+/** Wait until the element with `id` has focus; the app moves focus after rendering. */
+export async function waitFocused(page: Page, id: string): Promise<void> {
+  await page.waitForFunction((wanted) => document.activeElement?.id === wanted, id, {
+    timeout: 5_000,
+  });
+}

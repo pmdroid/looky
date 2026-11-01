@@ -20,6 +20,7 @@ import {
   sourceLabels,
   statusTitle,
   waitIndexReady,
+  waitFocused,
   waitPinned,
   type Browser,
   type Opened,
@@ -165,7 +166,7 @@ describe("indexed answers in the browser", () => {
       .evaluateAll((links) => links.map((link) => link.getAttribute("href")));
     expect(hrefs).toEqual(evidence.map((ref) => sourceLink(repos.pilotSha, ref)));
     // Focus moves to the answer, so it is read out and reachable.
-    expect(await page.evaluate(() => document.activeElement?.id)).toBe("answer-title");
+    await waitFocused(page, "answer-title");
     expect(traffic.errors).toEqual([]);
   }, 90_000);
 
