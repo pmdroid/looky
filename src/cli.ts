@@ -5,21 +5,30 @@
  *   bun run looky status [<build-id>] [--id <repository-id>] [--sha <commit>]
  *   bun run looky coverage <build-id> [--excluded]
  *   bun run looky search <build-id> <query> [--limit <n>]
+ *   bun run looky retrieve --repo <git-dir> --sha <commit> [--id <id>] [--mode fast|deep] [--text] <question…>
  *   bun run looky cancel <build-id>
  *
  * Output is JSON on stdout. Data lives in LOOKY_DATA_DIR (default `.looky`).
  */
 import { basename, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { loadIndexConfig } from "./config";
+import { GuardedSession } from "./ask/session";
+import { loadAskConfig, loadIndexConfig, loadResearchConfig } from "./config";
+import type { LookyRequestContext } from "./contract/context";
+import { DEFAULT_MODE, isMode } from "./contract/input";
+import { LookyUnavailableError } from "./contract/ports";
 import { IndexService, progressOf } from "./indexing/index-service";
 import {
   coverageReport,
+  findReadyBuild,
   finishUnsuccessfully,
   getBuild,
   listBuilds,
   searchChunks,
 } from "./indexing/store";
+import { IndexRetriever } from "./retrieval/index-retriever";
+import { researchEvidence } from "./retrieval/research";
+import { GitSourceReader } from "./source/git-source-reader";
 import { openDatabase } from "./storage/database";
 
 const USAGE = `Usage:
@@ -27,6 +36,7 @@ const USAGE = `Usage:
   looky status [<build-id>] [--id <repository-id>] [--sha <commit>]
   looky coverage <build-id> [--excluded]
   looky search <build-id> <query> [--limit <n>]
+  looky retrieve --repo <git-dir> --sha <commit> [--id <id>] [--mode fast|deep] [--text] <question>
   looky cancel <build-id>`;
 
 function print(value: unknown): void {
@@ -44,6 +54,8 @@ async function main(argv: string[]): Promise<number> {
       rebuild: { type: "boolean", default: false },
       excluded: { type: "boolean", default: false },
       limit: { type: "string" },
+      mode: { type: "string" },
+      text: { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
   });
@@ -95,6 +107,8 @@ async function main(argv: string[]): Promise<number> {
         );
         return 0;
       }
+      case "retrieve":
+        return await retrieve(db, values, rest.join(" "));
       case "cancel": {
         const buildId = rest[0];
         if (!buildId) return fail("cancel needs a build id");
@@ -163,6 +177,78 @@ async function index(
     process.off("SIGINT", interrupt);
     process.off("SIGTERM", interrupt);
     await service.close();
+  }
+}
+
+/**
+ * Run Fast or Deep evidence research for a question against the ready index
+ * of exactly one commit, with the same guarded session ask_project uses. No
+ * model is called. Prints the evidence bundle, its trace and usage.
+ */
+async function retrieve(
+  db: ReturnType<typeof openDatabase>,
+  values: {
+    repo?: string | undefined;
+    id?: string | undefined;
+    sha?: string | undefined;
+    mode?: string | undefined;
+    text?: boolean | undefined;
+  },
+  question: string,
+): Promise<number> {
+  if (!values.repo || !values.sha) return fail("retrieve needs --repo and --sha");
+  if (question.trim().length === 0) return fail("retrieve needs a question");
+  const mode = values.mode ?? DEFAULT_MODE;
+  if (!isMode(mode)) return fail(`--mode must be fast or deep, got ${mode}`);
+  const directory = resolve(values.repo);
+  const repositoryId = values.id ?? basename(directory);
+  const build = findReadyBuild(db, repositoryId, values.sha);
+  if (!build) {
+    return fail(`No ready index for ${repositoryId}@${values.sha}; run \`looky index\` first`);
+  }
+  const askConfig = loadAskConfig();
+  const context: LookyRequestContext = {
+    clientId: "looky-cli",
+    clientGeneration: "cli",
+    callerId: "cli",
+    repositoryId,
+    sha: values.sha,
+    worktree: { state: "unknown" },
+  };
+  const controller = new AbortController();
+  const session = new GuardedSession({
+    question,
+    mode,
+    budget: askConfig.budgets[mode],
+    signal: controller.signal,
+    context,
+    generation: { generationId: build.id, sha: build.sha },
+    adapter: {
+      resolveContext: async () => context,
+      authorize: async () => ({ allowed: true }),
+    },
+    retriever: new IndexRetriever({ db }),
+    sourceReader: new GitSourceReader((id) => (id === repositoryId ? directory : undefined)),
+    provider: {
+      id: "none",
+      complete: async () => {
+        throw new LookyUnavailableError("retrieve does not call a model");
+      },
+    },
+    now: Date.now,
+    startedAt: Date.now(),
+  });
+  try {
+    const bundle = await researchEvidence(session, { limits: loadResearchConfig() });
+    print({
+      ...bundle,
+      evidence: bundle.evidence.map((item) =>
+        values.text ? item : { ...item, text: undefined, lines: item.endLine - item.startLine + 1 },
+      ),
+    });
+    return 0;
+  } finally {
+    session.close();
   }
 }
 

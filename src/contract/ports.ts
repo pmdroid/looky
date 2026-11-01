@@ -73,6 +73,13 @@ export interface IndexCatalog {
 // ---------------------------------------------------------------------------
 // Retrieval, source access and model provider
 
+/** What role an indexed file plays, derived from its path and language. */
+export const EVIDENCE_KINDS = ["code", "test", "config", "docs"] as const;
+export type EvidenceKind = (typeof EVIDENCE_KINDS)[number];
+
+/** How a hit was found, for observability and ranking explanations. */
+export type MatchChannel = "path" | "symbol" | "definition" | "reference" | "text";
+
 export interface RetrievalHit {
   readonly generationId: string;
   readonly path: string;
@@ -80,8 +87,37 @@ export interface RetrievalHit {
   readonly endLine: number;
   readonly symbol?: string;
   readonly score: number;
-  /** Indexed chunk text. Evidence for the engine, never delivered as the answer. */
+  /**
+   * Indexed chunk text: exactly lines `startLine..endLine` at the pinned SHA.
+   * Evidence for the engine, never delivered as the answer.
+   */
   readonly preview: string;
+  /** Repository and SHA of the generation. When present they must match the pinned request. */
+  readonly repositoryId?: string;
+  readonly sha?: string;
+  /** SHA-256 of `preview`, the indexed chunk's content identity. */
+  readonly contentHash?: string;
+  /** Git blob id of the file at the pinned SHA. */
+  readonly blobOid?: string;
+  readonly kind?: EvidenceKind;
+  readonly language?: string;
+  /** Declarations recorded for the chunk. */
+  readonly symbols?: readonly string[];
+  readonly matchedBy?: readonly MatchChannel[];
+}
+
+/** Structured narrowing for one retrieval pass. All filters apply within the pinned generation. */
+export interface RetrievalOptions {
+  /** Only files of these kinds. */
+  readonly kinds?: readonly EvidenceKind[];
+  /** Only chunks that define this identifier, in any common spelling. */
+  readonly definitionOf?: string;
+  /** Only chunks that mention this identifier without defining it. */
+  readonly referencesOf?: string;
+  /** Only this path or paths under this directory. */
+  readonly pathPrefix?: string;
+  /** Never return these paths. */
+  readonly excludePaths?: readonly string[];
 }
 
 export interface Retriever {
@@ -91,6 +127,7 @@ export interface Retriever {
       readonly repositoryId: string;
       readonly query: string;
       readonly limit: number;
+      readonly options?: RetrievalOptions;
     },
     signal: AbortSignal,
   ): Promise<readonly RetrievalHit[]>;
@@ -151,7 +188,13 @@ export interface ResearchSession {
   readonly budget: ModeBudget;
   readonly signal: AbortSignal;
   readonly generation: IndexIdentity;
-  retrieve(query: string, limit?: number): Promise<readonly RetrievalHit[]>;
+  /** The authorized repository every call is pinned to. */
+  readonly repositoryId: string;
+  retrieve(
+    query: string,
+    limit?: number,
+    options?: RetrievalOptions,
+  ): Promise<readonly RetrievalHit[]>;
   read(range: SourceRange): Promise<SourceText>;
   model(request: ModelRequest): Promise<ModelResult>;
   /** Remaining allowance per budget dimension. */

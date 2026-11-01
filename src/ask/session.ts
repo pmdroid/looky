@@ -9,6 +9,7 @@ import type {
   ModelResult,
   ResearchSession,
   RetrievalHit,
+  RetrievalOptions,
   Retriever,
   SourceRange,
   SourceReader,
@@ -96,6 +97,7 @@ export class GuardedSession implements ResearchSession {
   readonly budget: ModeBudget;
   readonly signal: AbortSignal;
   readonly generation: IndexIdentity;
+  readonly repositoryId: string;
 
   readonly #deps: GuardedSessionDeps;
   readonly #reads: SourceText[] = [];
@@ -114,6 +116,7 @@ export class GuardedSession implements ResearchSession {
     this.budget = deps.budget;
     this.signal = deps.signal;
     this.generation = Object.freeze({ ...deps.generation });
+    this.repositoryId = deps.context.repositoryId;
   }
 
   close(): void {
@@ -156,7 +159,11 @@ export class GuardedSession implements ResearchSession {
     );
   }
 
-  async retrieve(query: string, limit?: number): Promise<readonly RetrievalHit[]> {
+  async retrieve(
+    query: string,
+    limit?: number,
+    options?: RetrievalOptions,
+  ): Promise<readonly RetrievalHit[]> {
     await this.#gate();
     if (typeof query !== "string" || query.trim().length === 0) {
       throw new ContractViolationError("Retrieval query must not be empty");
@@ -174,6 +181,7 @@ export class GuardedSession implements ResearchSession {
         repositoryId: this.#deps.context.repositoryId,
         query,
         limit: effectiveLimit,
+        ...(options ? { options } : {}),
       },
       this.signal,
     );
@@ -187,6 +195,16 @@ export class GuardedSession implements ResearchSession {
       if (hit.generationId !== this.generation.generationId) {
         throw new ContractViolationError(
           `Retriever mixed index generations: ${hit.generationId} != ${this.generation.generationId}`,
+        );
+      }
+      if (hit.sha !== undefined && hit.sha !== this.generation.sha) {
+        throw new ContractViolationError(
+          `Retriever returned a hit at ${hit.sha}, not the pinned ${this.generation.sha}`,
+        );
+      }
+      if (hit.repositoryId !== undefined && hit.repositoryId !== this.repositoryId) {
+        throw new ContractViolationError(
+          `Retriever returned a hit from repository ${hit.repositoryId}, not ${this.repositoryId}`,
         );
       }
       checkRange(hit);

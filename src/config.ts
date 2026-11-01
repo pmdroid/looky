@@ -8,6 +8,14 @@ import {
 } from "./contract/budgets";
 import { DEFAULT_MAX_QUESTION_CHARS, MODES } from "./contract/input";
 import { DEFAULT_INDEX_LIMITS, type IndexLimits, validateLimits } from "./indexing/policy";
+import {
+  DEFAULT_RESEARCH_LIMITS,
+  RESEARCH_LIMIT_FIELDS,
+  type ResearchLimitField,
+  type ResearchLimits,
+  type ResearchLimitsByMode,
+  validateResearchLimits,
+} from "./retrieval/research";
 
 export interface LookyAskConfig {
   readonly maxQuestionChars: number;
@@ -99,4 +107,27 @@ export function loadIndexConfig(
     maxConcurrentBuilds:
       readPositiveInt(env, "LOOKY_INDEX_MAX_CONCURRENT_BUILDS") ?? DEFAULT_MAX_CONCURRENT_BUILDS,
   };
+}
+
+/** Environment variable for one research limit, such as `LOOKY_DEEP_RESEARCH_MAX_PASSES`. */
+export function researchLimitEnvName(mode: string, field: ResearchLimitField): string {
+  return `LOOKY_${mode.toUpperCase()}_RESEARCH_${field.replace(/[A-Z]/g, (letter) => `_${letter}`).toUpperCase()}`;
+}
+
+/** Load Fast/Deep evidence research limits from `LOOKY_*_RESEARCH_*` variables over defaults. */
+export function loadResearchConfig(
+  env: Record<string, string | undefined> = process.env,
+): ResearchLimitsByMode {
+  const limits = Object.fromEntries(
+    MODES.map((mode) => {
+      const values: Record<ResearchLimitField, number> = { ...DEFAULT_RESEARCH_LIMITS[mode] };
+      for (const field of RESEARCH_LIMIT_FIELDS) {
+        const value = readPositiveInt(env, researchLimitEnvName(mode, field));
+        if (value !== undefined) values[field] = value;
+      }
+      return [mode, values satisfies ResearchLimits];
+    }),
+  ) as unknown as ResearchLimitsByMode;
+  validateResearchLimits(limits);
+  return limits;
 }
