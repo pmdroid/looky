@@ -10,9 +10,12 @@
  *   bun run looky retrieve --repo <git-dir> --sha <commit> [--id <id>] [--mode fast|deep] [--text] <question…>
  *   bun run looky ask --repo <git-dir> --sha <commit> [--id <id>] [--mode fast|deep] <question…>
  *   bun run looky cancel <build-id>
+ *   bun run looky serve
+ *   bun run looky mcp --repo <git-dir> [--id <repository-id>] [--ref <ref>]
  *
  * Output is JSON on stdout. Data lives in LOOKY_DATA_DIR (default `.looky`).
  */
+import { hostname } from "node:os";
 import { basename, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { LookyAnswerEngine } from "./answer/engine";
@@ -38,6 +41,11 @@ import { IndexRetriever } from "./retrieval/index-retriever";
 import { researchEvidence } from "./retrieval/research";
 import { GitSourceReader } from "./source/git-source-reader";
 import { openDatabase } from "./storage/database";
+import { startHttpServer } from "./mcp/http";
+import { lookyToolHost, McpConnection } from "./mcp/protocol";
+import { serveStdio } from "./mcp/stdio";
+import { createLookyService, dataDirFrom, localPrincipal } from "./service/bootstrap";
+import { loadCapacityConfig, loadServerConfig } from "./service/config";
 
 const USAGE = `Usage:
   looky index --repo <git-dir> --sha <commit> [--id <repository-id>] [--rebuild]
@@ -48,7 +56,9 @@ const USAGE = `Usage:
   looky search <build-id> <query> [--limit <n>]
   looky retrieve --repo <git-dir> --sha <commit> [--id <id>] [--mode fast|deep] [--text] <question>
   looky ask --repo <git-dir> --sha <commit> [--id <id>] [--mode fast|deep] <question>
-  looky cancel <build-id>`;
+  looky cancel <build-id>
+  looky serve
+  looky mcp --repo <git-dir> [--id <repository-id>] [--ref <ref>]`;
 
 function print(value: unknown): void {
   console.log(JSON.stringify(value, null, 2));
@@ -67,6 +77,7 @@ async function main(argv: string[]): Promise<number> {
       limit: { type: "string" },
       mode: { type: "string" },
       text: { type: "boolean", default: false },
+      ref: { type: "string" },
       help: { type: "boolean", short: "h", default: false },
     },
   });
@@ -75,6 +86,10 @@ async function main(argv: string[]): Promise<number> {
     console.log(USAGE);
     return command === undefined && !values.help ? 2 : 0;
   }
+
+  // The service entrypoints open and own the database themselves.
+  if (command === "serve") return await serve();
+  if (command === "mcp") return await mcpStdio(values);
 
   const db = openDatabase();
   try {
@@ -388,6 +403,69 @@ async function ask(
     return response.status === "answered" ? 0 : 1;
   } finally {
     process.off("SIGINT", interrupt);
+  }
+}
+
+/**
+ * Run the Looky HTTP service: the MCP endpoint for agents and the client
+ * adapter API. Stops on SIGINT or SIGTERM; interrupted builds are retried on
+ * the next start.
+ */
+async function serve(): Promise<number> {
+  const config = loadServerConfig();
+  if (config.repositories.size === 0) return fail("serve needs LOOKY_REPOSITORIES (see README)");
+  if (config.clients.size === 0) {
+    console.error("looky: no LOOKY_CLIENTS configured; no session can be registered");
+  }
+  const service = createLookyService({
+    repositories: config.repositories,
+    capacity: config.capacity,
+  });
+  let http: ReturnType<typeof startHttpServer>;
+  try {
+    http = startHttpServer({ service, config, askConfig: loadAskConfig() });
+  } catch (error) {
+    await service.close();
+    throw error;
+  }
+  console.error(
+    `Looky ${service.info().version} listening on ${http.url}; host ${hostname()}, ` +
+      `data ${dataDirFrom()}, repositories ${[...config.repositories.keys()].join(", ")}`,
+  );
+  await new Promise<void>((done) => {
+    process.once("SIGINT", done);
+    process.once("SIGTERM", done);
+  });
+  console.error("Looky stopping");
+  await http.stop();
+  await service.close();
+  return 0;
+}
+
+/**
+ * Serve MCP over stdio for one local repository, without a Paws process or
+ * the HTTP service. Each question pins the commit `--ref` names at that time.
+ */
+async function mcpStdio(values: {
+  repo?: string | undefined;
+  id?: string | undefined;
+  ref?: string | undefined;
+}): Promise<number> {
+  if (!values.repo) return fail("mcp needs --repo");
+  const directory = resolve(values.repo);
+  const repository = { id: values.id ?? basename(directory), path: directory };
+  const service = createLookyService({
+    repositories: new Map([[repository.id, repository]]),
+    capacity: loadCapacityConfig(),
+  });
+  try {
+    const connection = new McpConnection(
+      lookyToolHost(service, loadAskConfig(), localPrincipal(repository, values.ref ?? "HEAD")),
+    );
+    await serveStdio(connection);
+    return 0;
+  } finally {
+    await service.close();
   }
 }
 
