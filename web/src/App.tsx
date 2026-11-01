@@ -296,6 +296,8 @@ function Workspace(props: {
   const questionRef = useRef<HTMLTextAreaElement>(null);
   const resultRef = useRef<HTMLHeadingElement>(null);
   const nonce = useRef(0);
+  // The latest choice, for history events that arrive between renders.
+  const targetRef = useRef<Target | undefined>(undefined);
 
   const lost = useCallback(
     (error: unknown): boolean => {
@@ -359,6 +361,7 @@ function Workspace(props: {
     );
     setSelection({ status: "resolving", repositoryId, ref });
     setWatch("idle");
+    targetRef.current = next;
     setTarget(next);
   }, []);
 
@@ -397,7 +400,12 @@ function Workspace(props: {
       if (repos.status !== "ready") return;
       const repositoryId =
         wanted.repo && repos.ids.includes(wanted.repo) ? wanted.repo : repos.ids[0];
-      if (repositoryId) choose(repositoryId, wanted.ref ?? "HEAD", false);
+      const ref = wanted.ref ?? "HEAD";
+      const current = targetRef.current;
+      // A fragment link, such as the skip link, also fires popstate. The
+      // selection did not change, so its question and answer stay.
+      if (current && current.repositoryId === repositoryId && current.ref === ref) return;
+      if (repositoryId) choose(repositoryId, ref, false);
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);

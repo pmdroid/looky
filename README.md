@@ -40,6 +40,8 @@ development dependency, bundled into the [browser app](#the-browser-app) at buil
 | `bun run typecheck`    | Check TypeScript without emitting files                                           |
 | `bun test`             | Run isolated database and entrypoint tests                                        |
 | `bun test --watch`     | Rerun tests during development                                                    |
+| `bun run e2e:install`  | Download the headless Chromium the [browser tests](#browser-tests) use            |
+| `bun run test:e2e`     | Run the [browser tests](#browser-tests) against the production app build          |
 | `bun start`            | Open storage, verify FTS5, migrate, report readiness, and close                   |
 | `bun run serve`        | Run the [MCP service](#mcp-service) over HTTP                                     |
 | `bun run web:build`    | Build the [browser app](#the-browser-app) into `dist/web`                         |
@@ -68,6 +70,40 @@ scoring answer quality.
 The kill test runs `test/support/publish-crash-child.ts` in a child process. The
 child builds a real index, stops inside the publish transaction once every entry is
 staged, and is killed with `SIGKILL`.
+
+### Browser tests
+
+`e2e/` drives the production build of the [browser app](#the-browser-app) in headless
+Chromium through Playwright. Each spec starts the real service with `bun run serve` in a
+child process, configured only through the documented variables. The service gets a
+persistent SQLite data directory and temporary Git repositories built from the pilot
+fixture in `test/support/pilot-fixture.ts`. Only the model's replies are scripted, by a
+local OpenAI-compatible HTTP server behind Looky's own provider client. Indexing,
+retrieval, citation checks, admission, cancellation and the browser adapter therefore
+run as in production. No credentials or network services are needed.
+
+```sh
+bun install --frozen-lockfile
+bun run e2e:install   # once: Playwright's headless Chromium, about 270 MB unpacked
+bun run test:e2e
+```
+
+On Linux without the browser's system libraries, run
+`bun node_modules/playwright-core/cli.js install --with-deps chromium-headless-shell`
+instead, as CI does. Browser tests are not part of `bun run check`; CI runs them in a
+separate `browser` job.
+
+| File                | Covers                                                                                                                                                                                                                                                  |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `answers.e2e.ts`    | Initial indexing seen from the page, Fast and Deep answers checked against the returned SHA, generation and sources, multi-file explanations, Unicode and RTL, hostile answer text and links, restart reuse, refresh to a new commit, no leaked secrets |
+| `interrupts.e2e.ts` | Double submit, a lost submission resent once, Cancel and Escape, another session's same question, foreign question ids, switching repository or revision mid-question, late results, back/forward, reload                                               |
+| `access.e2e.ts`     | Token sign-in, authorized repositories only, forged and path-like requests, invalid and unknown revisions, provider outage, busy, Fast timeout, Deep only on request, keyboard-only use, the skip link, 320 px                                          |
+
+Each test asserts what the page shows and how many provider calls Looky made, so a
+cancelled, repeated or switched question is shown never as current and never paid twice.
+`test/web` holds the app's component and fixture tests; they are separate from this
+evidence. Scripted replies prove the browser flow, not answer quality. The
+[real-provider smoke](docs/browser-smoke.md) records that separately.
 
 ## Local storage
 
@@ -450,6 +486,10 @@ and runs `bun run serve` with `LOOKY_BROWSER_ASSETS_DIR` pointing there. Every o
   reachable by keyboard. Ctrl or ⌘ + Enter asks and Escape cancels. Status changes are
   announced in a live region, and focus moves to the outcome when a question ends.
   Unicode and right-to-left text render as written.
+
+The [browser tests](#browser-tests) verify these behaviours end to end with a scripted
+provider. [docs/browser-smoke.md](docs/browser-smoke.md) is the manual check with a real
+provider and codebase, and records each run.
 
 ## Codebase index
 
