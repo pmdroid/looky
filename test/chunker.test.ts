@@ -126,9 +126,14 @@ describe("chunkFile", () => {
     expect(chunks.map((chunk) => chunk.text).join("")).toBe(source);
   });
 
-  test("chunker ids change with the policy version", () => {
-    expect(chunkerId("typescript")).toBe(`ecmascript@${INDEX_POLICY_VERSION}`);
-    expect(chunkerId("go")).toBe(`text@${INDEX_POLICY_VERSION}`);
+  test("chunker ids change with the policy version, strategy and chunking limits", () => {
+    expect(chunkerId("typescript", limits)).toStartWith(`ecmascript@${INDEX_POLICY_VERSION}:`);
+    expect(chunkerId("go", limits)).toStartWith(`text@${INDEX_POLICY_VERSION}:`);
+    expect(chunkerId("go", { ...limits, chunkLines: limits.chunkLines + 1 })).not.toBe(
+      chunkerId("go", limits),
+    );
+    // Limits that do not change chunk output keep reuse possible.
+    expect(chunkerId("go", { ...limits, maxFiles: 3 })).toBe(chunkerId("go", limits));
   });
 });
 

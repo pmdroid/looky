@@ -3,7 +3,7 @@ import { isFullCommitSha } from "../contract/context";
 /**
  * Exact, read-only access to one commit in a local Git object database.
  *
- * Only plumbing commands run (`cat-file`, `ls-tree`), always with an argument
+ * Only plumbing commands run (`cat-file`, `ls-tree`, `diff-tree`, `merge-base`), always with an argument
  * vector and never through a shell. They read objects by id, so the worktree,
  * index, checkout filters, textconv and hooks are never involved. Replace refs,
  * lazy fetches from promisor remotes, fsmonitor and system/global config are
@@ -175,6 +175,14 @@ export async function listTree(
   return entries;
 }
 
+function decodePath(raw: Uint8Array): { path: string; pathIsUtf8: boolean } {
+  try {
+    return { path: utf8.decode(raw), pathIsUtf8: true };
+  } catch {
+    return { path: lossy.decode(raw), pathIsUtf8: false };
+  }
+}
+
 function parseTreeRecord(record: Uint8Array): TreeEntry {
   const tab = record.indexOf(9);
   if (tab === -1) throw new GitSnapshotError("git_failed", "Unexpected git ls-tree output");
@@ -183,18 +191,91 @@ function parseTreeRecord(record: Uint8Array): TreeEntry {
   if (!mode || !objectType || !oid || size === undefined) {
     throw new GitSnapshotError("git_failed", "Unexpected git ls-tree output");
   }
-  const rawPath = record.subarray(tab + 1);
-  let path: string;
-  let pathIsUtf8 = true;
-  try {
-    path = utf8.decode(rawPath);
-  } catch {
-    path = lossy.decode(rawPath);
-    pathIsUtf8 = false;
-  }
+  const { path, pathIsUtf8 } = decodePath(record.subarray(tab + 1));
   const type: TreeEntryType =
     objectType === "commit" ? "submodule" : mode === "120000" ? "symlink" : "blob";
   return { path, pathIsUtf8, type, mode, oid, size: size === "-" ? 0 : Number(size) };
+}
+
+// ---------------------------------------------------------------------------
+// Revision differences
+
+/**
+ * True when `ancestor` is reachable from `descendant`. Any failure, such as a
+ * base commit that no longer exists after a force push and garbage
+ * collection, is reported as not an ancestor so callers fall back safely.
+ */
+export async function isAncestor(
+  directory: string,
+  ancestor: string,
+  descendant: string,
+  signal: AbortSignal,
+): Promise<boolean> {
+  if (!isFullCommitSha(ancestor) || !isFullCommitSha(descendant)) return false;
+  const result = await runGit(
+    directory,
+    ["merge-base", "--is-ancestor", ancestor, descendant],
+    signal,
+  );
+  return result.exitCode === 0;
+}
+
+export type TreeChangeStatus = "added" | "modified" | "deleted";
+
+export interface TreeChange {
+  readonly path: string;
+  readonly status: TreeChangeStatus;
+  /** Blob or gitlink id before the change; null when added. */
+  readonly oldOid: string | null;
+  /** Blob or gitlink id after the change; null when deleted. */
+  readonly newOid: string | null;
+}
+
+const ZERO_OID = /^0+$/;
+
+/**
+ * Every path whose tree entry differs between two commits, recursively.
+ * Renames are reported as a deletion plus an addition (`--no-renames`), and
+ * type or mode changes as modifications. Paths are decoded like `listTree`.
+ */
+export async function diffTrees(
+  directory: string,
+  from: string,
+  to: string,
+  signal: AbortSignal,
+): Promise<TreeChange[]> {
+  const result = await runGit(
+    directory,
+    ["diff-tree", "-r", "-z", "--no-renames", "--no-ext-diff", "--no-textconv", from, to],
+    signal,
+  );
+  if (result.exitCode !== 0) {
+    throw new GitSnapshotError("git_failed", `git diff-tree failed: ${result.stderr.trim()}`);
+  }
+  const fields: Uint8Array[] = [];
+  const out = result.stdout;
+  let start = 0;
+  while (start < out.length) {
+    const end = out.indexOf(0, start);
+    fields.push(out.subarray(start, end === -1 ? out.length : end));
+    start = end === -1 ? out.length : end + 1;
+  }
+  const changes: TreeChange[] = [];
+  for (let index = 0; index + 1 < fields.length; index += 2) {
+    const header = lossy.decode(fields[index]!);
+    // ":<old mode> <new mode> <old oid> <new oid> <status>"
+    const match = /^:(\d{6}) (\d{6}) ([0-9a-f]+) ([0-9a-f]+) ([A-Z])\d*$/.exec(header);
+    if (!match) throw new GitSnapshotError("git_failed", "Unexpected git diff-tree output");
+    const [, , , oldOid, newOid, code] = match;
+    const status: TreeChangeStatus = code === "A" ? "added" : code === "D" ? "deleted" : "modified";
+    changes.push({
+      path: decodePath(fields[index + 1]!).path,
+      status,
+      oldOid: ZERO_OID.test(oldOid!) ? null : oldOid!,
+      newOid: ZERO_OID.test(newOid!) ? null : newOid!,
+    });
+  }
+  return changes;
 }
 
 // ---------------------------------------------------------------------------

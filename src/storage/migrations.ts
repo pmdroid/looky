@@ -100,6 +100,48 @@ export const migrations: readonly Migration[] = [
         VALUES ('delete', old.id, old.symbols, old.terms, old.text);
     END;`,
   },
+  {
+    // Versioned refresh lifecycle (PAS-972). Builds are keyed by repository,
+    // SHA and index key (policy version plus output-affecting limits). Builds
+    // from version 2 carry the key 'legacy', so they are never served and are
+    // rebuilt on request. A published build is retired when a newer build of
+    // the same scope publishes or retention evicts it; it stays readable by
+    // lease holders until garbage collection deletes it. Readers hold leases
+    // so retention never deletes a generation in use.
+    version: 3,
+    sql: `ALTER TABLE index_builds ADD COLUMN index_key TEXT NOT NULL DEFAULT 'legacy';
+    ALTER TABLE index_builds ADD COLUMN requested_mode TEXT NOT NULL DEFAULT 'auto'
+      CHECK (requested_mode IN ('auto', 'full'));
+    ALTER TABLE index_builds ADD COLUMN refresh_mode TEXT
+      CHECK (refresh_mode IN ('full', 'incremental'));
+    ALTER TABLE index_builds ADD COLUMN refresh_reason TEXT;
+    ALTER TABLE index_builds ADD COLUMN base_build_id TEXT;
+    ALTER TABLE index_builds ADD COLUMN base_sha TEXT;
+    ALTER TABLE index_builds ADD COLUMN files_added INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE index_builds ADD COLUMN files_modified INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE index_builds ADD COLUMN files_deleted INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE index_builds ADD COLUMN files_renamed INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE index_builds ADD COLUMN files_carried INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE index_builds ADD COLUMN retired_at TEXT;
+    ALTER TABLE index_builds ADD COLUMN last_used_at TEXT;
+
+    DROP INDEX index_builds_one_ready;
+    DROP INDEX index_builds_one_active;
+    CREATE UNIQUE INDEX index_builds_one_ready
+      ON index_builds (repository_id, sha, index_key) WHERE state = 'ready' AND retired_at IS NULL;
+    CREATE UNIQUE INDEX index_builds_one_active
+      ON index_builds (repository_id, sha, index_key) WHERE state IN ('queued', 'running');
+    CREATE INDEX index_builds_repository_ready
+      ON index_builds (repository_id, index_key, state, retired_at);
+
+    CREATE TABLE index_leases (
+      id TEXT PRIMARY KEY NOT NULL,
+      build_id TEXT NOT NULL REFERENCES index_builds (id) ON DELETE CASCADE,
+      acquired_at TEXT NOT NULL,
+      expires_at INTEGER NOT NULL
+    ) STRICT;
+    CREATE INDEX index_leases_build ON index_leases (build_id, expires_at);`,
+  },
 ];
 
 export function schemaVersion(db: Database): number {

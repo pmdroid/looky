@@ -68,6 +68,39 @@ export const DEFAULT_INDEX_LIMITS: IndexLimits = {
   readConcurrency: 4,
 };
 
+function shortHash(value: string): string {
+  return new Bun.CryptoHasher("sha256").update(value).digest("hex").slice(0, 16);
+}
+
+/**
+ * Identifies the chunking configuration. Stored chunks are only reused by a
+ * build whose chunking limits, strategy and policy version are identical.
+ */
+export function chunkingKey(limits: IndexLimits): string {
+  return shortHash(
+    JSON.stringify([limits.chunkLines, limits.chunkBytes, limits.chunkOverlapLines]),
+  );
+}
+
+/**
+ * The index/chunk schema version a build is keyed by: the policy version plus
+ * every limit that changes which files are indexed or how they are chunked.
+ * A ready build is only served, and only used as a refresh base, under the
+ * same key. Limits that only bound work (`maxFiles`, `maxIndexedBytes`,
+ * `readConcurrency`) are not part of it.
+ */
+export function indexKey(limits: IndexLimits): string {
+  return `p${INDEX_POLICY_VERSION}-${shortHash(
+    JSON.stringify([
+      limits.maxFileBytes,
+      limits.maxLineBytes,
+      limits.chunkLines,
+      limits.chunkBytes,
+      limits.chunkOverlapLines,
+    ]),
+  )}`;
+}
+
 export function validateLimits(limits: IndexLimits): void {
   for (const [name, value] of Object.entries(limits)) {
     const minimum = name === "chunkOverlapLines" ? 0 : 1;

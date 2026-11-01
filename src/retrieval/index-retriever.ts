@@ -9,6 +9,7 @@ import {
 } from "../contract/ports";
 import type { IndexIdentity } from "../contract/response";
 import { INDEX_POLICY_VERSION } from "../indexing/policy";
+import { IndexAccessDeniedError } from "../indexing/index-service";
 import { getBuild } from "../indexing/store";
 import { definesIdentifier, mentionsIdentifier } from "./definitions";
 import { evidenceKind } from "./kinds";
@@ -34,6 +35,12 @@ import {
  */
 export interface IndexRetrieverOptions {
   readonly db: Database;
+  /**
+   * The same authorization callback the IndexService uses. When given, every
+   * search first checks that the repository is still authorized, so revoking
+   * access stops further index reads even for a generation already pinned.
+   */
+  readonly repositories?: (repositoryId: string) => string | undefined;
   /** Maximum hits from one file in a single pass. Default 3. */
   readonly maxHitsPerFile?: number;
   /** Upper bound on candidates considered per channel. Default 200. */
@@ -100,11 +107,13 @@ const SCORE = {
 
 export class IndexRetriever implements Retriever {
   private readonly db: Database;
+  private readonly repositories: IndexRetrieverOptions["repositories"];
   private readonly maxHitsPerFile: number;
   private readonly maxCandidates: number;
 
   constructor(options: IndexRetrieverOptions) {
     this.db = options.db;
+    this.repositories = options.repositories;
     this.maxHitsPerFile = options.maxHitsPerFile ?? 3;
     this.maxCandidates = options.maxCandidates ?? 200;
   }
@@ -195,6 +204,9 @@ export class IndexRetriever implements Retriever {
 
   /** The generation must be a ready build of exactly this repository and SHA. */
   private requireGeneration(generation: IndexIdentity, repositoryId: string): void {
+    if (this.repositories && this.repositories(repositoryId) === undefined) {
+      throw new IndexAccessDeniedError(`Repository ${repositoryId} is not authorized`);
+    }
     const build = getBuild(this.db, generation.generationId);
     if (!build) {
       throw new LookyUnavailableError(`Index generation ${generation.generationId} is unavailable`);

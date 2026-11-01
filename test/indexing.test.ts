@@ -231,7 +231,10 @@ describe("persistent codebase index", () => {
     const db = database();
     const restarted = service(db);
     const resolution = await restarted.resolve({ repositoryId: "fixture", sha }, signal);
-    expect(resolution).toEqual({ state: "ready", generation: { generationId: first.id, sha } });
+    expect(resolution).toMatchObject({
+      state: "ready",
+      generation: { generationId: first.id, sha },
+    });
     expect(listBuilds(db, { repositoryId: "fixture" })).toHaveLength(1);
     expect(
       searchChunks(db, { buildId: first.id, query: "getUserById", limit: 5 }).length,
@@ -257,7 +260,7 @@ describe("persistent codebase index", () => {
     expect(hits.length).toBeGreaterThan(0);
 
     const db = database();
-    expect(await service(db).resolve({ repositoryId: "fixture", sha }, signal)).toEqual({
+    expect(await service(db).resolve({ repositoryId: "fixture", sha }, signal)).toMatchObject({
       state: "ready",
       generation: { generationId: summary.build.id, sha },
     });
