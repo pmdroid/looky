@@ -14,3 +14,27 @@ export {
 } from "./ask/session";
 export * from "./ask/tool";
 export { GitSourceReader, SourceRangeError } from "./source/git-source-reader";
+export {
+  IndexService,
+  type IndexServiceOptions,
+  type StartBuildResult,
+} from "./indexing/index-service";
+export {
+  DEFAULT_INDEX_LIMITS,
+  EXCLUSION_REASONS,
+  INDEX_POLICY_VERSION,
+  type ExclusionReason,
+  type IndexLimits,
+} from "./indexing/policy";
+export {
+  coverageReport,
+  getBuild,
+  IndexNotReadyError,
+  listBuilds,
+  listChunks,
+  searchChunks,
+  type BuildRecord,
+  type BuildState,
+  type CoverageReport,
+  type IndexedChunk,
+} from "./indexing/store";
