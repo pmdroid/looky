@@ -13,5 +13,12 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "test/**/*.tsx", "web/**/*.ts", "web/**/*.tsx"]
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts",
+    "test/**/*.tsx",
+    "web/**/*.ts",
+    "web/**/*.tsx",
+    "e2e/**/*.ts"
+  ]
 }
