@@ -16,9 +16,19 @@
  *   GET    /v1/builds/:id              one build with progress and failure
  *   POST   /v1/builds/:id/retry        new attempt after a failure
  *   POST   /v1/builds/:id/cancel       cancel a queued or running build
+ *
+ *   /browser/v1/*                       same-origin browser adapter, when configured
+ *   GET    /*                           built browser assets, when configured
  */
+import { BrowserAdapter, BROWSER_PREFIX, type BrowserLimits } from "../browser/adapter";
+import { serveAsset } from "../browser/assets";
 import type { LookyAskConfig } from "../config";
-import { clientForToken, type ClientConfig, type ServerConfig } from "../service/config";
+import {
+  clientForToken,
+  isLoopbackHost,
+  type ClientConfig,
+  type ServerConfig,
+} from "../service/config";
 import {
   LOOKY_PROTOCOL_VERSION,
   LOOKY_VERSION,
@@ -40,8 +50,11 @@ const MAX_BODY_BYTES = 1024 * 1024;
 
 export interface HttpServerOptions {
   readonly service: LookyService;
-  readonly config: Pick<ServerConfig, "host" | "port" | "clients" | "allowedOrigins">;
+  readonly config: Pick<ServerConfig, "host" | "port" | "clients" | "allowedOrigins"> &
+    Partial<Pick<ServerConfig, "browser" | "repositories">>;
   readonly askConfig: Pick<LookyAskConfig, "maxQuestionChars">;
+  /** Overrides of the browser adapter's bounds, for tests. */
+  readonly browserLimits?: Partial<BrowserLimits>;
 }
 
 export interface RunningHttpServer {
@@ -261,6 +274,9 @@ export function startHttpServer(options: HttpServerOptions): RunningHttpServer {
     throw new HttpError(404, "not_found", `No route ${method} ${url.pathname}`);
   }
 
+  // Checked before listening, so a bad browser configuration never leaves a server running.
+  const browserClientConfig = config.browser ? browserClient(config) : undefined;
+  let browser: BrowserAdapter | undefined;
   const server = Bun.serve({
     hostname: config.host,
     port: config.port,
@@ -279,6 +295,13 @@ export function startHttpServer(options: HttpServerOptions): RunningHttpServer {
         }
         if (url.pathname === "/mcp") return await mcp(request);
         if (url.pathname.startsWith("/v1/")) return await api(request, url);
+        if (url.pathname.startsWith(BROWSER_PREFIX) && browser) {
+          return await browser.handle(request, url);
+        }
+        if (config.browser?.assetsDir && !url.pathname.startsWith("/browser/")) {
+          const asset = await serveAsset(config.browser.assetsDir, request, url);
+          if (asset) return asset;
+        }
         throw new HttpError(404, "not_found", `No route ${request.method} ${url.pathname}`);
       } catch (failure) {
         return errorResponse(failure);
@@ -286,14 +309,38 @@ export function startHttpServer(options: HttpServerOptions): RunningHttpServer {
     },
   });
 
+  browser =
+    config.browser && browserClientConfig
+      ? new BrowserAdapter({
+          service,
+          config: config.browser,
+          client: browserClientConfig,
+          repositories: config.repositories ?? new Map(),
+          localOrigins: isLoopbackHost(config.host) ? loopbackOrigins(server.port!) : [],
+          ...(options.browserLimits ? { limits: options.browserLimits } : {}),
+        })
+      : undefined;
+
   return {
     url: `http://${config.host.includes(":") ? `[${config.host}]` : config.host}:${server.port}`,
     async stop() {
+      browser?.stop();
       for (const connection of connections.values()) connection.mcp.abortAll("Looky is stopping");
       connections.clear();
       await server.stop(true);
     },
   };
+}
+
+function browserClient(config: HttpServerOptions["config"]): ClientConfig {
+  const client = config.clients.get(config.browser!.clientId);
+  if (!client) throw new Error(`Browser client ${config.browser!.clientId} is not configured`);
+  return client;
+}
+
+/** The names a browser on this host may use to reach a loopback listener. */
+function loopbackOrigins(port: number): string[] {
+  return [`http://127.0.0.1:${port}`, `http://localhost:${port}`, `http://[::1]:${port}`];
 }
 
 function scopeFrom(source: unknown): { repositoryId: string; sha: string } {

@@ -432,6 +432,13 @@ async function serve(): Promise<number> {
     `Looky ${service.info().version} listening on ${http.url}; host ${hostname()}, ` +
       `data ${dataDirFrom()}, repositories ${[...config.repositories.keys()].join(", ")}`,
   );
+  if (config.browser) {
+    console.error(
+      `Browser adapter at ${http.url}/browser/v1 as client ${config.browser.clientId}, ` +
+        `${config.browser.auth} sign-in` +
+        (config.browser.assetsDir ? `, assets from ${config.browser.assetsDir}` : ""),
+    );
+  }
   await new Promise<void>((done) => {
     process.once("SIGINT", done);
     process.once("SIGTERM", done);
