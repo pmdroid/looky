@@ -27,12 +27,16 @@
  *   provider routing, coalescing and cancellation are the service's own. Its
  *   session token is never created for the browser and never leaves Looky.
  * - Results go through {@link browserResponse}: answers whole, every other
- *   outcome typed with a fixed message.
+ *   outcome typed with a fixed message. An answered question also carries
+ *   `sourceLinks`, one per evidence reference, built only from the configured
+ *   source link template and the answer's own repository and SHA, so the app
+ *   never has to derive a URL from answer text.
  * - Questions belong to the browser session that submitted them. Cancelling
  *   or abandoning one (no poll within `abandonAfterMs`) detaches only that
  *   caller; shared builds and other callers' questions continue.
  */
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import type { SourceLinkBuilder } from "../answer/citations";
 import type { Mode } from "../contract/input";
 import type { AskProjectResponse } from "../contract/response";
 import {
@@ -89,6 +93,8 @@ export interface BrowserAdapterOptions {
   readonly localOrigins: readonly string[];
   readonly limits?: Partial<BrowserLimits>;
   readonly now?: () => number;
+  /** Code host links for cited ranges, from `LOOKY_SOURCE_LINK_TEMPLATE`. */
+  readonly sourceLink?: SourceLinkBuilder;
 }
 
 interface BrowserRevision {
@@ -166,6 +172,7 @@ export class BrowserAdapter {
   readonly #repositories: ReadonlyMap<string, RepositoryConfig>;
   readonly #limits: BrowserLimits;
   readonly #now: () => number;
+  readonly #sourceLink: SourceLinkBuilder | undefined;
   readonly #origins: ReadonlySet<string>;
   readonly #secureCookie: boolean;
   readonly #sessions = new Map<string, BrowserSession>();
@@ -179,6 +186,7 @@ export class BrowserAdapter {
     this.#repositories = options.repositories;
     this.#limits = { ...DEFAULT_BROWSER_LIMITS, ...options.limits };
     this.#now = options.now ?? Date.now;
+    this.#sourceLink = options.sourceLink;
     this.#origins = new Set([...options.config.origins, ...options.localOrigins]);
     this.#secureCookie = options.config.origins.some((origin) => origin.startsWith("https:"));
     const interval = Math.max(50, Math.min(5_000, Math.floor(this.#limits.abandonAfterMs / 3)));
@@ -753,7 +761,39 @@ export class BrowserAdapter {
         ? { completedAt: new Date(question.completedAt).toISOString() }
         : {}),
       ...(question.result ? { response: question.result } : {}),
+      ...(question.result?.status === "answered"
+        ? { sourceLinks: this.#links(question.result) }
+        : {}),
     };
+  }
+
+  /**
+   * One link or null per evidence reference, pinned to the answer's SHA. Only
+   * http and https links from the configured template are offered.
+   */
+  #links(response: Extract<AskProjectResponse, { status: "answered" }>): (string | null)[] {
+    return response.evidence.map((ref) => {
+      if (!this.#sourceLink) return null;
+      let url: string | undefined;
+      try {
+        url = this.#sourceLink({
+          repositoryId: response.revision.repositoryId,
+          sha: response.revision.sha,
+          path: ref.path,
+          startLine: ref.startLine,
+          endLine: ref.endLine,
+        });
+      } catch {
+        return null;
+      }
+      if (!url) return null;
+      try {
+        const parsed = new URL(url);
+        return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed.href : null;
+      } catch {
+        return null;
+      }
+    });
   }
 
   // -------------------------------------------------------------------------

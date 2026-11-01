@@ -3,8 +3,9 @@
     "target": "ESNext",
     "module": "Preserve",
     "moduleResolution": "Bundler",
-    "lib": ["ESNext"],
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "types": ["bun"],
+    "jsx": "react-jsx",
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
@@ -12,5 +13,5 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*.ts", "test/**/*.ts"]
+  "include": ["src/**/*.ts", "test/**/*.ts", "test/**/*.tsx", "web/**/*.ts", "web/**/*.tsx"]
 }
