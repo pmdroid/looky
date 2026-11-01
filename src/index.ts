@@ -24,7 +24,10 @@ export {
 export * from "./retrieval/research";
 export { GitSourceReader, SourceRangeError } from "./source/git-source-reader";
 export {
+  DEFAULT_INDEX_RETENTION,
+  IndexAccessDeniedError,
   IndexService,
+  type IndexRetention,
   type IndexServiceOptions,
   type StartBuildResult,
 } from "./indexing/index-service";
@@ -32,6 +35,7 @@ export {
   DEFAULT_INDEX_LIMITS,
   EXCLUSION_REASONS,
   INDEX_POLICY_VERSION,
+  indexKey,
   type ExclusionReason,
   type IndexLimits,
 } from "./indexing/policy";
@@ -41,11 +45,16 @@ export {
   IndexNotReadyError,
   listBuilds,
   listChunks,
+  scopeStatus,
   searchChunks,
   type BuildRecord,
   type BuildState,
   type CoverageReport,
+  type GarbageReport,
   type IndexedChunk,
+  type RefreshReport,
+  type ScopeState,
+  type ScopeStatus,
 } from "./indexing/store";
 export {
   DEFAULT_FOLLOW_UP_LIMITS,

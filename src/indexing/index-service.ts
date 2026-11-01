@@ -6,9 +6,11 @@ import type { IndexProgress } from "../contract/response";
 import type { WorkerRequest, WorkerResponse } from "./build-worker";
 import { commitExists, repositoryAccessible } from "./git-snapshot";
 import { runIndexBuild } from "./ingest";
-import { DEFAULT_INDEX_LIMITS, type IndexLimits, validateLimits } from "./policy";
+import { DEFAULT_INDEX_LIMITS, indexKey, type IndexLimits, validateLimits } from "./policy";
 import {
+  acquireLease,
   type BuildRecord,
+  collectGarbage,
   coverageReport,
   type CoverageReport,
   failInterruptedBuilds,
@@ -17,21 +19,49 @@ import {
   findOtherReadyBuild,
   findReadyBuild,
   finishUnsuccessfully,
+  type GarbageReport,
   getBuild,
+  type IndexedChunk,
+  type IndexScope,
   insertQueuedBuild,
   listBuilds,
+  listChunks,
+  releaseLease,
+  retireBuild,
+  scopeStatus,
+  type ScopeStatus,
+  searchChunks,
+  snapshotIntact,
 } from "./store";
+
+export interface IndexRetention {
+  /** Served generations kept per repository; least recently used are retired first. */
+  readonly retainReadyPerRepository: number;
+  /** Failed and cancelled build records kept per repository for diagnostics. */
+  readonly retainFailedPerRepository: number;
+  /** How long a reader lease pins a generation unless released earlier. */
+  readonly leaseTtlMs: number;
+}
+
+export const DEFAULT_INDEX_RETENTION: IndexRetention = {
+  retainReadyPerRepository: 3,
+  retainFailedPerRepository: 20,
+  leaseTtlMs: 30 * 60 * 1000,
+};
 
 export interface IndexServiceOptions {
   /** Looky's database. Worker execution requires a file-backed database. */
   readonly db: Database;
   /**
    * Map an authorized repository id to its local Git directory. Unknown ids
-   * are refused; there is no global or cross-repository index.
+   * are refused; there is no global or cross-repository index. The callback
+   * is consulted on every operation and read, so returning undefined revokes
+   * access immediately.
    */
   readonly repositories: (repositoryId: string) => string | undefined;
   readonly limits?: IndexLimits;
   readonly maxConcurrentBuilds?: number;
+  readonly retention?: Partial<IndexRetention>;
   /**
    * `worker` (default) runs each build on a worker thread with its own
    * connection. `inline` runs on the caller's thread, for tests and tools.
@@ -45,6 +75,12 @@ export type StartBuildResult =
   | { readonly state: "failed"; readonly build: BuildRecord }
   | { readonly state: "unsupported_revision"; readonly message: string };
 
+/**
+ * The repository is not, or no longer, authorized for this service. It is a
+ * {@link LookyUnavailableError}, so `ask_project` reports it as unavailable.
+ */
+export class IndexAccessDeniedError extends LookyUnavailableError {}
+
 interface RunningBuild {
   cancel(): void;
 }
@@ -54,29 +90,47 @@ interface QueuedBuild {
   readonly directory: string;
 }
 
+type Scope = { readonly repositoryId: string; readonly sha: string };
+
 /**
- * Owns index builds for authorized repositories: exact-SHA catalog lookups,
- * one shared build per scope, a bounded build queue, cancellation and
- * restart recovery. Implements the ask_project {@link IndexCatalog} port.
+ * Owns the versioned index lifecycle for authorized repositories: exact-SHA
+ * catalog lookups with reader leases, one shared build per repository, SHA
+ * and index key, incremental refresh, explicit rebuild and retry, a bounded
+ * build queue, cancellation, restart recovery and bounded retention.
+ * Implements the ask_project {@link IndexCatalog} port.
  *
  * A single service process owns a database. On construction, builds left
  * queued or running by a previous process are marked failed (`interrupted`,
- * retryable) and are never served; the next request starts a fresh build.
+ * retryable) and are never served; their staged rows are collected and the
+ * next request starts a fresh build that can refresh from the last ready one.
  */
 export class IndexService implements IndexCatalog {
   private readonly db: Database;
   private readonly limits: IndexLimits;
+  /** Index/chunk schema key of every build this service starts and serves. */
+  readonly indexKey: string;
+  private readonly retention: IndexRetention;
   private readonly maxConcurrent: number;
   private readonly executor: "worker" | "inline";
   private readonly queue: QueuedBuild[] = [];
   private readonly running = new Map<string, RunningBuild>();
   private readonly settled = new Map<string, { promise: Promise<void>; resolve: () => void }>();
+  /** Ready builds whose stored snapshot was checked complete by this process. */
+  private readonly verified = new Set<string>();
+  private readonly ownerToken = `${process.pid}:${crypto.randomUUID()}`;
   private closed = false;
 
   constructor(private readonly options: IndexServiceOptions) {
     this.db = options.db;
     this.limits = options.limits ?? DEFAULT_INDEX_LIMITS;
     validateLimits(this.limits);
+    this.indexKey = indexKey(this.limits);
+    this.retention = { ...DEFAULT_INDEX_RETENTION, ...options.retention };
+    for (const [name, value] of Object.entries(this.retention)) {
+      if (!Number.isSafeInteger(value) || value < 1) {
+        throw new Error(`Index retention ${name} must be a positive integer`);
+      }
+    }
     this.maxConcurrent = options.maxConcurrentBuilds ?? 1;
     if (!Number.isSafeInteger(this.maxConcurrent) || this.maxConcurrent < 1) {
       throw new Error("maxConcurrentBuilds must be a positive integer");
@@ -87,63 +141,83 @@ export class IndexService implements IndexCatalog {
     }
     acquireBuildOwnership(this.db, this.ownerToken);
     failInterruptedBuilds(this.db);
+    this.collectGarbage();
   }
 
-  private readonly ownerToken = `${process.pid}:${crypto.randomUUID()}`;
-
-  /** IndexCatalog: the ready generation for exactly this SHA, or the build serving it. */
-  async resolve(
-    scope: { readonly repositoryId: string; readonly sha: string },
-    signal: AbortSignal,
-  ): Promise<IndexResolution> {
-    const result = await this.startBuild(scope, { signal });
-    switch (result.state) {
-      case "unsupported_revision":
-        return result;
-      case "ready":
-        return {
-          state: "ready",
-          generation: { generationId: result.build.id, sha: result.build.sha },
-        };
-      case "failed":
-        return {
-          state: "failed",
-          buildId: result.build.id,
-          message: failureMessage(result.build),
-          retryable: false,
-        };
-      case "building": {
-        const stale = findOtherReadyBuild(this.db, scope.repositoryId, scope.sha);
-        return {
-          state: "building",
-          buildId: result.build.id,
-          progress: progressOf(result.build),
-          ...(stale ? { staleGeneration: { generationId: stale.id, sha: stale.sha } } : {}),
-        };
+  /**
+   * IndexCatalog: the ready generation for exactly this SHA, pinned by a
+   * lease, or the build serving it. Prewarming, for example at task
+   * admission, is the same call without using the result.
+   */
+  async resolve(scope: Scope, signal: AbortSignal): Promise<IndexResolution> {
+    for (let attempt = 0; ; attempt += 1) {
+      const result = await this.startBuild(scope, { signal });
+      switch (result.state) {
+        case "unsupported_revision":
+          return result;
+        case "ready": {
+          // Pin before returning. If the generation was collected in between, look again.
+          const lease = acquireLease(this.db, result.build.id, this.retention.leaseTtlMs);
+          if (!lease) {
+            if (attempt < 2) continue;
+            throw new LookyUnavailableError("The index generation changed during lookup; retry");
+          }
+          return {
+            state: "ready",
+            generation: { generationId: result.build.id, sha: result.build.sha },
+            lease: { release: () => this.releaseLease(lease.leaseId, result.build.id) },
+          };
+        }
+        case "failed":
+          return {
+            state: "failed",
+            buildId: result.build.id,
+            message: failureMessage(result.build),
+            retryable: false,
+          };
+        case "building": {
+          const stale = findOtherReadyBuild(this.db, this.keyed(scope));
+          return {
+            state: "building",
+            buildId: result.build.id,
+            progress: progressOf(result.build),
+            ...(stale ? { staleGeneration: { generationId: stale.id, sha: stale.sha } } : {}),
+          };
+        }
       }
     }
   }
 
   /**
-   * Return the ready build, join the active build, or queue a new one.
-   * A build that failed with a non-retryable error is reported instead of
-   * retried automatically; pass `rebuild: true` to start a new attempt.
+   * Return the ready build, join the active build, or queue a new one. The
+   * new build refreshes incrementally from the nearest ready ancestor.
+   *
+   * - `rebuild: true` starts a full build even if the SHA is ready; the ready
+   *   generation keeps serving until the new one publishes and replaces it.
+   * - `retry: true` starts a new attempt after a non-retryable failure.
+   *
+   * A build that failed with a non-retryable error is otherwise reported
+   * instead of retried automatically.
    */
   async startBuild(
-    scope: { readonly repositoryId: string; readonly sha: string },
-    options: { readonly rebuild?: boolean; readonly signal?: AbortSignal } = {},
+    scope: Scope,
+    options: {
+      readonly rebuild?: boolean;
+      readonly retry?: boolean;
+      readonly signal?: AbortSignal;
+    } = {},
   ): Promise<StartBuildResult> {
     if (this.closed) throw new LookyUnavailableError("The index service is closed");
     const signal = options.signal ?? new AbortController().signal;
-    const directory = this.options.repositories(scope.repositoryId);
-    if (directory === undefined) {
-      throw new LookyUnavailableError(`No source access configured for ${scope.repositoryId}`);
-    }
+    const directory = this.directoryOf(scope.repositoryId);
     if (!isFullCommitSha(scope.sha)) {
       return { state: "unsupported_revision", message: "A full lowercase commit SHA is required" };
     }
+    const keyed = this.keyed(scope);
+    const rebuild = options.rebuild ?? false;
+    const retry = options.retry ?? false;
 
-    const known = this.existing(scope, options.rebuild ?? false);
+    const known = this.existing(keyed, rebuild, retry);
     if (known) return known;
 
     if (!(await commitExists(directory, scope.sha, signal))) {
@@ -156,13 +230,19 @@ export class IndexService implements IndexCatalog {
       };
     }
     signal.throwIfAborted();
+    if (this.closed) throw new LookyUnavailableError("The index service is closed");
 
-    // Check again and insert under the write lock so concurrent callers share one build.
+    // Check again and insert under the write lock so concurrent callers share
+    // one build: the unique active-build index makes the work identity idempotent.
     const outcome = this.db
       .transaction((): StartBuildResult => {
-        const raced = this.existing(scope, options.rebuild ?? false);
+        const raced = this.existing(keyed, rebuild, retry);
         if (raced) return raced;
-        const build = insertQueuedBuild(this.db, { id: `build_${crypto.randomUUID()}`, ...scope });
+        const build = insertQueuedBuild(this.db, {
+          id: `build_${crypto.randomUUID()}`,
+          ...keyed,
+          requestedMode: rebuild ? "full" : "auto",
+        });
         return { state: "building", build };
       })
       .immediate();
@@ -176,19 +256,69 @@ export class IndexService implements IndexCatalog {
     return outcome;
   }
 
+  /** Start a full build of the SHA. See {@link startBuild}. */
+  rebuild(scope: Scope, signal?: AbortSignal): Promise<StartBuildResult> {
+    return this.startBuild(scope, { rebuild: true, ...(signal ? { signal } : {}) });
+  }
+
+  /**
+   * Start a new attempt for the scope of a failed or cancelled build. Returns
+   * the ready or active build instead when the scope no longer needs one.
+   */
+  retry(buildId: string, signal?: AbortSignal): Promise<StartBuildResult> {
+    const build = getBuild(this.db, buildId);
+    if (!build) throw new Error(`Unknown index build ${buildId}`);
+    return this.startBuild(
+      { repositoryId: build.repositoryId, sha: build.sha },
+      { retry: true, ...(signal ? { signal } : {}) },
+    );
+  }
+
+  /** Lifecycle status of a repository and SHA under the current index key. Starts nothing. */
+  indexStatus(scope: Scope): ScopeStatus {
+    this.directoryOf(scope.repositoryId);
+    return scopeStatus(this.db, this.keyed(scope));
+  }
+
+  private keyed(scope: Scope): IndexScope {
+    return { repositoryId: scope.repositoryId, sha: scope.sha, indexKey: this.indexKey };
+  }
+
+  private directoryOf(repositoryId: string): string {
+    const directory = this.options.repositories(repositoryId);
+    if (directory === undefined) {
+      throw new IndexAccessDeniedError(`No source access configured for ${repositoryId}`);
+    }
+    return directory;
+  }
+
   private existing(
-    scope: { readonly repositoryId: string; readonly sha: string },
+    scope: IndexScope,
     rebuild: boolean,
+    retry: boolean,
   ): StartBuildResult | undefined {
-    const ready = findReadyBuild(this.db, scope.repositoryId, scope.sha);
-    if (ready) return { state: "ready", build: ready };
-    const active = findActiveBuild(this.db, scope.repositoryId, scope.sha);
+    if (!rebuild) {
+      const ready = findReadyBuild(this.db, scope);
+      if (ready) {
+        if (this.intact(ready)) return { state: "ready", build: ready };
+        // Missing or partial storage is never reported as ready: stop serving it and rebuild.
+        retireBuild(this.db, ready.id);
+      }
+    }
+    const active = findActiveBuild(this.db, scope);
     if (active) return { state: "building", build: active };
-    const latest = findLatestBuild(this.db, scope.repositoryId, scope.sha);
-    if (!rebuild && latest?.state === "failed" && latest.retryable === false) {
+    const latest = findLatestBuild(this.db, scope);
+    if (!rebuild && !retry && latest?.state === "failed" && latest.retryable === false) {
       return { state: "failed", build: latest };
     }
     return undefined;
+  }
+
+  private intact(build: BuildRecord): boolean {
+    if (this.verified.has(build.id)) return true;
+    if (!snapshotIntact(this.db, build)) return false;
+    this.verified.add(build.id);
+    return true;
   }
 
   private isTracked(buildId: string): boolean {
@@ -211,6 +341,7 @@ export class IndexService implements IndexCatalog {
         this.settled.get(item.id)?.resolve();
         this.settled.delete(item.id);
         this.pump();
+        this.collectWhenIdle();
       };
       this.running.set(
         item.id,
@@ -263,7 +394,11 @@ export class IndexService implements IndexCatalog {
     return { cancel: () => worker.postMessage({ type: "cancel" } satisfies WorkerRequest) };
   }
 
-  /** Cancel a queued or running build. Returns false if it had already finished. */
+  /**
+   * Cancel a queued or running build. Returns false if it had already
+   * finished. A ready generation, including the one a cancelled rebuild would
+   * have replaced, is never touched.
+   */
   cancel(buildId: string): boolean {
     const queued = this.queue.findIndex((item) => item.id === buildId);
     if (queued !== -1) {
@@ -276,12 +411,14 @@ export class IndexService implements IndexCatalog {
       running.cancel();
       return true;
     }
-    return finishUnsuccessfully(this.db, buildId, {
+    const changed = finishUnsuccessfully(this.db, buildId, {
       state: "cancelled",
       code: "cancelled",
       message: "The build was cancelled",
       retryable: true,
     });
+    this.collectWhenIdle();
+    return changed;
   }
 
   /** Wait until a build started by this service finishes, then return its record. */
@@ -316,6 +453,77 @@ export class IndexService implements IndexCatalog {
     options?: { readonly excludedLimit?: number },
   ): CoverageReport | undefined {
     return coverageReport(this.db, buildId, options);
+  }
+
+  // -------------------------------------------------------------------------
+  // Authorized reads of one pinned generation
+
+  /** Chunks of a ready generation. Refused once the repository is no longer authorized. */
+  listChunks(
+    request: { readonly repositoryId: string; readonly generationId: string },
+    options: { readonly path?: string } = {},
+  ): IndexedChunk[] {
+    this.authorizeRead(request);
+    return listChunks(this.db, request.generationId, options);
+  }
+
+  /** Full-text search within a ready generation. Refused once access is revoked. */
+  searchChunks(request: {
+    readonly repositoryId: string;
+    readonly generationId: string;
+    readonly query: string;
+    readonly limit: number;
+  }): (IndexedChunk & { readonly score: number })[] {
+    this.authorizeRead(request);
+    return searchChunks(this.db, {
+      buildId: request.generationId,
+      query: request.query,
+      limit: request.limit,
+    });
+  }
+
+  private authorizeRead(request: {
+    readonly repositoryId: string;
+    readonly generationId: string;
+  }): void {
+    this.directoryOf(request.repositoryId);
+    const build = getBuild(this.db, request.generationId);
+    if (build && build.repositoryId !== request.repositoryId) {
+      throw new IndexAccessDeniedError(
+        `Generation ${request.generationId} does not belong to ${request.repositoryId}`,
+      );
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Retention
+
+  private releaseLease(leaseId: string, buildId: string): void {
+    releaseLease(this.db, leaseId);
+    if (getBuild(this.db, buildId)?.retiredAt) this.collectWhenIdle();
+  }
+
+  /**
+   * Apply retention now: retire generations beyond the per-repository limit or
+   * of another index key, delete retired generations no reader holds, drop
+   * staged rows of failed builds and unreferenced chunk content. Skipped while
+   * a build is queued or running; it runs again when builds go idle.
+   */
+  collectGarbage(): GarbageReport {
+    const report = collectGarbage(this.db, {
+      indexKey: this.indexKey,
+      retainReadyPerRepository: this.retention.retainReadyPerRepository,
+      retainFailedPerRepository: this.retention.retainFailedPerRepository,
+    });
+    for (const buildId of this.verified) {
+      if (!getBuild(this.db, buildId)) this.verified.delete(buildId);
+    }
+    return report;
+  }
+
+  private collectWhenIdle(): void {
+    if (this.closed || this.running.size > 0 || this.queue.length > 0) return;
+    this.collectGarbage();
   }
 
   /** Stop accepting builds, cancel queued and running ones, and wait for them to stop. */

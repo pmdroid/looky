@@ -1,4 +1,4 @@
-import { INDEX_POLICY_VERSION, type IndexLimits } from "./policy";
+import { chunkingKey, INDEX_POLICY_VERSION, type IndexLimits } from "./policy";
 
 /**
  * Splits a file into chunks of whole, unmodified source lines. Concatenating a
@@ -32,9 +32,12 @@ export function chunkStrategy(language: string): ChunkStrategy {
   return "text";
 }
 
-/** Identifies how a blob was chunked, so stored chunks are only reused under the same policy. */
-export function chunkerId(language: string): string {
-  return `${chunkStrategy(language)}@${INDEX_POLICY_VERSION}`;
+/**
+ * Identifies how a blob was chunked, so stored chunks are only reused under
+ * the same policy version, strategy and chunking limits.
+ */
+export function chunkerId(language: string, limits: IndexLimits): string {
+  return `${chunkStrategy(language)}@${INDEX_POLICY_VERSION}:${chunkingKey(limits)}`;
 }
 
 /** Split into lines, each keeping its own `\n` terminator (the last may lack one). */

@@ -10,6 +10,7 @@ import type { AnswerEngineOptions } from "./answer/engine";
 import { DEFAULT_FOLLOW_UP_LIMITS } from "./answer/engine";
 import { sourceLinkFromTemplate } from "./answer/citations";
 import { DEFAULT_MAX_QUESTION_CHARS, MODES } from "./contract/input";
+import { DEFAULT_INDEX_RETENTION, type IndexRetention } from "./indexing/index-service";
 import { DEFAULT_INDEX_LIMITS, type IndexLimits, validateLimits } from "./indexing/policy";
 import {
   DEFAULT_RESEARCH_LIMITS,
@@ -80,6 +81,8 @@ export interface LookyIndexConfig {
   readonly limits: IndexLimits;
   /** Index builds that may run at once; further builds wait in a queue. */
   readonly maxConcurrentBuilds: number;
+  /** Snapshot retention and reader lease duration. */
+  readonly retention: IndexRetention;
 }
 
 export const DEFAULT_MAX_CONCURRENT_BUILDS = 1;
@@ -109,6 +112,16 @@ export function loadIndexConfig(
     limits: result,
     maxConcurrentBuilds:
       readPositiveInt(env, "LOOKY_INDEX_MAX_CONCURRENT_BUILDS") ?? DEFAULT_MAX_CONCURRENT_BUILDS,
+    retention: {
+      retainReadyPerRepository:
+        readPositiveInt(env, "LOOKY_INDEX_RETAIN_READY") ??
+        DEFAULT_INDEX_RETENTION.retainReadyPerRepository,
+      retainFailedPerRepository:
+        readPositiveInt(env, "LOOKY_INDEX_RETAIN_FAILED") ??
+        DEFAULT_INDEX_RETENTION.retainFailedPerRepository,
+      leaseTtlMs:
+        readPositiveInt(env, "LOOKY_INDEX_LEASE_TTL_MS") ?? DEFAULT_INDEX_RETENTION.leaseTtlMs,
+    },
   };
 }
 

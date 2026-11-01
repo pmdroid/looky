@@ -2,7 +2,9 @@
  * Index diagnostics and operations without direct database edits.
  *
  *   bun run looky index --repo <git-dir> --sha <commit> [--id <repository-id>] [--rebuild]
+ *   bun run looky retry <build-id> --repo <git-dir>
  *   bun run looky status [<build-id>] [--id <repository-id>] [--sha <commit>]
+ *   bun run looky gc
  *   bun run looky coverage <build-id> [--excluded]
  *   bun run looky search <build-id> <query> [--limit <n>]
  *   bun run looky retrieve --repo <git-dir> --sha <commit> [--id <id>] [--mode fast|deep] [--text] <question…>
@@ -21,13 +23,15 @@ import type { LookyRequestContext } from "./contract/context";
 import { DEFAULT_MODE, isMode } from "./contract/input";
 import { LookyUnavailableError } from "./contract/ports";
 import { createConfiguredProvider } from "./providers/config";
-import { IndexService, progressOf } from "./indexing/index-service";
+import { IndexService, progressOf, type StartBuildResult } from "./indexing/index-service";
+import { indexKey } from "./indexing/policy";
 import {
   coverageReport,
   findReadyBuild,
   finishUnsuccessfully,
   getBuild,
   listBuilds,
+  scopeStatus,
   searchChunks,
 } from "./indexing/store";
 import { IndexRetriever } from "./retrieval/index-retriever";
@@ -37,7 +41,9 @@ import { openDatabase } from "./storage/database";
 
 const USAGE = `Usage:
   looky index --repo <git-dir> --sha <commit> [--id <repository-id>] [--rebuild]
+  looky retry <build-id> --repo <git-dir>
   looky status [<build-id>] [--id <repository-id>] [--sha <commit>]
+  looky gc
   looky coverage <build-id> [--excluded]
   looky search <build-id> <query> [--limit <n>]
   looky retrieve --repo <git-dir> --sha <commit> [--id <id>] [--mode fast|deep] [--text] <question>
@@ -75,12 +81,27 @@ async function main(argv: string[]): Promise<number> {
     switch (command) {
       case "index":
         return await index(db, values);
+      case "retry":
+        return await retry(db, rest[0], values.repo);
+      case "gc": {
+        const service = openService(db, () => undefined);
+        try {
+          print(service.collectGarbage());
+        } finally {
+          await service.close();
+        }
+        return 0;
+      }
       case "status": {
         const buildId = rest[0];
         if (buildId) {
           const build = getBuild(db, buildId);
           if (!build) return fail(`Unknown build ${buildId}`);
           print({ ...build, progress: progressOf(build) });
+        } else if (values.id && values.sha) {
+          // Lifecycle of one exact scope under the configured index key.
+          const key = indexKey(loadIndexConfig().limits);
+          print(scopeStatus(db, { repositoryId: values.id, sha: values.sha, indexKey: key }));
         } else {
           print(
             listBuilds(db, {
@@ -136,6 +157,20 @@ async function main(argv: string[]): Promise<number> {
   }
 }
 
+function openService(
+  db: ReturnType<typeof openDatabase>,
+  repositories: (id: string) => string | undefined,
+): IndexService {
+  const config = loadIndexConfig();
+  return new IndexService({
+    db,
+    repositories,
+    limits: config.limits,
+    maxConcurrentBuilds: config.maxConcurrentBuilds,
+    retention: config.retention,
+  });
+}
+
 async function index(
   db: ReturnType<typeof openDatabase>,
   values: {
@@ -148,21 +183,38 @@ async function index(
   if (!values.repo || !values.sha) return fail("index needs --repo and --sha");
   const directory = resolve(values.repo);
   const repositoryId = values.id ?? basename(directory);
-  const config = loadIndexConfig();
-  const service = new IndexService({
-    db,
-    repositories: (id) => (id === repositoryId ? directory : undefined),
-    limits: config.limits,
-    maxConcurrentBuilds: config.maxConcurrentBuilds,
-  });
+  const sha = values.sha;
+  return runToCompletion(db, repositoryId, directory, (service) =>
+    service.startBuild({ repositoryId, sha }, { rebuild: values.rebuild ?? false }),
+  );
+}
+
+async function retry(
+  db: ReturnType<typeof openDatabase>,
+  buildId: string | undefined,
+  repo: string | undefined,
+): Promise<number> {
+  if (!buildId || !repo) return fail("retry needs a build id and --repo");
+  const build = getBuild(db, buildId);
+  if (!build) return fail(`Unknown build ${buildId}`);
+  return runToCompletion(db, build.repositoryId, resolve(repo), (service) =>
+    service.retry(buildId),
+  );
+}
+
+/** Start or join a build for one repository, wait for it and print its coverage. */
+async function runToCompletion(
+  db: ReturnType<typeof openDatabase>,
+  repositoryId: string,
+  directory: string,
+  start: (service: IndexService) => Promise<StartBuildResult>,
+): Promise<number> {
+  const service = openService(db, (id) => (id === repositoryId ? directory : undefined));
   const interrupt = () => void service.close();
   process.once("SIGINT", interrupt);
   process.once("SIGTERM", interrupt);
   try {
-    const started = await service.startBuild(
-      { repositoryId, sha: values.sha },
-      { rebuild: values.rebuild ?? false },
-    );
+    const started = await start(service);
     if (started.state === "unsupported_revision") return fail(started.message);
     let build = started.build;
     if (started.state === "building") {
@@ -209,7 +261,11 @@ async function retrieve(
   if (!isMode(mode)) return fail(`--mode must be fast or deep, got ${mode}`);
   const directory = resolve(values.repo);
   const repositoryId = values.id ?? basename(directory);
-  const build = findReadyBuild(db, repositoryId, values.sha);
+  const build = findReadyBuild(db, {
+    repositoryId,
+    sha: values.sha,
+    indexKey: indexKey(loadIndexConfig().limits),
+  });
   if (!build) {
     return fail(`No ready index for ${repositoryId}@${values.sha}; run \`looky index\` first`);
   }
@@ -281,7 +337,11 @@ async function ask(
   if (!provider) return fail("ask needs a model provider; set LOOKY_PROVIDER (see README)");
   const directory = resolve(values.repo);
   const repositoryId = values.id ?? basename(directory);
-  const build = findReadyBuild(db, repositoryId, values.sha);
+  const build = findReadyBuild(db, {
+    repositoryId,
+    sha: values.sha,
+    indexKey: indexKey(loadIndexConfig().limits),
+  });
   if (!build) {
     return fail(`No ready index for ${repositoryId}@${values.sha}; run \`looky index\` first`);
   }

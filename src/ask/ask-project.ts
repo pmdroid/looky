@@ -9,6 +9,7 @@ import {
   type AnswerEngine,
   type ClientAdapter,
   type EngineAnswer,
+  type GenerationLease,
   type IndexCatalog,
   type ModelProvider,
   type Retriever,
@@ -99,6 +100,7 @@ export async function askProject(
   const notRun: ModeReport = { requested: mode, executed: null };
   const ran: ModeReport = { requested: mode, executed: mode };
   let session: GuardedSession | undefined;
+  let lease: GenerationLease | undefined;
   let stage: FailureStage = "context";
 
   try {
@@ -168,6 +170,7 @@ export async function askProject(
           buildId: resolution.buildId,
         };
       case "ready":
+        lease = resolution.lease;
         break;
     }
     const generation = resolution.generation;
@@ -298,6 +301,8 @@ export async function askProject(
     };
   } finally {
     clearTimeout(timer);
+    // The pinned generation may now be retired or collected.
+    lease?.release();
   }
 }
 

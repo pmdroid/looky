@@ -62,8 +62,22 @@ export interface ProviderPolicy {
 // ---------------------------------------------------------------------------
 // Index catalog
 
+/**
+ * A reader's pin on one immutable generation. While held, retention never
+ * deletes the generation. Release it when the request ends; it also expires
+ * on its own so a crashed reader cannot pin storage forever.
+ */
+export interface GenerationLease {
+  release(): void;
+}
+
 export type IndexResolution =
-  | { readonly state: "ready"; readonly generation: IndexIdentity }
+  | {
+      readonly state: "ready";
+      readonly generation: IndexIdentity;
+      /** Pins the generation for the request. `askProject` releases it when the request ends. */
+      readonly lease?: GenerationLease;
+    }
   | {
       readonly state: "building";
       readonly buildId: string;
@@ -83,6 +97,7 @@ export interface IndexCatalog {
   /**
    * Return the published generation for exactly this repository and SHA, or
    * start/join a scoped build and report it. Never substitutes another SHA.
+   * A ready result should carry a lease that pins the generation.
    */
   resolve(
     scope: { readonly repositoryId: string; readonly sha: string },
