@@ -2,6 +2,7 @@ import { isFullCommitSha } from "../contract/context";
 import { LookyUnavailableError, type SourceReader, type SourceText } from "../contract/ports";
 import { BudgetExhaustedError } from "../ask/session";
 import { splitLines } from "../indexing/chunker";
+import { isSafeRepoPath } from "../indexing/policy";
 import { runGit } from "../indexing/git-snapshot";
 
 /** The requested path or line range does not exist at the pinned commit. */
@@ -30,6 +31,11 @@ export class GitSourceReader implements SourceReader {
       throw new LookyUnavailableError(`No source access configured for ${request.repositoryId}`);
     }
     if (!isFullCommitSha(request.sha)) throw new SourceRangeError("A full commit SHA is required");
+    // Git resolves `./` and `../` against the working directory; only plain
+    // repository-relative paths name a blob in the pinned tree.
+    if (!isSafeRepoPath(request.path)) {
+      throw new SourceRangeError(`${JSON.stringify(request.path)} is not a repository path`);
+    }
 
     const blob = await git(
       directory,

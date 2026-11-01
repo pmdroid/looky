@@ -2,7 +2,7 @@ import type { Database } from "bun:sqlite";
 import { hostname } from "node:os";
 import { LookyUnavailableError, type IndexCatalog, type IndexResolution } from "../contract/ports";
 import { isFullCommitSha } from "../contract/context";
-import type { IndexProgress } from "../contract/response";
+import type { IndexCoverage, IndexProgress } from "../contract/response";
 import type { WorkerRequest, WorkerResponse } from "./build-worker";
 import { commitExists, repositoryAccessible } from "./git-snapshot";
 import { runIndexBuild } from "./ingest";
@@ -162,10 +162,12 @@ export class IndexService implements IndexCatalog {
             if (attempt < 2) continue;
             throw new LookyUnavailableError("The index generation changed during lookup; retry");
           }
+          const coverage = coverageSummary(this.db, result.build.id);
           return {
             state: "ready",
             generation: { generationId: result.build.id, sha: result.build.sha },
             lease: { release: () => this.releaseLease(lease.leaseId, result.build.id) },
+            ...(coverage ? { coverage } : {}),
           };
         }
         case "failed":
@@ -615,4 +617,21 @@ function errorText(error: unknown): string {
 
 function failureMessage(build: BuildRecord): string {
   return `Index build ${build.id} failed (${build.errorCode ?? "unknown"}): ${build.errorMessage ?? ""}`.trim();
+}
+
+/** Indexed and excluded entry counts of a build, without listing excluded paths. */
+function coverageSummary(db: Database, buildId: string): IndexCoverage | undefined {
+  const report = coverageReport(db, buildId, { excludedLimit: 0 });
+  if (!report) return undefined;
+  const sum = (counts: Readonly<Record<string, number | undefined>>) =>
+    Object.values(counts).reduce<number>((total, files) => total + (files ?? 0), 0);
+  const excludedByReason: Record<string, number> = {};
+  for (const [reason, files] of Object.entries(report.excludedByReason)) {
+    if (files) excludedByReason[reason] = files;
+  }
+  return {
+    indexedFiles: sum(report.indexedByLanguage),
+    excludedFiles: sum(excludedByReason),
+    excludedByReason,
+  };
 }

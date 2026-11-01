@@ -21,6 +21,7 @@ import {
   type AskProjectResponse,
   type EvidenceRef,
   type FailureStage,
+  type IndexCoverage,
   type IndexIdentity,
   type ModeReport,
   type RevisionIdentity,
@@ -101,6 +102,7 @@ export async function askProject(
   const ran: ModeReport = { requested: mode, executed: mode };
   let session: GuardedSession | undefined;
   let lease: GenerationLease | undefined;
+  let coverage: IndexCoverage | undefined;
   let stage: FailureStage = "context";
 
   try {
@@ -171,6 +173,7 @@ export async function askProject(
         };
       case "ready":
         lease = resolution.lease;
+        coverage = resolution.coverage;
         break;
     }
     const generation = resolution.generation;
@@ -210,7 +213,7 @@ export async function askProject(
       status: "answered",
       requestId,
       mode: ran,
-      limitations: scopeLimitations(context),
+      limitations: [...scopeLimitations(context), ...coverageLimitations(context, coverage)],
       answer: {
         text: answer.text,
         outcome: answer.outcome,
@@ -219,6 +222,7 @@ export async function askProject(
       evidence: answer.evidence.map((ref) => ({ ...ref })),
       revision,
       index: { generationId: generation.generationId, sha: generation.sha },
+      ...(coverage ? { coverage: copyCoverage(coverage) } : {}),
       scope: scopeOf(context),
       usage: session.usage(),
       providers: session.providers(),
@@ -404,6 +408,32 @@ function scopeLimitations(context: LookyRequestContext): string[] {
     );
   }
   return limitations;
+}
+
+/** Excluded files are stated, so an answer never implies it covered them. */
+function coverageLimitations(
+  context: LookyRequestContext,
+  coverage: IndexCoverage | undefined,
+): string[] {
+  if (!coverage || coverage.excludedFiles === 0) return [];
+  const reasons = Object.entries(coverage.excludedByReason)
+    .toSorted(([a], [b]) => a.localeCompare(b))
+    .map(([reason, files]) => `${reason}: ${files}`)
+    .join(", ");
+  const files =
+    coverage.excludedFiles === 1 ? "1 tracked entry" : `${coverage.excludedFiles} tracked entries`;
+  return [
+    `The index of commit ${context.sha.slice(0, 12)} excludes ${files} (${reasons}). ` +
+      "Excluded files were not searched, read or sent to a model, so this answer does not cover them.",
+  ];
+}
+
+function copyCoverage(coverage: IndexCoverage): IndexCoverage {
+  return {
+    indexedFiles: coverage.indexedFiles,
+    excludedFiles: coverage.excludedFiles,
+    excludedByReason: { ...coverage.excludedByReason },
+  };
 }
 
 function indexingLimitations(

@@ -47,6 +47,20 @@ export interface IndexIdentity {
   readonly sha: string;
 }
 
+/**
+ * What the pinned index generation covers. Excluded files (secrets, binary,
+ * generated, dependency, oversized and similar) were never searched, read or
+ * sent to a provider, so an answer cannot speak for them.
+ */
+export interface IndexCoverage {
+  /** Tracked files whose text is indexed and searchable. */
+  readonly indexedFiles: number;
+  /** Tracked entries left out of the index, each with a reason. */
+  readonly excludedFiles: number;
+  /** Excluded entries per exclusion reason, such as `oversized` or `secret_path`. */
+  readonly excludedByReason: Readonly<Record<string, number>>;
+}
+
 /** What source the request covers. Looky only ever reads committed objects. */
 export interface SourceScope {
   readonly source: "committed";
@@ -95,6 +109,8 @@ export interface AnsweredResponse extends ResponseBase {
   readonly evidence: readonly EvidenceRef[];
   readonly revision: RevisionIdentity;
   readonly index: IndexIdentity;
+  /** Coverage of the pinned generation, when the catalog reports it. */
+  readonly coverage?: IndexCoverage;
   readonly scope: SourceScope;
   /** Present only for Fast: Deep may establish more. Never acted on automatically. */
   readonly suggestedMode?: "deep";
