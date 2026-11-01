@@ -1,9 +1,9 @@
 # Looky
 
 Bun/TypeScript foundations for Looky's indexed Fast/Deep code answers. The repository
-provides tooling, durable SQLite storage, a persistent codebase index and the
-`ask_project` contract described below. Retrieval, answer synthesis, index refresh and
-the MCP server are subsequent work in PAS-968 through PAS-973.
+provides tooling, durable SQLite storage, a persistent codebase index, Fast/Deep
+evidence retrieval and the `ask_project` contract described below. Answer synthesis,
+index refresh and the MCP server are subsequent work in PAS-968 through PAS-972.
 
 ## Prerequisites and installation
 
@@ -26,18 +26,18 @@ runtime and commands. Runtime code uses Bun built-ins only.
 
 ## Development commands
 
-| Command                | Operation                                                                 |
-| ---------------------- | ------------------------------------------------------------------------- |
-| `bun run check`        | Format check, lint, TypeScript check, and tests, without rewriting files  |
-| `bun run format:check` | Check formatting with oxfmt                                               |
-| `bun run format:fix`   | Rewrite formatting with oxfmt                                             |
-| `bun run lint`         | Check with oxlint and reject warnings                                     |
-| `bun run lint:fix`     | Apply oxlint's automatic fixes                                            |
-| `bun run typecheck`    | Check TypeScript without emitting files                                   |
-| `bun test`             | Run isolated database and entrypoint tests                                |
-| `bun test --watch`     | Rerun tests during development                                            |
-| `bun start`            | Open storage, verify FTS5, migrate, report readiness, and close           |
-| `bun run looky …`      | Build and inspect codebase indexes; see [Codebase index](#codebase-index) |
+| Command                | Operation                                                                         |
+| ---------------------- | --------------------------------------------------------------------------------- |
+| `bun run check`        | Format check, lint, TypeScript check, and tests, without rewriting files          |
+| `bun run format:check` | Check formatting with oxfmt                                                       |
+| `bun run format:fix`   | Rewrite formatting with oxfmt                                                     |
+| `bun run lint`         | Check with oxlint and reject warnings                                             |
+| `bun run lint:fix`     | Apply oxlint's automatic fixes                                                    |
+| `bun run typecheck`    | Check TypeScript without emitting files                                           |
+| `bun test`             | Run isolated database and entrypoint tests                                        |
+| `bun test --watch`     | Rerun tests during development                                                    |
+| `bun start`            | Open storage, verify FTS5, migrate, report readiness, and close                   |
+| `bun run looky …`      | Build, inspect and search codebase indexes; see [Codebase index](#codebase-index) |
 
 Tool configurations exclude dependencies, build output, coverage, and local
 database/index directories. The formatter also excludes the generated lockfile.
@@ -101,13 +101,17 @@ bun run looky index --repo /path/to/repo --sha <full-commit-sha> [--id <reposito
 bun run looky status [<build-id>] [--id <repository-id>] [--sha <sha>]
 bun run looky coverage <build-id> [--excluded]
 bun run looky search <build-id> <words…> [--limit <n>]
+bun run looky retrieve --repo /path/to/repo --sha <sha> [--id <repository-id>] [--mode fast|deep] [--text] <question…>
 bun run looky cancel <build-id>
 ```
 
 Every command prints JSON and uses `LOOKY_DATA_DIR` like `bun start`. `index` waits
 for the build, prints progress to stderr and exits non-zero unless the build is ready.
 `--id` defaults to the repository directory name. `coverage` reports indexed files by
-language, exclusions by reason and, with `--excluded`, every excluded path.
+language, exclusions by reason and, with `--excluded`, every excluded path. `retrieve`
+runs [evidence research](#evidence-retrieval) against the ready index of exactly that
+SHA, without calling a model, and prints the evidence bundle; `--text` includes the
+source text of each range.
 
 In code, `IndexService` implements the `IndexCatalog` port. Its `repositories`
 callback maps an authorized repository id to a local Git directory and refuses unknown
@@ -308,15 +312,107 @@ adapter's `budgetLimits` can only tighten these limits, never raise them.
 
 ### Adapter boundary
 
-| Port            | Implemented by       | Responsibility                                        |
-| --------------- | -------------------- | ----------------------------------------------------- |
-| `ClientAdapter` | Client, such as Paws | Session context, generation, authorization, limits    |
-| `IndexCatalog`  | Looky `IndexService` | Exact-SHA generation lookup and build status          |
-| `Retriever`     | Looky (PAS-973)      | Search within the pinned generation                   |
-| `SourceReader`  | Looky or client      | Committed source ranges at the SHA                    |
-| `ModelProvider` | Selected provider    | Model calls; `LookyUnavailableError` when unavailable |
-| `AnswerEngine`  | Looky (PAS-968)      | Fast or Deep research and synthesis via the session   |
+| Port            | Implemented by         | Responsibility                                        |
+| --------------- | ---------------------- | ----------------------------------------------------- |
+| `ClientAdapter` | Client, such as Paws   | Session context, generation, authorization, limits    |
+| `IndexCatalog`  | Looky `IndexService`   | Exact-SHA generation lookup and build status          |
+| `Retriever`     | Looky `IndexRetriever` | Search within the pinned generation                   |
+| `SourceReader`  | Looky or client        | Committed source ranges at the SHA                    |
+| `ModelProvider` | Selected provider      | Model calls; `LookyUnavailableError` when unavailable |
+| `AnswerEngine`  | Looky (PAS-968)        | Fast or Deep research and synthesis via the session   |
 
 Cancellation flows through the `AbortSignal` passed to every port. `GitSourceReader`
 reads blobs with `git cat-file` at the SHA, with the same hardened Git invocation as
 the indexer, so it never reads worktree files, checks out, stashes or commits.
+
+## Evidence retrieval
+
+Answer engines gather evidence with `researchEvidence(session)`, which runs on the
+guarded `ResearchSession`. Every search and read therefore stays on the request's
+repository, SHA and index generation, is re-authorized first and is charged against the
+mode budget. Nothing runs shell commands or scripts, fetches URLs or reads another
+repository.
+
+### Search
+
+`IndexRetriever` implements the `Retriever` port over the SQLite index. It searches only
+a `ready` build of exactly the requested repository and SHA under the current index
+policy. Another repository or SHA is a contract violation, and a missing or no longer
+ready build is `unavailable`. It never falls back to another build.
+
+Each search combines four lexical channels over code-aware chunks:
+
+- **Paths.** Paths, file names and kebab-case fragments in the question, such as
+  `src/ask/session.ts`, `session.ts` or "user service" for `user-service.ts`.
+- **Symbols.** Declarations the indexer recorded, matched in any common spelling.
+  `getUserById`, `GetUserById`, `get_user_by_id`, `GET_USER_BY_ID` and `get-user-by-id`
+  are the same identifier, and adjacent question words can spell one.
+- **Definitions.** A language-agnostic heuristic for `function`, `def`, `fn`, `func`,
+  `class`, assignments, methods and configuration keys, so languages without symbol
+  extraction can still be followed. Imports never count as definitions.
+- **Full text.** BM25 over symbols, identifier parts and chunk text. Question words
+  are stemmed and expanded with a small table of code synonyms, such as resume,
+  restart and recover. All user text is quoted, never parsed as FTS5 syntax.
+
+Results are reranked by how many question concepts a chunk covers. Tests and docs rank
+slightly below code unless the question asks about them. A hit inside a better hit of
+the same file is dropped, and one file contributes at most three hits per pass. Options
+narrow a pass to `kinds` (`code`, `test`, `config`, `docs`), definitions of a name,
+references to a name, a path prefix or excluded paths. Hits carry repository, SHA,
+generation, path, line range, chunk content hash, blob id, kind, symbols and the
+channels that matched.
+
+### Fast and Deep research
+
+| Mode | Research                                                                                                                                                                                                                                                                                                |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fast | One ranked pass for the question, reads of the best hits, then at most one companion lead: a definition the question names, a question-related definition the top code uses, or its tests. Docs claims it did not check are listed as gaps.                                                             |
+| Deep | The same first pass, then a priority queue of leads: definitions named by the question or used near question terms, a query refined with symbols found, call sites, tests, docs claims checked against code, configuration and docs, and other definitions. Follow-ups are found up to two levels deep. |
+
+Fast never runs Deep's plan and never upgrades itself. When leads remain or nothing
+matched, the bundle sets `suggestDeep` and lists them as `not_followed` in the trace.
+
+Each read covers only lines no earlier evidence covered, so overlapping chunks are read
+once. Before a read becomes evidence, its text must equal the indexed chunk lines byte
+for byte, and the content hash must match for a whole chunk. A mismatch or a range that
+no longer exists is reported as a gap and never cited. Evidence records repository,
+SHA, generation, path, exact line range, SHA-256 of the inspected bytes, blob id, kind,
+symbols, text, the reason it was read and its pass. `evidenceRefs(bundle.evidence)`
+turns evidence into citations that `ask_project` accepts.
+
+The bundle also carries:
+
+- **`gaps`.** Truthful statements of what was not established, such as no matching
+  source, a definition the question names that the index lacks, or a limit reached.
+- **`conflicts`.** Docs that mention an identifier no indexed code or configuration at
+  this revision defines. The docs range and the code stay in the evidence.
+- **`trace`.** Every pass with purpose, query, options and hit count, every read with
+  its outcome (`evidence`, `covered`, `missing` or `mismatch`), and leads not followed.
+- **`usage`, `limits` and `stop`.** Passes, reads, bytes and elapsed time, the limits in
+  force and whether research completed or stopped at a limit or the time limit.
+
+If lexical retrieval misses the context, the result is an empty or partial bundle with
+gaps. Engines must not explain what the evidence does not show.
+
+### Research limits
+
+Research limits are separate from, and clamped to, the remaining mode budget, so
+synthesis keeps the rest. Each is enforced on its own; reaching one stops research with
+`stop: { reason: "limit", limit }` and a gap.
+
+<!-- research-limits:start -->
+
+| Limit            | Fast  | Deep   | Fast variable                           |
+| ---------------- | ----- | ------ | --------------------------------------- |
+| `maxPasses`      | 2     | 8      | `LOOKY_FAST_RESEARCH_MAX_PASSES`        |
+| `maxReads`       | 6     | 36     | `LOOKY_FAST_RESEARCH_MAX_READS`         |
+| `maxReadBytes`   | 49152 | 393216 | `LOOKY_FAST_RESEARCH_MAX_READ_BYTES`    |
+| `maxReadLines`   | 120   | 160    | `LOOKY_FAST_RESEARCH_MAX_READ_LINES`    |
+| `maxHitsPerPass` | 8     | 16     | `LOOKY_FAST_RESEARCH_MAX_HITS_PER_PASS` |
+| `maxElapsedMs`   | 10000 | 90000  | `LOOKY_FAST_RESEARCH_MAX_ELAPSED_MS`    |
+
+<!-- research-limits:end -->
+
+Deep variables use the `LOOKY_DEEP_RESEARCH_` prefix. `loadResearchConfig()` reads them.
+Values must be positive integers, Deep must be at least as large as Fast in every limit,
+and Deep must allow more passes.

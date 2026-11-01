@@ -193,7 +193,10 @@ export function analyzeQuery(question: string): QueryAnalysis {
   const concepts = new Map<string, Concept>();
   const sequence: string[] = [];
 
-  for (const [match] of question.matchAll(TOKEN)) {
+  for (const found of question.matchAll(TOKEN)) {
+    const match = found[0];
+    // A capitalized word opening a sentence is prose, not a type name ("Walk through …").
+    const sentenceStart = /(?:^|[.?!:]\s*)$/.test(question.slice(0, found.index).trimEnd());
     // Trim sentence punctuation and call parentheses around tokens.
     const token = match.replace(/^[./-]+/, "").replace(/[.\-/]+$/, "");
     if (token.length === 0) continue;
@@ -231,8 +234,9 @@ export function analyzeQuery(question: string): QueryAnalysis {
         continue;
       }
       // A single PascalCase or ALLCAPS word is still a likely identifier (`Retriever`).
+      const capitalized = /^[A-Z][a-z0-9]+$/.test(piece) && !sentenceStart;
       if (
-        /^[A-Z][a-z0-9]+$|^[A-Z][A-Z0-9_]{2,}$/.test(piece) &&
+        (capitalized || /^[A-Z][A-Z0-9_]{2,}$/.test(piece)) &&
         identifiers.size < MAX_IDENTIFIERS
       ) {
         const ref = identifierRef(piece, true);

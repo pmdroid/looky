@@ -88,7 +88,10 @@ const GLOBALS = new Set(
     "URLSearchParams TextDecoder TextEncoder Headers Request Response Bun Deno process crypto " +
     "console globalThis window document setTimeout setInterval clearTimeout clearInterval " +
     "setImmediate queueMicrotask structuredClone parseInt parseFloat isNaN isFinite fetch " +
-    "require Worker MessageEvent EventTarget Intl Reflect Proxy"
+    "require Worker MessageEvent EventTarget Intl Reflect Proxy " +
+    // Python builtins.
+    "round range sorted reversed enumerate zip isinstance issubclass getattr setattr hasattr " +
+    "open print super abs min max sum any all len"
   ).split(" "),
 );
 

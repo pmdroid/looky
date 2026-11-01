@@ -259,9 +259,9 @@ const PRIORITY = {
   refine: 3,
   references: 3.5,
   tests: 4,
+  docsCheck: 4.25,
   configDocs: 4.5,
   otherDefinition: 5,
-  docsCheck: 5.5,
 } as const;
 
 class StopResearch extends Error {
@@ -333,6 +333,7 @@ class Research {
         reason: stop.reason === "complete" ? `${this.session.mode} research plan` : stop.reason,
       });
     }
+    if (this.session.mode === "fast") this.docsNotes();
     this.finalGaps(stop);
     const notFollowed = this.trace.some((step) => step.type === "not_followed");
     return {
@@ -376,7 +377,6 @@ class Research {
     const reserve = this.limits.maxPasses > 1 ? Math.min(2, this.limits.maxReads - 1) : 0;
     await this.inspect(hits, this.limits.maxReads - reserve, "matches the question", 1);
     this.planLeads(0);
-    this.docsNotes();
     const lead = this.leads.shift();
     if (lead) await this.follow(lead);
   }
@@ -405,24 +405,41 @@ class Research {
 
   private async follow(lead: Lead): Promise<void> {
     const hits = await this.retrieve(lead);
-    if (lead.purpose === "docs_check") {
-      if (hits.length === 0 && lead.docsEvidenceId) {
-        const docs = this.evidence.find((item) => item.id === lead.docsEvidenceId)!;
-        this.conflicts.push({
-          docsEvidenceId: docs.id,
-          identifier: lead.query,
-          finding: "not_defined_in_code",
-          message:
-            `${docs.path}:${docs.startLine}-${docs.endLine} mentions \`${lead.query}\`, but no ` +
-            "indexed code at this revision defines it. The docs may be stale.",
-        });
-        return;
+    const isDefinition = lead.purpose === "definition" || lead.purpose === "docs_check";
+    // Docs describing a name do not define it; only code or configuration can.
+    if (isDefinition && !hits.some((hit) => hit.kind !== "docs")) {
+      this.recordDocsConflicts(lead.query);
+      if (lead.fromQuestion) {
+        this.gaps.push(
+          `No definition of \`${lead.query}\` was found in the index at this revision.`,
+        );
       }
-    } else if (lead.purpose === "definition" && hits.length === 0 && lead.fromQuestion) {
-      this.gaps.push(`No definition of \`${lead.query}\` was found in the index at this revision.`);
-      return;
+      if (lead.purpose === "docs_check" || hits.length === 0) return;
     }
     await this.inspect(hits, lead.reads, lead.reason, this.passes);
+  }
+
+  /** Docs evidence naming an identifier that code at this revision does not define. */
+  private recordDocsConflicts(identifier: string): void {
+    const key = identifierKey(identifier);
+    for (const docs of this.evidence.filter((item) => item.kind === "docs")) {
+      if (!documentedIdentifiers(docs.text).some((name) => identifierKey(name) === key)) continue;
+      if (
+        this.conflicts.some(
+          (c) => c.docsEvidenceId === docs.id && identifierKey(c.identifier) === key,
+        )
+      ) {
+        continue;
+      }
+      this.conflicts.push({
+        docsEvidenceId: docs.id,
+        identifier,
+        finding: "not_defined_in_code",
+        message:
+          `${docs.path}:${docs.startLine}-${docs.endLine} mentions \`${identifier}\`, but no ` +
+          "indexed code at this revision defines it. The docs may be stale.",
+      });
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -557,12 +574,12 @@ class Research {
     if (isFast) return;
     // Docs that name identifiers: check they still exist in code.
     for (const item of fresh.filter((entry) => entry.kind === "docs")) {
-      for (const name of documentedIdentifiers(item.text).slice(0, 3)) {
+      for (const name of documentedIdentifiers(item.text).slice(0, 2)) {
         if (defined.has(identifierKey(name))) continue;
         this.enqueue({
           purpose: "docs_check",
           query: name,
-          options: { definitionOf: name },
+          options: { definitionOf: name, kinds: ["code", "config"] },
           reason: `definition of ${name}, mentioned in ${item.path}`,
           priority: PRIORITY.docsCheck + depth,
           reads: 1,
@@ -605,8 +622,9 @@ class Research {
   private docsNotes(): void {
     const defined = this.definedByEvidence();
     for (const item of this.evidence.filter((entry) => entry.kind === "docs")) {
+      const checked = new Set(this.conflicts.map((conflict) => identifierKey(conflict.identifier)));
       const unchecked = documentedIdentifiers(item.text).filter(
-        (name) => !defined.has(identifierKey(name)),
+        (name) => !defined.has(identifierKey(name)) && !checked.has(identifierKey(name)),
       );
       if (unchecked.length > 0) {
         this.gaps.push(
