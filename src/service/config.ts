@@ -8,6 +8,9 @@
  *   LOOKY_CLIENTS=paws                                 client adapter ids
  *   LOOKY_CLIENT_<ID>_TOKEN=…                          client adapter secret
  *   LOOKY_CLIENT_<ID>_REPOSITORIES=paws-app            repositories it may register, or *
+ *   LOOKY_BROWSER_CLIENT=web                           optional: enable the browser adapter
+ *   LOOKY_BROWSER_AUTH=local|token                     local needs a loopback LOOKY_HOST
+ *   LOOKY_BROWSER_ORIGINS=https://looky.example.com    origins the browser page is served from
  *
  * `<ID>` is the id upper-cased with `-` as `_`.
  */
@@ -82,6 +85,91 @@ export interface ServerConfig {
   readonly capacity: CapacityConfig;
   /** Browser origins allowed to call the service. Empty refuses every request with an Origin. */
   readonly allowedOrigins: readonly string[];
+  /** The same-origin browser adapter, or undefined when it is off. */
+  readonly browser?: BrowserConfig;
+}
+
+/**
+ * The browser adapter at `/browser/v1`. It acts as one configured client, so a
+ * person in the browser sees only that client's repositories.
+ *
+ * - `local`: signing in needs no credential. Allowed only while Looky listens
+ *   on a loopback address, and requests must name a loopback host.
+ * - `token`: signing in needs the browser client's token, sent once and never
+ *   stored by the browser. Required for any non-loopback listen address,
+ *   together with an explicit https origin.
+ */
+export interface BrowserConfig {
+  /** Configured client the browser acts as. Use a dedicated client, not an agent adapter's. */
+  readonly clientId: string;
+  readonly auth: "local" | "token";
+  /** Origins the browser page is served from, besides the loopback origins in local operation. */
+  readonly origins: readonly string[];
+  /** Browser session lifetime after sign-in. */
+  readonly sessionTtlMs: number;
+  /** Optional directory of built browser assets, served same-origin at `/`. */
+  readonly assetsDir?: string;
+}
+
+export const DEFAULT_BROWSER_SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+
+/** Whether a listen address only accepts connections from this host. */
+export function isLoopbackHost(host: string): boolean {
+  const bare = host.replace(/^\[|\]$/g, "").toLowerCase();
+  return bare === "localhost" || bare === "::1" || /^127(?:\.\d{1,3}){3}$/.test(bare);
+}
+
+export function loadBrowserConfig(
+  env: Env,
+  host: string,
+  clients: ReadonlyMap<string, ClientConfig>,
+): BrowserConfig | undefined {
+  const clientId = env.LOOKY_BROWSER_CLIENT?.trim();
+  if (!clientId) return undefined;
+  if (!clients.has(clientId)) {
+    throw new Error(`LOOKY_BROWSER_CLIENT names ${clientId}, which is not in LOOKY_CLIENTS`);
+  }
+  const auth = env.LOOKY_BROWSER_AUTH?.trim() || "local";
+  if (auth !== "local" && auth !== "token") {
+    throw new Error("LOOKY_BROWSER_AUTH must be local or token");
+  }
+  const loopback = isLoopbackHost(host);
+  if (auth === "local" && !loopback) {
+    throw new Error(
+      `LOOKY_BROWSER_AUTH=local only works while LOOKY_HOST is a loopback address, not ${host}; ` +
+        "set LOOKY_BROWSER_AUTH=token and LOOKY_BROWSER_ORIGINS for remote use",
+    );
+  }
+  const origins = list(env.LOOKY_BROWSER_ORIGINS);
+  for (const origin of origins) {
+    let parsed: URL;
+    try {
+      parsed = new URL(origin);
+    } catch {
+      throw new Error(`LOOKY_BROWSER_ORIGINS has ${origin}, which is not an origin`);
+    }
+    if (parsed.origin !== origin) {
+      throw new Error(`LOOKY_BROWSER_ORIGINS has ${origin}; write it as ${parsed.origin}`);
+    }
+    if (parsed.protocol !== "https:" && !isLoopbackHost(parsed.hostname)) {
+      throw new Error(`LOOKY_BROWSER_ORIGINS has ${origin}; remote origins must use https`);
+    }
+  }
+  if (!loopback && origins.length === 0) {
+    throw new Error("LOOKY_BROWSER_ORIGINS is required when LOOKY_HOST is not a loopback address");
+  }
+  const assetsDir = env.LOOKY_BROWSER_ASSETS_DIR?.trim();
+  return {
+    clientId,
+    auth,
+    origins,
+    sessionTtlMs: nonNegativeInt(
+      env,
+      "LOOKY_BROWSER_SESSION_TTL_MS",
+      DEFAULT_BROWSER_SESSION_TTL_MS,
+    ),
+    ...(assetsDir ? { assetsDir: isAbsolute(assetsDir) ? assetsDir : resolve(assetsDir) } : {}),
+  };
 }
 
 export const DEFAULT_PORT = 7341;
@@ -213,12 +301,16 @@ export function loadServerConfig(env: Env = process.env): ServerConfig {
   const repositories = loadRepositories(env);
   const port = nonNegativeInt(env, "LOOKY_PORT", DEFAULT_PORT, true);
   if (port > 65_535) throw new Error("LOOKY_PORT must be at most 65535");
+  const host = env.LOOKY_HOST?.trim() || "127.0.0.1";
+  const clients = loadClients(env, repositories);
+  const browser = loadBrowserConfig(env, host, clients);
   return {
-    host: env.LOOKY_HOST?.trim() || "127.0.0.1",
+    host,
     port,
     repositories,
-    clients: loadClients(env, repositories),
+    clients,
     capacity: loadCapacityConfig(env),
     allowedOrigins: list(env.LOOKY_ALLOWED_ORIGINS),
+    ...(browser ? { browser } : {}),
   };
 }

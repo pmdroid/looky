@@ -5,7 +5,8 @@ provides tooling, durable SQLite storage, a persistent codebase index with versi
 refresh and recovery, Fast/Deep evidence retrieval,
 [natural-language answers](#answers) through a [configurable model
 provider](#model-providers), the `ask_project` contract described below and Looky's own
-[MCP service](#mcp-service) that agents connect to.
+[MCP service](#mcp-service) that agents connect to, with a same-origin
+[browser API](#browser-access) for people.
 
 ## Prerequisites and installation
 
@@ -306,6 +307,95 @@ agent the MCP URL and session token; forward index status, retry and rebuild if 
 revoke the session when the run ends. It must not copy credentials into the
 registration or import Looky internals, and should gate on protocol version `1` with
 `LookyClient.connect`.
+
+## Browser access
+
+`bun run serve` can also serve a same-origin browser API at `/browser/v1` for the React
+app. A person signs in, chooses a repository and committed revision, asks in Fast or
+Deep mode and reads the same structured result agents get. The adapter has no index or
+answer engine of its own. Each revision a browser selects registers an ordinary Looky
+session for the browser client. Readiness, prewarm, admission, per-session limits,
+provider routing, coalescing and cancellation therefore behave exactly as for agents. The
+session token of that registration is never issued to the browser.
+
+### Local launch
+
+Configure a dedicated browser client and name it in `LOOKY_BROWSER_CLIENT`. Its
+repository list is everything the browser may see. Keep it separate from an agent
+adapter's client, such as `paws`.
+
+```sh
+LOOKY_REPOSITORIES=paws-app \
+LOOKY_REPOSITORY_PAWS_APP_PATH=/var/lib/looky/repos/paws-app.git \
+LOOKY_CLIENTS=paws,web \
+LOOKY_CLIENT_PAWS_TOKEN=<secret> LOOKY_CLIENT_PAWS_REPOSITORIES=paws-app \
+LOOKY_CLIENT_WEB_TOKEN=<another secret> LOOKY_CLIENT_WEB_REPOSITORIES=paws-app \
+LOOKY_BROWSER_CLIENT=web \
+LOOKY_BROWSER_ASSETS_DIR=/path/to/built/app \
+LOOKY_PROVIDER=… \
+bun run serve
+```
+
+Open `http://127.0.0.1:7341/`. With the default `LOOKY_BROWSER_AUTH=local`, signing in
+needs no credential. Looky accepts that only while `LOOKY_HOST` is a loopback address.
+Requests must also name a loopback host, which defeats DNS rebinding. On a shared
+machine every local user can reach the port, so use token sign-in there.
+
+### Safe remote configuration
+
+Looky refuses to start with local sign-in on a non-loopback address. Remote use needs
+all of the following.
+
+```sh
+LOOKY_HOST=10.0.0.5 \
+LOOKY_BROWSER_CLIENT=web \
+LOOKY_BROWSER_AUTH=token \
+LOOKY_BROWSER_ORIGINS=https://looky.example.com \
+bun run serve
+```
+
+- **Token sign-in.** The person enters the browser client's token once in the sign-in form. It is compared in constant time and never stored or returned. Failed attempts are limited per minute. Agent adapter tokens are not accepted.
+- **HTTPS origin.** `LOOKY_BROWSER_ORIGINS` lists the exact origins the page is served from. Remote origins must use https. The session cookie then becomes `__Host-looky_browser` with `Secure`.
+- **TLS in front.** Terminate TLS at a reverse proxy that forwards to Looky's private address. Do not expose the plain HTTP port.
+
+| Variable                       | Meaning                                                            |
+| ------------------------------ | ------------------------------------------------------------------ |
+| `LOOKY_BROWSER_CLIENT`         | Configured client the browser acts as; unset turns the adapter off |
+| `LOOKY_BROWSER_AUTH`           | `local` (default, loopback only) or `token`                        |
+| `LOOKY_BROWSER_ORIGINS`        | Origins of the page; required off loopback, https when remote      |
+| `LOOKY_BROWSER_SESSION_TTL_MS` | Browser session lifetime, default 8 hours                          |
+| `LOOKY_BROWSER_ASSETS_DIR`     | Optional built app directory, served at `/` with a strict CSP      |
+
+### Browser boundary
+
+- **Sessions.** A browser session is an opaque random HttpOnly, SameSite=Strict cookie. It is kept only in memory, so a restart signs everyone out. It expires after its TTL. Signing out or expiring stops its questions and revokes its Looky sessions; builds other sessions need keep running.
+- **Same origin only.** Every request with an `Origin` must use an allowed origin. Every state-changing request needs that `Origin`, a JSON body and the `X-Looky-CSRF` token from `GET /browser/v1/session`. Keep that token in memory, never in `localStorage`. Cross-site `Sec-Fetch-Site` is refused and no CORS header is ever sent.
+- **No paths.** The browser names repositories by id and revisions by branch, tag, `HEAD` or full SHA. Revision syntax such as `main~1` or `:/text` is refused, as are unknown fields. A ref is resolved once, and the selection keeps that SHA for every question.
+- **Ownership.** Revisions and questions belong to the browser session that created them. Another session gets 404 for them, including on cancel.
+- **Safe results.** Answers come back whole. Every other outcome keeps its typed fields with a fixed message. These are `indexing` with build and progress, `failed` with stage and code, `unavailable` with `busy` and `retryAfterMs`, `cancelled`, `timed_out` and `denied`. Provider error text, host paths and session or client ids never reach the browser. Index build failures report their code without the message.
+
+| Route                                   | Operation                                                                 |
+| --------------------------------------- | ------------------------------------------------------------------------- |
+| `GET /browser/v1/session`               | Sign-in state, CSRF token and expiry                                      |
+| `POST /browser/v1/session`              | Sign in; `{ "token": … }` in token mode                                   |
+| `DELETE /browser/v1/session`            | Sign out                                                                  |
+| `GET /browser/v1/repositories`          | Repositories this browser may use                                         |
+| `GET /browser/v1/repositories/:id/refs` | `HEAD`, branches and tags with their SHAs, at most 200                    |
+| `POST /browser/v1/revisions`            | Resolve `{ repositoryId, ref }` to a SHA; returns the selection and index |
+| `GET /browser/v1/revisions/:id`         | The selection and its index readiness                                     |
+| `POST /browser/v1/questions`            | Submit `{ revisionId, question, mode, clientRequestId }`; `202` running   |
+| `GET /browser/v1/questions/:id`         | The question; `?waitMs=` waits up to 25 seconds for its result            |
+| `POST /browser/v1/questions/:id/cancel` | Cancel this browser's question; other callers and shared builds continue  |
+
+`mode` is required, so the app always makes the Fast or Deep choice explicitly.
+`clientRequestId` is generated by the browser per question. Resending it returns the same
+question and result, so a retried delivery never pays for research twice. Reusing it for
+another question is `409 request_key_reused`.
+
+A running question that nobody polls for 45 seconds is cancelled as abandoned. One browser
+session may run 4 questions at once and keep 32. It may hold 8 revision selections; the
+least recently used selection ends beyond that. Finished results are kept for 10
+minutes.
 
 ## Codebase index
 
