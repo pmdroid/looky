@@ -377,6 +377,21 @@ describe("session registration", () => {
     );
   });
 
+  test("expired sessions are swept, lose access and old ended records are pruned", async () => {
+    let now = Date.now();
+    const service = fixture.service({ now: () => now, capacity: { sessionTtlMs: 1_000 } });
+    const first = await session(service);
+    await session(service, { sequence: 2 });
+    now += 2_000;
+    service.sweep();
+    const decision = first.principal.authorize();
+    expect(decision.allowed).toBe(false);
+    now += 8 * 24 * 60 * 60 * 1000;
+    // The superseded first sequence is pruned; the newest is kept so fencing still holds.
+    expect(service.sessions.prune(7 * 24 * 60 * 60 * 1000)).toBe(1);
+    await expectCode(service.registerSession(PAWS, fixture.registration()), "stale_session");
+  });
+
   test("credentials and unknown scope fields are rejected without echoing values", async () => {
     const service = fixture.service();
     const secret = "sk-live-should-never-be-stored";
