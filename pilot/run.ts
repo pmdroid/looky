@@ -200,7 +200,7 @@ async function startService(label: string, extra: Record<string, string> = {}): 
       return {
         exitCode,
         cpuMs: usage ? Math.round(Number(usage.cpuTime.total) / 1000) : -1,
-        maxRssMb: usage ? Math.round(usage.maxRSS / 1024) : -1,
+        maxRssMb: usage ? Math.round(usage.maxRSS / (1024 * 1024)) : -1,
       };
     },
     async kill() {
