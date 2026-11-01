@@ -290,7 +290,10 @@ async function retrieve(
       resolveContext: async () => context,
       authorize: async () => ({ allowed: true }),
     },
-    retriever: new IndexRetriever({ db }),
+    retriever: new IndexRetriever({
+      db,
+      repositories: (id) => (id === repositoryId ? directory : undefined),
+    }),
     sourceReader: new GitSourceReader((id) => (id === repositoryId ? directory : undefined)),
     provider: {
       id: "none",
@@ -368,7 +371,10 @@ async function ask(
             generation: { generationId: build.id, sha: build.sha },
           }),
         },
-        retriever: new IndexRetriever({ db }),
+        retriever: new IndexRetriever({
+          db,
+          repositories: (id) => (id === repositoryId ? directory : undefined),
+        }),
         sourceReader: new GitSourceReader((id) => (id === repositoryId ? directory : undefined)),
         provider,
         engine: new LookyAnswerEngine({

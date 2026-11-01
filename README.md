@@ -443,7 +443,10 @@ repository.
 `IndexRetriever` implements the `Retriever` port over the SQLite index. It searches only
 a `ready` build of exactly the requested repository and SHA under the current index
 policy. Another repository or SHA is a contract violation, and a missing or no longer
-ready build is `unavailable`. It never falls back to another build.
+ready build is `unavailable`. It never falls back to another build. Given the
+`repositories` callback the `IndexService` uses, it also refuses every search with
+`IndexAccessDeniedError` once the repository is no longer authorized. A retired
+generation stays searchable for requests that pinned it with a lease.
 
 Each search combines four lexical channels over code-aware chunks:
 

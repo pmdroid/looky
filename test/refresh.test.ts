@@ -18,6 +18,7 @@ import {
   searchChunks,
   type IndexedChunk,
 } from "../src/indexing/store";
+import { IndexRetriever } from "../src/retrieval/index-retriever";
 import { GitSourceReader } from "../src/source/git-source-reader";
 import { Database as SqliteDatabase } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
@@ -614,6 +615,21 @@ describe("versioned index refresh and recovery", () => {
     await expect(
       svc.resolve({ repositoryId: "fixture", sha: base }, signal),
     ).rejects.toBeInstanceOf(LookyUnavailableError);
+    const retriever = new IndexRetriever({
+      db,
+      repositories: (id) => (authorized.has(id) ? repo : undefined),
+    });
+    await expect(
+      retriever.search(
+        {
+          generation: { generationId: build.id, sha: base },
+          repositoryId: "fixture",
+          query: "getUserById",
+          limit: 5,
+        },
+        signal,
+      ),
+    ).rejects.toBeInstanceOf(IndexAccessDeniedError);
     const { services } = makeServices({ catalog: svc });
     const response = await askProject(
       { question: "How are users loaded?" },
