@@ -264,15 +264,22 @@ export class IndexService implements IndexCatalog {
   }
 
   /**
-   * Start a new attempt for the scope of a failed or cancelled build. Returns
-   * the ready or active build instead when the scope no longer needs one.
+   * Start a new attempt for the scope of a failed or cancelled build. A retry
+   * of an explicit rebuild rebuilds again, so an interrupted rebuild is not
+   * silently dropped in favour of the generation it was meant to replace.
+   * Otherwise returns the ready or active build when the scope no longer
+   * needs one.
    */
   retry(buildId: string, signal?: AbortSignal): Promise<StartBuildResult> {
     const build = getBuild(this.db, buildId);
     if (!build) throw new Error(`Unknown index build ${buildId}`);
     return this.startBuild(
       { repositoryId: build.repositoryId, sha: build.sha },
-      { retry: true, ...(signal ? { signal } : {}) },
+      {
+        retry: true,
+        rebuild: build.requestedMode === "full",
+        ...(signal ? { signal } : {}),
+      },
     );
   }
 

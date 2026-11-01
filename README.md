@@ -614,7 +614,9 @@ requests for the same scope join one build, and a unique database index on queue
 running builds per scope prevents a second publisher. Exceeding `maxFiles` or
 `maxIndexedBytes` fails the build with `limit_exceeded` rather than publishing partial
 coverage. Such deterministic failures are reported to later requests instead of
-retried; `retry` starts a new attempt for the scope. Cancelled and retryable failures
+retried; `retry` starts a new attempt for the scope. Retrying an explicit rebuild that
+failed, was cancelled or was interrupted rebuilds again; any other retry of a scope that
+is already ready returns the ready build. Cancelled and retryable failures
 start a new build on the next request. A build cancelled from another process stops
 at its next batch write. Failure messages are written by Looky and never contain file
 content or matched secrets.
