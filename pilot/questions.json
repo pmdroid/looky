@@ -1,0 +1,373 @@
+{
+  "repositoryId": "paws-app",
+  "source": "https://github.com/pmdroid/paws-app.git",
+  "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+  "questions": [
+    {
+      "id": "q01",
+      "category": "control flow",
+      "subsystem": "recovery",
+      "question": "What does Paws do with work items that were in flight when the process starts up again?",
+      "expected": "recoverOnStartup runs in one immediate transaction: it shifts runner leases for downtime, lists items in awaiting_input, running, verifying, recovering and merge_queue, skips items that already have a restart question, a parked capacity wait, a pending answer resume or a pending transient retry, and asks decideStartup what to do. decideStartup returns none for non-resumable states, keep_place for a merge-queue item whose run is not active, reverify when a merge was in progress or the runner still holds a verifying item, resume with reattach when the runner holds work, ask_restart when the item was already resumed within RESUME_AGAIN_AFTER_MS, reverify for a verifying item with a candidate, and otherwise a fresh-session resume from the checkpoint. Resumes are staggered five seconds apart.",
+      "evidence": [
+        {
+          "path": "src/db/recovery.ts",
+          "startLine": 41,
+          "endLine": 101,
+          "anchor": "export function recoverOnStartup(",
+          "why": "Startup loop that filters items and applies each decision"
+        },
+        {
+          "path": "src/core/recovery.ts",
+          "startLine": 75,
+          "endLine": 106,
+          "anchor": "export function decideStartup(",
+          "why": "The decision table for each in-flight item"
+        }
+      ],
+      "deepNeeded": true
+    },
+    {
+      "id": "q02",
+      "category": "exception path",
+      "subsystem": "recovery",
+      "question": "What happens when Paws restarts again while a task it already resumed once after a restart is still unfinished?",
+      "expected": "decideStartup returns ask_restart when recoveryAttempts is at least 1 and less than RESUME_AGAIN_AFTER_MS (30 minutes) passed since the resume. applyAskRestart fails the item with resume_already_attempted when it has no Linear session; otherwise it moves a running or verifying item to recovering, records a restart hold, cancels its open jobs, releases run capacity and enqueues the RESTART_QUESTION asking in Linear whether to start it again. Caveat: after 30 minutes a further restart resumes again instead of asking.",
+      "evidence": [
+        {
+          "path": "src/core/recovery.ts",
+          "startLine": 101,
+          "endLine": 102,
+          "anchor": "return { type: \"ask_restart\" }",
+          "why": "Condition that turns a second restart into a question"
+        },
+        {
+          "path": "src/db/decisions.ts",
+          "startLine": 91,
+          "endLine": 111,
+          "anchor": "function applyAskRestart",
+          "why": "What asking a restart question does, including the no-session failure"
+        },
+        {
+          "path": "src/db/restart-hold.ts",
+          "startLine": 5,
+          "endLine": 6,
+          "anchor": "RESTART_QUESTION",
+          "why": "The question posted in Linear"
+        },
+        {
+          "path": "src/core/limits.ts",
+          "startLine": 4,
+          "endLine": 4,
+          "anchor": "RESUME_AGAIN_AFTER_MS = 30 * 60_000",
+          "why": "The 30 minute window"
+        }
+      ],
+      "deepNeeded": true
+    },
+    {
+      "id": "q03",
+      "category": "control flow",
+      "subsystem": "recovery",
+      "question": "What does Paws do to running work items when it shuts down on SIGTERM?",
+      "expected": "The shutdown flush calls prepareShutdown with a callback that commits dirty files on each in-flight item's worktree as 'wip: shutdown' when the item has a run commit policy; a failed commit is journaled and does not stop shutdown. Then, in one transaction, it marks Paws alive and, for running and verifying items that are not parked on capacity and not held by a runner, marks the run lost and moves the item to recovering unless it is verifying with a candidate. Merge-queue items keep their place unless their run is still active. This does not spend the one resume attempt.",
+      "evidence": [
+        {
+          "path": "src/db/recovery.ts",
+          "startLine": 165,
+          "endLine": 202,
+          "anchor": "export function prepareShutdown(",
+          "why": "WIP commits and state changes at shutdown"
+        },
+        {
+          "path": "src/index.ts",
+          "startLine": 1567,
+          "endLine": 1577,
+          "anchor": "\"wip: shutdown\"",
+          "why": "Where the shutdown flush wires the WIP commit"
+        }
+      ],
+      "deepNeeded": true
+    },
+    {
+      "id": "q04",
+      "category": "cross-file behavior",
+      "subsystem": "linear intake",
+      "question": "How does a Linear webhook delivery become work for the orchestrator?",
+      "expected": "The server routes POST /webhooks/linear to handleLinearWebhook when webhooks are enabled. The handler checks the HMAC signature and a 60 second timestamp window, requires a delivery id, parses the agent event, records it durably in the inbox store and answers 200 without waiting. Created and prompted events go to the intake queue, which posts the first activity on arrival and runs at most two intakes at once, oldest first, keeping each session in order. Each intake calls followUp, which hands the event to orchestrator.onLinearEvent and then reconciles the linked work item.",
+      "evidence": [
+        {
+          "path": "src/server/serve.ts",
+          "startLine": 665,
+          "endLine": 669,
+          "anchor": "handleLinearWebhook(request",
+          "why": "Route to the webhook handler"
+        },
+        {
+          "path": "src/linear/webhook.ts",
+          "startLine": 102,
+          "endLine": 153,
+          "anchor": "export async function handleLinearWebhook(",
+          "why": "Verification, dedupe and hand-off to intake"
+        },
+        {
+          "path": "src/linear/intake-queue.ts",
+          "startLine": 36,
+          "endLine": 50,
+          "anchor": "export function createIntakeQueue(",
+          "why": "The durable intake worker"
+        },
+        {
+          "path": "src/index.ts",
+          "startLine": 428,
+          "endLine": 430,
+          "anchor": "orchestrator.onLinearEvent(event)",
+          "why": "Where intake reaches the orchestrator"
+        }
+      ],
+      "deepNeeded": true
+    },
+    {
+      "id": "q05",
+      "category": "cross-file behavior",
+      "subsystem": "closeout",
+      "question": "How does a person's bypass of a failed Closeout check reach the Closeout decision?",
+      "expected": "A bypass is approved on the item page, not by a Linear reply. recoveryOptions reads the item's Closeout recoveries and, for link asks decided 'approve', turns each approved check with a reason into a CloseoutBypass carrying task, base, head and policy digest. The orchestrator spreads recoveryOptions into the Closeout gate options, and evaluateCandidate applies applyBypasses to the native evaluation. A bypass only counts when task, base, head and policy digest match exactly and the check is bypassable; the outcome becomes accepted only when nothing else remains, and the summary lists who approved each bypass.",
+      "evidence": [
+        {
+          "path": "src/loop/closeout-recovery.ts",
+          "startLine": 14,
+          "endLine": 54,
+          "anchor": "export function recoveryOptions(",
+          "why": "Builds bypasses from approved checks"
+        },
+        {
+          "path": "src/loop/orchestrator.ts",
+          "startLine": 3480,
+          "endLine": 3480,
+          "anchor": "...recoveryOptions(this.db, item.id)",
+          "why": "Passes them into the gate"
+        },
+        {
+          "path": "src/closeout/bypass.ts",
+          "startLine": 21,
+          "endLine": 61,
+          "anchor": "export function applyBypasses(",
+          "why": "Matching rules and the resulting outcome"
+        },
+        {
+          "path": "src/closeout/run.ts",
+          "startLine": 144,
+          "endLine": 144,
+          "anchor": "applyBypasses(native",
+          "why": "Where the evaluation applies them"
+        }
+      ],
+      "deepNeeded": true
+    },
+    {
+      "id": "q06",
+      "category": "configuration",
+      "subsystem": "queue settings",
+      "question": "Where is the queue start timeout configured, what is its default, and how is it validated?",
+      "expected": "It is [queue] start_timeout_hours in ~/.paws/config.toml. The parser accepts any non-negative integer; readQueueSettings defaults a missing value to 24 hours and clamps it to 1..720. Settings updates through parseQueueSettings reject anything but a whole number from 1 to 720. The orchestrator re-reads it on every dispatch and falls back to 24 when the file cannot be read, journaling the error.",
+      "evidence": [
+        {
+          "path": "src/config/queue.ts",
+          "startLine": 3,
+          "endLine": 19,
+          "anchor": "DEFAULT_QUEUE_START_TIMEOUT_HOURS = 24",
+          "why": "Default and clamping"
+        },
+        {
+          "path": "src/config/file.ts",
+          "startLine": 550,
+          "endLine": 554,
+          "anchor": "start_timeout_hours",
+          "why": "config.toml key parsing"
+        },
+        {
+          "path": "src/loop/orchestrator.ts",
+          "startLine": 4690,
+          "endLine": 4705,
+          "anchor": "private queueStartTimeoutHours()",
+          "why": "Read on every dispatch with a fallback"
+        }
+      ],
+      "deepNeeded": false
+    },
+    {
+      "id": "q07",
+      "category": "exception path",
+      "subsystem": "linear intake",
+      "question": "What happens when a Linear intake fails, and how is it retried?",
+      "expected": "The intake worker catches the error and journals it. A missing AgentSession is marked handled and skipped. A Linear rate limit pauses the whole queue for its retry-after and reschedules the event without counting an attempt, waiting at least 30 seconds. Any other failure counts an attempt and reschedules that event after 30 s, 1 min, 2 min, 5 min, then every 10 min, without blocking other events, and logs the retry. Nothing is retried after the queue is stopped.",
+      "evidence": [
+        {
+          "path": "src/linear/intake-queue.ts",
+          "startLine": 9,
+          "endLine": 19,
+          "anchor": "INTAKE_RETRY_MS",
+          "why": "Concurrency and retry schedule"
+        },
+        {
+          "path": "src/linear/intake-queue.ts",
+          "startLine": 102,
+          "endLine": 143,
+          "anchor": "store.markFailed(event.dedupeKey",
+          "why": "Failure handling per error type"
+        }
+      ],
+      "deepNeeded": false
+    },
+    {
+      "id": "q08",
+      "category": "stale documentation",
+      "subsystem": "configuration",
+      "question": "Does Paws refuse to start when config.toml contains an unknown key?",
+      "expected": "Only partly. docs/configuration.md says an unknown section or key stops Paws at startup. The parser does reject unknown sections and unknown keys in [linear], [tracker] and [merge], but it silently ignores unknown keys in [queue], [github], [caps], [checkout] and [agents]. A correct answer says the documentation overstates the check and cites both the doc and the parser.",
+      "evidence": [
+        {
+          "path": "docs/configuration.md",
+          "startLine": 5,
+          "endLine": 5,
+          "anchor": "An unknown section or key",
+          "why": "The documented promise"
+        },
+        {
+          "path": "src/config/file.ts",
+          "startLine": 499,
+          "endLine": 508,
+          "anchor": "has an unknown key: ${section}.${key}",
+          "why": "A section that does reject unknown keys"
+        },
+        {
+          "path": "src/config/file.ts",
+          "startLine": 550,
+          "endLine": 554,
+          "anchor": "if (section === \"queue\")",
+          "why": "A section that silently ignores them"
+        },
+        {
+          "path": "src/config/file.ts",
+          "startLine": 563,
+          "endLine": 567,
+          "anchor": "if (section === \"caps\")",
+          "why": "Another section that ignores them"
+        }
+      ],
+      "deepNeeded": true
+    },
+    {
+      "id": "q09",
+      "category": "unestablished rationale",
+      "subsystem": "recovery",
+      "question": "Why does Paws wait five seconds between resuming tasks after a restart instead of resuming them all at once?",
+      "expected": "The source shows what happens, not why: STARTUP_RESUME_SPACING_MS = 5_000 and each resume recoverOnStartup enqueues gets run_at = now + 5 s times its place in line, oldest first. No comment or document in the indexed source states the reason. A correct answer describes the mechanism and says the rationale is not established by the source, possibly suggesting asking the team; it must not invent a confident reason.",
+      "evidence": [
+        {
+          "path": "src/db/recovery.ts",
+          "startLine": 39,
+          "endLine": 39,
+          "anchor": "STARTUP_RESUME_SPACING_MS = 5_000",
+          "why": "The spacing constant"
+        },
+        {
+          "path": "src/db/recovery.ts",
+          "startLine": 55,
+          "endLine": 56,
+          "anchor": "nextResumeAt",
+          "why": "How each resume is scheduled"
+        }
+      ],
+      "deepNeeded": false
+    },
+    {
+      "id": "q10",
+      "category": "changed source",
+      "subsystem": "closeout",
+      "question": "How does Closeout decide a review finding's bug class, and when is a finding unclassified?",
+      "expected": "bugClass takes the lead of the finding's explanation up to the first colon, em dash, ' - ', period, semicolon or newline, trims and lowercases it. An empty lead or one longer than CLASS_LIMIT (60 characters) is UNCLASSIFIED. summarizeReviewRounds counts classes across rounds, ignoring unclassified findings, and the most frequent class wins with the later one breaking ties.",
+      "evidence": [
+        {
+          "path": "src/closeout/rounds.ts",
+          "startLine": 16,
+          "endLine": 29,
+          "anchor": "const CLASS_LIMIT = 60;",
+          "why": "The rule and the limit at the base commit"
+        },
+        {
+          "path": "src/closeout/rounds.test.ts",
+          "startLine": 9,
+          "endLine": 17,
+          "anchor": "too long to be a class",
+          "why": "Tests of the rule"
+        }
+      ],
+      "deepNeeded": false
+    }
+  ],
+  "change": {
+    "message": "Looky pilot: rename the review round summary, tighten the bug class limit, add its note and drop an unused fixture",
+    "rename": {
+      "from": "src/closeout/rounds.ts",
+      "to": "src/closeout/round-summary.ts"
+    },
+    "edits": [
+      {
+        "path": "src/closeout/round-summary.ts",
+        "find": "const CLASS_LIMIT = 60;",
+        "replace": "const CLASS_LIMIT = 40;"
+      },
+      {
+        "path": "src/closeout/index.ts",
+        "find": "from \"./rounds\"",
+        "replace": "from \"./round-summary\"",
+        "all": true
+      },
+      {
+        "path": "src/closeout/run.ts",
+        "find": "from \"./rounds\"",
+        "replace": "from \"./round-summary\""
+      },
+      {
+        "path": "src/closeout/rounds.test.ts",
+        "find": "from \"./rounds\"",
+        "replace": "from \"./round-summary\""
+      }
+    ],
+    "add": {
+      "path": "docs/closeout-round-summary.md",
+      "probe": "roundsummarynote",
+      "content": "# Review round summary\n\nroundsummarynote: Closeout names the class of bug a review finding reports from the start of its explanation. A lead longer than 40 characters is unclassified, so long first sentences no longer count as a class.\n"
+    },
+    "delete": {
+      "path": "test/fixtures/runner-answer-uid.ts",
+      "probe": "writeDenied"
+    },
+    "question": {
+      "id": "q10-after",
+      "category": "changed source",
+      "subsystem": "closeout",
+      "question": "How does Closeout decide a review finding's bug class, and when is a finding unclassified?",
+      "expected": "Same rule as q10, now in src/closeout/round-summary.ts with CLASS_LIMIT 40: a lead longer than 40 characters is UNCLASSIFIED. The new docs note states the 40 character limit. A correct answer cites only the new path and the new limit at the new commit.",
+      "evidence": [
+        {
+          "path": "src/closeout/round-summary.ts",
+          "startLine": 16,
+          "endLine": 29,
+          "anchor": "const CLASS_LIMIT = 40;",
+          "why": "The renamed module with the changed limit"
+        },
+        {
+          "path": "docs/closeout-round-summary.md",
+          "startLine": 1,
+          "endLine": 3,
+          "anchor": "longer than 40 characters",
+          "why": "The added note"
+        }
+      ],
+      "deepNeeded": false
+    }
+  }
+}

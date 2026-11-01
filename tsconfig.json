@@ -19,6 +19,7 @@
     "test/**/*.tsx",
     "web/**/*.ts",
     "web/**/*.tsx",
-    "e2e/**/*.ts"
+    "e2e/**/*.ts",
+    "pilot/**/*.ts"
   ]
 }

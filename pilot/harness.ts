@@ -34,10 +34,17 @@ export interface PilotQuestion {
 export interface PilotChange {
   readonly message: string;
   readonly rename: { readonly from: string; readonly to: string };
-  /** Literal replacements in the renamed file, applied after the rename. */
-  readonly edits: readonly { readonly find: string; readonly replace: string }[];
-  readonly add: { readonly path: string; readonly content: string };
-  readonly delete: string;
+  /** Literal replacements, applied after the rename; `all` replaces every occurrence. */
+  readonly edits: readonly {
+    readonly path: string;
+    readonly find: string;
+    readonly replace: string;
+    readonly all?: boolean;
+  }[];
+  /** `probe` is a word only the added file contains, used to search for it. */
+  readonly add: { readonly path: string; readonly content: string; readonly probe: string };
+  /** `probe` is a word the deleted file contains, used to show it is gone. */
+  readonly delete: { readonly path: string; readonly probe: string };
   /** Question asked again at the new commit, with evidence pinned there. */
   readonly question: PilotQuestion;
 }
@@ -176,7 +183,10 @@ export function citationProblems(
       continue;
     }
     if (item.text === undefined) continue;
-    const committed = text.split(/(?<=\n)/).slice(item.startLine - 1, item.endLine).join("");
+    const committed = text
+      .split(/(?<=\n)/)
+      .slice(item.startLine - 1, item.endLine)
+      .join("");
     if (item.text !== committed && item.text !== committed.replace(/\r?\n$/, "")) {
       problems.push(`${where}: text differs from the commit`);
     }
@@ -197,12 +207,16 @@ export function median(values: readonly number[]): number {
   if (values.length === 0) return 0;
   const sorted = [...values].sort((a, b) => a - b);
   const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[middle]! : Math.round((sorted[middle - 1]! + sorted[middle]!) / 2);
+  return sorted.length % 2
+    ? sorted[middle]!
+    : Math.round((sorted[middle - 1]! + sorted[middle]!) / 2);
 }
 
 /** A Markdown table cell: one line, pipes escaped. */
 export function cell(value: unknown): string {
-  return String(value ?? "").replace(/\r?\n/g, " ").replaceAll("|", "\\|");
+  return String(value ?? "")
+    .replace(/\r?\n/g, " ")
+    .replaceAll("|", "\\|");
 }
 
 export function table(header: readonly string[], rows: readonly (readonly unknown[])[]): string {
