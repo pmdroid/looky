@@ -5,7 +5,7 @@
  * Actions that start new research (`retry`, `deep`) are only ever offered as
  * buttons; nothing here runs them. Fast never becomes Deep by itself.
  */
-import type { AskProjectResponse, IndexProgress, IndexView, Mode } from "./api";
+import type { AskProjectResponse, IndexProgress, IndexView, Mode, RefChoice } from "./api";
 import type { AskState } from "./ask-runner";
 
 export type Tone = "neutral" | "progress" | "success" | "warning" | "danger";
@@ -32,6 +32,22 @@ export const MODE_LABEL: Record<Mode, string> = { fast: "Fast", deep: "Deep" };
 
 export function shortSha(sha: string): string {
   return sha.slice(0, 12);
+}
+
+/**
+ * The value a listed branch or tag is selected by. It is qualified, so a tag
+ * that shares a name with a branch still resolves to the tag's commit.
+ */
+export function refValue(ref: RefChoice): string {
+  return `${ref.kind === "branch" ? "refs/heads/" : "refs/tags/"}${ref.name}`;
+}
+
+/** A ref as people read it: `refs/heads/main` is `main`, `refs/tags/v1` is `v1 (tag)`. */
+export function displayRef(ref: string): string {
+  if (ref.startsWith("refs/heads/")) return ref.slice("refs/heads/".length);
+  if (ref.startsWith("refs/tags/")) return `${ref.slice("refs/tags/".length)} (tag)`;
+  if (/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(ref)) return shortSha(ref);
+  return ref;
 }
 
 export function formatDuration(ms: number): string {

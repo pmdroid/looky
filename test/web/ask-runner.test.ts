@@ -260,6 +260,18 @@ describe("ask runner", () => {
     expect(runner.active).toBe(false);
   });
 
+  test("detach after a question finished still clears its answer and actions", async () => {
+    const { api, runner, states, settled } = setup();
+    api.submitReplies.push(async () => view("q1", "completed", answered()));
+    runner.ask(SNAPSHOT);
+    await settled();
+    expect(states.at(-1)).toMatchObject({ kind: "result" });
+    expect(runner.active).toBe(false);
+    runner.detach();
+    expect(states.at(-1)).toEqual({ kind: "idle" });
+    expect(api.cancels).toEqual([]);
+  });
+
   test("leaving the page cancels with keepalive at once", async () => {
     const { api, runner, settled } = setup();
     api.submitReplies.push(async () => view("q1", "running"));

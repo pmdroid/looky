@@ -32,7 +32,9 @@ import {
   announce,
   describeAsk,
   describeIndex,
+  displayRef,
   MODE_LABEL,
+  refValue,
   shortSha,
 } from "./presentation";
 
@@ -267,7 +269,7 @@ function refLabel(listing: RefListing | undefined, ref: string): string {
   if (ref === "HEAD") {
     return listing?.head?.branch ? `HEAD (${listing.head.branch})` : "HEAD";
   }
-  return FULL_SHA.test(ref) ? shortSha(ref) : ref;
+  return displayRef(ref);
 }
 
 function Workspace(props: {
@@ -343,6 +345,10 @@ function Workspace(props: {
    */
   const choose = useCallback((repositoryId: string, ref: string, push = true) => {
     runnerRef.current?.detach();
+    // Cleared here as well, whether or not a question is running: a finished
+    // answer or error, and the actions bound to its snapshot, never outlive it.
+    setAsk({ kind: "idle" });
+    setAskSeq((value) => value + 1);
     nonce.current += 1;
     const next = { repositoryId, ref, nonce: nonce.current };
     writeLocation(next, push);
@@ -515,7 +521,17 @@ function Workspace(props: {
   }
 
   function act(action: Action) {
-    const snapshot = ask.kind === "idle" ? undefined : "snapshot" in ask ? ask.snapshot : undefined;
+    const previous = ask.kind === "idle" ? undefined : "snapshot" in ask ? ask.snapshot : undefined;
+    // A snapshot only ever repeats against the selection it was taken for.
+    const snapshot =
+      previous &&
+      selection.status === "ready" &&
+      selection.state.revision.active &&
+      selection.state.revision.id === previous.revisionId &&
+      selection.state.revision.sha === previous.sha &&
+      selection.state.revision.repositoryId === previous.repositoryId
+        ? previous
+        : undefined;
     switch (action.kind) {
       case "edit":
         questionRef.current?.focus();
@@ -550,7 +566,7 @@ function Workspace(props: {
   const currentRef = target?.ref ?? "HEAD";
   const knownRef =
     currentRef === "HEAD" ||
-    (listing?.refs.some((ref) => ref.name === currentRef) ?? false) ||
+    (listing?.refs.some((ref) => refValue(ref) === currentRef) ?? false) ||
     FULL_SHA.test(currentRef);
   const answered = ask.kind === "result" && ask.response.status === "answered" ? ask : undefined;
   // An answer leads with its prose; its outcome follows inside the answer.
@@ -613,7 +629,7 @@ function Workspace(props: {
                 {listing.refs
                   .filter((ref) => ref.kind === "branch")
                   .map((ref) => (
-                    <option key={`b:${ref.name}`} value={ref.name}>
+                    <option key={`b:${ref.name}`} value={refValue(ref)}>
                       {ref.name}
                     </option>
                   ))}
@@ -624,7 +640,7 @@ function Workspace(props: {
                 {listing.refs
                   .filter((ref) => ref.kind === "tag")
                   .map((ref) => (
-                    <option key={`t:${ref.name}`} value={ref.name}>
+                    <option key={`t:${ref.name}`} value={refValue(ref)}>
                       {ref.name}
                     </option>
                   ))}

@@ -10,7 +10,7 @@ import type { AskProjectResponse } from "./api";
 import type { AskSnapshot } from "./ask-runner";
 import { LinkPolicy } from "./links";
 import { Markdown } from "./markdown";
-import { describeOutcome, formatDuration, MODE_LABEL, shortSha } from "./presentation";
+import { describeOutcome, displayRef, formatDuration, MODE_LABEL, shortSha } from "./presentation";
 
 type Answered = Extract<AskProjectResponse, { status: "answered" }>;
 
@@ -149,7 +149,7 @@ export function AnswerView({
           <div>
             <dt>Revision</dt>
             <dd>
-              {response.revision.ref ? `${response.revision.ref} at ` : ""}
+              {response.revision.ref ? `${displayRef(response.revision.ref)} at ` : ""}
               <code className="sha sha-full">{sha}</code>
             </dd>
           </div>

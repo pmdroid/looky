@@ -19,6 +19,8 @@ import { buildWeb } from "../../web/build";
 import { BrowserApi } from "../../web/src/api";
 import { AnswerView } from "../../web/src/AnswerView";
 import { AskRunner, type AskSnapshot, type AskState } from "../../web/src/ask-runner";
+import { refValue } from "../../web/src/presentation";
+import { git } from "../support/git-fixture";
 import {
   createFixture,
   gatedModel,
@@ -237,6 +239,23 @@ describe("the app against Looky", () => {
         );
       }
     }
+  });
+
+  test("a tag sharing a branch's name is selected as the tag, not the branch", async () => {
+    git(fixture.repo, "commit", "--allow-empty", "-m", "after the branch point");
+    const tagged = git(fixture.repo, "rev-parse", "HEAD").trim();
+    git(fixture.repo, "tag", "release", tagged);
+    git(fixture.repo, "branch", "release", fixture.sha);
+    expect(tagged).not.toBe(fixture.sha);
+    start();
+    const api = await signedIn();
+    const listing = await api.refs("pilot");
+    const branch = listing.refs.find((ref) => ref.kind === "branch" && ref.name === "release")!;
+    const tag = listing.refs.find((ref) => ref.kind === "tag" && ref.name === "release")!;
+    expect(branch.sha).toBe(fixture.sha);
+    expect(tag.sha).toBe(tagged);
+    expect((await api.selectRevision("pilot", refValue(tag))).revision.sha).toBe(tagged);
+    expect((await api.selectRevision("pilot", refValue(branch))).revision.sha).toBe(fixture.sha);
   });
 
   test("without a configured template the API offers no links and none are rendered", async () => {

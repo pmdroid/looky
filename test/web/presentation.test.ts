@@ -6,6 +6,8 @@ import {
   describeIndex,
   describeProgress,
   describeResponse,
+  displayRef,
+  refValue,
 } from "../../web/src/presentation";
 
 const SHA = "d".repeat(40);
@@ -186,5 +188,14 @@ describe("state copy and next actions", () => {
         message: "x",
       })!.actions.map((action) => action.kind),
     ).toEqual(["reselect"]);
+  });
+
+  test("listed branches and tags are selected by qualified names, shown by short names", () => {
+    expect(refValue({ kind: "branch", name: "release", sha: SHA })).toBe("refs/heads/release");
+    expect(refValue({ kind: "tag", name: "release", sha: SHA })).toBe("refs/tags/release");
+    expect(displayRef("refs/heads/feature/x")).toBe("feature/x");
+    expect(displayRef("refs/tags/release")).toBe("release (tag)");
+    expect(displayRef(SHA)).toBe(SHA.slice(0, 12));
+    expect(displayRef("main")).toBe("main");
   });
 });

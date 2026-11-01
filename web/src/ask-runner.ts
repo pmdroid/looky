@@ -186,10 +186,16 @@ export class AskRunner {
   /**
    * Stop the current question without reporting anything more about it, for
    * a new selection or when leaving the page. Its question is cancelled.
+   * Always reports `idle`, also when the last question already finished.
    */
   detach(options: { keepalive?: boolean } = {}): void {
     const run = this.#run;
-    if (!run) return;
+    if (!run) {
+      // A finished question is cleared too, so its answer and its
+      // snapshot-bound retry actions never outlive a new selection.
+      this.#onState({ kind: "idle" });
+      return;
+    }
     this.#run = undefined;
     if (run.stop !== "cancel") run.stop = "detach";
     if (options.keepalive) run.keepalive = true;
