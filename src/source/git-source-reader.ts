@@ -1,6 +1,7 @@
 import { isFullCommitSha } from "../contract/context";
 import { LookyUnavailableError, type SourceReader, type SourceText } from "../contract/ports";
 import { BudgetExhaustedError } from "../ask/session";
+import { splitLines } from "../indexing/chunker";
 import { runGit } from "../indexing/git-snapshot";
 
 /** The requested path or line range does not exist at the pinned commit. */
@@ -38,8 +39,8 @@ export class GitSourceReader implements SourceReader {
     if (blob.exitCode !== 0) {
       throw new SourceRangeError(`${request.path} does not exist at ${request.sha}`);
     }
-    const lines = blob.stdout.split("\n");
-    if (lines.at(-1) === "") lines.pop();
+    // Same line split as the chunker, so a final line without a newline stays exact.
+    const lines = splitLines(blob.stdout);
     if (request.startLine > lines.length) {
       throw new SourceRangeError(
         `${request.path} has ${lines.length} lines; line ${request.startLine} requested`,
@@ -50,7 +51,7 @@ export class GitSourceReader implements SourceReader {
     let bytes = 0;
     const last = Math.min(request.endLine, lines.length);
     for (let index = request.startLine - 1; index < last; index += 1) {
-      const line = `${lines[index]}\n`;
+      const line = lines[index]!;
       const size = Buffer.byteLength(line, "utf8");
       if (bytes + size > request.maxBytes) break;
       selected.push(line);

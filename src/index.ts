@@ -13,6 +13,15 @@ export {
   SessionClosedError,
 } from "./ask/session";
 export * from "./ask/tool";
+export { IndexRetriever, type IndexRetrieverOptions } from "./retrieval/index-retriever";
+export { evidenceKind } from "./retrieval/kinds";
+export {
+  analyzeQuery,
+  identifierKey,
+  identifierSpellings,
+  type QueryAnalysis,
+} from "./retrieval/query";
+export * from "./retrieval/research";
 export { GitSourceReader, SourceRangeError } from "./source/git-source-reader";
 export {
   IndexService,
