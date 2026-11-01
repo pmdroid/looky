@@ -14,6 +14,8 @@ export interface Concept {
   readonly terms: readonly string[];
   /** FTS prefix terms (stems), matched as `"stem"*`. */
   readonly prefixes: readonly string[];
+  /** Groups of FTS terms that must all occur, such as the parts of a compound. */
+  readonly allOf?: readonly (readonly string[])[];
 }
 
 export interface IdentifierRef {
@@ -80,6 +82,45 @@ const SYNONYM_GROUPS: readonly (readonly string[])[] = [
   ["user", "account"],
 ];
 
+/**
+ * Phrasal verbs and nouns that code spells closed: "starts up" is `startup`,
+ * "in flight" is `inFlight`. Their particles are stopwords, so without this
+ * the closed spelling is never searched.
+ */
+const PHRASAL_COMPOUNDS: readonly (readonly [RegExp, readonly [string, string]])[] = [
+  [/\bstart(?:s|ed|ing)?\s+up\b/, ["start", "up"]],
+  [/\bshut(?:s|ting)?\s+down\b/, ["shut", "down"]],
+  [/\bin[\s-]+flight\b/, ["in", "flight"]],
+  [/\bset(?:s|ting)?\s+up\b/, ["set", "up"]],
+  [/\bclean(?:s|ed|ing)?\s+up\b/, ["clean", "up"]],
+  [/\blook(?:s|ed|ing)?\s+up\b/, ["look", "up"]],
+  [/\bcheck(?:s|ed|ing)?\s+out\b/, ["check", "out"]],
+  [/\btime(?:s|d)?\s+out\b/, ["time", "out"]],
+  [/\bback(?:s|ed|ing)?\s+off\b/, ["back", "off"]],
+  [/\bfall(?:s|ing)?\s+back\b/, ["fall", "back"]],
+  [/\broll(?:s|ed|ing)?\s+back\b/, ["roll", "back"]],
+  [/\blog(?:s|ged|ging)?\s+in\b/, ["log", "in"]],
+  [/\bsign(?:s|ed|ing)?\s+in\b/, ["sign", "in"]],
+  [/\b(?:wake|wakes|woke)\s+up\b/, ["wake", "up"]],
+];
+
+/**
+ * The concept for a phrasal compound: its closed spelling (`startup`) as a
+ * term, its snake and kebab spellings as mentions, and its two parts as an
+ * all-of group, because compound identifiers index their parts separately
+ * (`listInFlightItems` is searchable as `in` and `flight`).
+ */
+function compoundConcept(parts: readonly [string, string]): Concept {
+  const word = parts.join("");
+  return {
+    word,
+    forms: [word, parts.join("_"), parts.join("-"), parts.join(" ")],
+    terms: [word],
+    prefixes: [],
+    allOf: [parts],
+  };
+}
+
 const SYNONYMS = new Map<string, readonly string[]>();
 for (const group of SYNONYM_GROUPS) {
   for (const word of group) SYNONYMS.set(word, group);
@@ -143,6 +184,9 @@ export function stem(word: string): string {
   return word;
 }
 
+/** File extensions that name a configuration format, a meaningful word in a question. */
+const CONFIG_EXTENSIONS = new Set(["toml", "yaml", "yml", "json", "ini", "env", "conf"]);
+
 const PATH_EXTENSION = /\.[A-Za-z][A-Za-z0-9]{0,5}$/;
 const TOKEN = /[A-Za-z0-9_$./-]+/g;
 
@@ -193,6 +237,14 @@ export function analyzeQuery(question: string): QueryAnalysis {
   const concepts = new Map<string, Concept>();
   const sequence: string[] = [];
 
+  // Phrasal compounds first, so a long question cannot crowd them out.
+  const lower = question.toLowerCase();
+  for (const [pattern, parts] of PHRASAL_COMPOUNDS) {
+    if (concepts.size >= MAX_CONCEPTS || !pattern.test(lower)) continue;
+    const concept = compoundConcept(parts);
+    concepts.set(concept.word, concept);
+  }
+
   for (const found of question.matchAll(TOKEN)) {
     const match = found[0];
     // A capitalized word opening a sentence is prose, not a type name ("Walk through …").
@@ -207,6 +259,15 @@ export function analyzeQuery(question: string): QueryAnalysis {
       const ref = identifierRef(base, true);
       if (ref && ref.parts.length > 1 && identifiers.size < MAX_IDENTIFIERS) {
         identifiers.set(ref.key, identifiers.get(ref.key) ?? ref);
+      }
+      // The file may not be tracked under that name (`~/.app/config.toml`), so its
+      // name's words still count as concepts: `config`, and `toml` for config formats.
+      const extension = /\.([A-Za-z]+)$/.exec(token)?.[1]?.toLowerCase();
+      const words = [...(ref?.parts ?? [])];
+      if (extension && CONFIG_EXTENSIONS.has(extension)) words.push(extension);
+      for (const word of words) {
+        if (word.length < 2 || STOPWORDS.has(word) || concepts.size >= MAX_CONCEPTS) continue;
+        if (!concepts.has(word)) concepts.set(word, conceptFor(word));
       }
       sequence.length = 0;
       continue;
@@ -235,11 +296,11 @@ export function analyzeQuery(question: string): QueryAnalysis {
       }
       // A single PascalCase or ALLCAPS word is still a likely identifier (`Retriever`).
       const capitalized = /^[A-Z][a-z0-9]+$/.test(piece) && !sentenceStart;
-      if (
-        (capitalized || /^[A-Z][A-Z0-9_]{2,}$/.test(piece)) &&
-        identifiers.size < MAX_IDENTIFIERS
-      ) {
-        const ref = identifierRef(piece, true);
+      // A capitalized prose word is often a product or proper name ("Paws"), so it
+      // counts as a derived identifier; ALLCAPS stays explicit (`HTTP_TIMEOUT`).
+      const allCaps = /^[A-Z][A-Z0-9_]{2,}$/.test(piece);
+      if ((capitalized || allCaps) && identifiers.size < MAX_IDENTIFIERS) {
+        const ref = identifierRef(piece, allCaps);
         if (ref && !identifiers.has(ref.key)) identifiers.set(ref.key, ref);
       }
       if (concepts.size < MAX_CONCEPTS && !concepts.has(word)) concepts.set(word, conceptFor(word));
@@ -289,6 +350,10 @@ export function ftsExpression(analysis: QueryAnalysis): string | undefined {
     for (const prefix of concept.prefixes) {
       const safe = ftsTerm(prefix);
       if (safe && safe.length >= 4) parts.add(`${quote(safe)}*`);
+    }
+    for (const group of concept.allOf ?? []) {
+      const terms = group.map(ftsTerm).filter((term) => term !== undefined);
+      if (terms.length > 1) parts.add(`(${terms.map(quote).join(" AND ")})`);
     }
   }
   for (const identifier of analysis.identifiers) {

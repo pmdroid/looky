@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { Database } from "bun:sqlite";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { askProject } from "../src/ask/ask-project";
@@ -237,6 +237,70 @@ describe("pilot question set", () => {
       });
     }
   }
+});
+
+describe("ranking prose questions toward code", () => {
+  let rankingSha: string;
+  let rankingGen: IndexIdentity;
+
+  beforeAll(async () => {
+    repos.ranking = join(root, "ranking");
+    mkdirSync(repos.ranking, { recursive: true });
+    initRepo(repos.ranking);
+    write(
+      repos.ranking,
+      "src/core/recovery.ts",
+      [
+        'export const IN_FLIGHT_STATES = ["running", "verifying"] as const;',
+        "",
+        "/** What happens to each work item on process startup. */",
+        'export function decideStartup(state: string): "resume" | "none" {',
+        '  return (IN_FLIGHT_STATES as readonly string[]).includes(state) ? "resume" : "none";',
+        "}",
+        "",
+      ].join("\n"),
+    );
+    // A test whose prose repeats the question's words almost verbatim.
+    write(
+      repos.ranking,
+      "test/startup-items.test.ts",
+      [
+        'import { decideStartup } from "../src/core/recovery";',
+        "",
+        'test("items that were in flight are resumed when the service starts up again", () => {',
+        "  // When the service starts up, items that were in flight are resumed again.",
+        '  expect(decideStartup("running")).toBe("resume");',
+        "});",
+        "",
+      ].join("\n"),
+    );
+    write(
+      repos.ranking,
+      "src/linear/webhook.ts",
+      "export function handleLinearWebhook(body: string): boolean {\n  return body.length > 0;\n}\n",
+    );
+    rankingSha = commitAll(repos.ranking, "ranking");
+    rankingGen = await ready("ranking", rankingSha);
+  });
+
+  const ask = (question: string) =>
+    research(question, "fast", {
+      repositoryId: "ranking",
+      sha: rankingSha,
+      generation: rankingGen,
+    });
+
+  test("phrasal compounds reach code spelled closed", async () => {
+    const bundle = await ask(
+      "What happens to items that were in flight when the service starts up?",
+    );
+    expect(paths(bundle)).toContain("src/core/recovery.ts");
+  });
+
+  test("a directory and file name pair matches adjacent question words", async () => {
+    const bundle = await ask("How is a Linear webhook delivery checked?");
+    expect(paths(bundle)).toContain("src/linear/webhook.ts");
+  });
 });
 
 describe("Fast and Deep research", () => {

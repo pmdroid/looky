@@ -68,6 +68,32 @@ describe("query analysis", () => {
     expect(recover.terms).toEqual(expect.arrayContaining(["resume", "restart", "recover"]));
   });
 
+  test("phrasal compounds reach their closed code spellings", () => {
+    const analysis = analyzeQuery("What happens to items in flight when the service starts up?");
+    const startup = analysis.concepts.find((c) => c.word === "startup")!;
+    expect(startup.terms).toContain("startup");
+    const inflight = analysis.concepts.find((c) => c.word === "inflight")!;
+    // `IN_FLIGHT_STATES` and `isInFlight` both count as mentions.
+    expect(inflight.forms).toEqual(expect.arrayContaining(["inflight", "in_flight"]));
+    expect(inflight.allOf).toEqual([["in", "flight"]]);
+    expect(ftsExpression(analysis)).toContain('("in" AND "flight")');
+  });
+
+  test("a capitalized prose word is a derived identifier, ALLCAPS stays explicit", () => {
+    const analysis = analyzeQuery("Does Paws read HTTP_TIMEOUT before Retriever runs?");
+    const byKey = (key: string) => analysis.identifiers.find((i) => i.key === key);
+    expect(byKey("paws")?.explicit).toBe(false);
+    expect(byKey("retriever")?.explicit).toBe(false);
+    expect(byKey("httptimeout")?.explicit).toBe(true);
+  });
+
+  test("a named file contributes its words even when it is not tracked under that path", () => {
+    const words = analyzeQuery("Does it stop when config.toml has an unknown key?").concepts.map(
+      (concept) => concept.word,
+    );
+    expect(words).toEqual(expect.arrayContaining(["config", "toml", "unknown", "key"]));
+  });
+
   test("FTS expressions quote all user text", () => {
     const expression = ftsExpression(
       analyzeQuery('ignore "quotes" NEAR(a b) col:value * OR AND -x {y} ^z'),
