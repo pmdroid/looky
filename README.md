@@ -2,8 +2,10 @@
 
 Bun/TypeScript foundations for Looky's indexed Fast/Deep code answers. The repository
 provides tooling, durable SQLite storage, a persistent codebase index, Fast/Deep
-evidence retrieval and the `ask_project` contract described below. Answer synthesis,
-index refresh and the MCP server are subsequent work in PAS-968 through PAS-972.
+evidence retrieval, [natural-language answers](#answers) through a
+[configurable model provider](#model-providers) and the `ask_project` contract
+described below. Index refresh and the MCP server are subsequent work in PAS-969
+through PAS-972.
 
 ## Prerequisites and installation
 
@@ -102,6 +104,7 @@ bun run looky status [<build-id>] [--id <repository-id>] [--sha <sha>]
 bun run looky coverage <build-id> [--excluded]
 bun run looky search <build-id> <words…> [--limit <n>]
 bun run looky retrieve --repo /path/to/repo --sha <sha> [--id <repository-id>] [--mode fast|deep] [--text] <question…>
+bun run looky ask --repo /path/to/repo --sha <sha> [--id <repository-id>] [--mode fast|deep] <question…>
 bun run looky cancel <build-id>
 ```
 
@@ -111,7 +114,9 @@ for the build, prints progress to stderr and exits non-zero unless the build is 
 language, exclusions by reason and, with `--excluded`, every excluded path. `retrieve`
 runs [evidence research](#evidence-retrieval) against the ready index of exactly that
 SHA, without calling a model, and prints the evidence bundle; `--text` includes the
-source text of each range.
+source text of each range. `ask` answers the question through the full `ask_project`
+path with the [configured provider](#model-providers) and prints the typed response;
+Ctrl-C cancels it.
 
 In code, `IndexService` implements the `IndexCatalog` port. Its `repositories`
 callback maps an authorized repository id to a local Git directory and refuses unknown
@@ -272,6 +277,10 @@ distinct from execution failures. Evidence references are separate metadata and
 must lie within source ranges the session read at the pinned SHA. Non-`unknown`
 outcomes require evidence. Text consisting only of code snippets is rejected. A
 Fast answer may set `suggestedMode: "deep"`; the caller decides whether to retry.
+`suggestedHumanQuestion: { question, reason }` is present when intent or rationale is
+not documented; the caller may ask people, for example through Paws `ask_team`, but
+Looky never posts it. `providers` lists the configured providers that served model
+calls.
 
 `scope` states that only committed source at the SHA was used and whether
 uncommitted changes were `none`, `excluded` or `unknown`. Dirty and unknown
@@ -292,7 +301,7 @@ early with a `partial` answer instead. Elapsed time covers the whole request.
 
 | Limit                | Fast  | Deep   | Fast variable                     |
 | -------------------- | ----- | ------ | --------------------------------- |
-| `maxRetrievalPasses` | 2     | 8      | `LOOKY_FAST_MAX_RETRIEVAL_PASSES` |
+| `maxRetrievalPasses` | 2     | 14     | `LOOKY_FAST_MAX_RETRIEVAL_PASSES` |
 | `maxResultsPerPass`  | 10    | 20     | `LOOKY_FAST_MAX_RESULTS_PER_PASS` |
 | `maxSourceReads`     | 8     | 48     | `LOOKY_FAST_MAX_SOURCE_READS`     |
 | `maxSourceBytes`     | 65536 | 524288 | `LOOKY_FAST_MAX_SOURCE_BYTES`     |
@@ -312,14 +321,19 @@ adapter's `budgetLimits` can only tighten these limits, never raise them.
 
 ### Adapter boundary
 
-| Port            | Implemented by         | Responsibility                                        |
-| --------------- | ---------------------- | ----------------------------------------------------- |
-| `ClientAdapter` | Client, such as Paws   | Session context, generation, authorization, limits    |
-| `IndexCatalog`  | Looky `IndexService`   | Exact-SHA generation lookup and build status          |
-| `Retriever`     | Looky `IndexRetriever` | Search within the pinned generation                   |
-| `SourceReader`  | Looky or client        | Committed source ranges at the SHA                    |
-| `ModelProvider` | Selected provider      | Model calls; `LookyUnavailableError` when unavailable |
-| `AnswerEngine`  | Looky (PAS-968)        | Fast or Deep research and synthesis via the session   |
+| Port            | Implemented by            | Responsibility                                      |
+| --------------- | ------------------------- | --------------------------------------------------- |
+| `ClientAdapter` | Client, such as Paws      | Session context, generation, authorization, limits  |
+| `IndexCatalog`  | Looky `IndexService`      | Exact-SHA generation lookup and build status        |
+| `Retriever`     | Looky `IndexRetriever`    | Search within the pinned generation                 |
+| `SourceReader`  | Looky or client           | Committed source ranges at the SHA                  |
+| `ModelProvider` | Looky `ProviderRouter`    | Model calls with selection, fallback and quotas     |
+| `AnswerEngine`  | Looky `LookyAnswerEngine` | Fast or Deep research and synthesis via the session |
+
+A client adapter may also set `providerPolicy: { selected, fallback? }`, such as Paws'
+existing provider policy. It chooses among providers Looky configured and can never
+add an endpoint or credentials; naming an unconfigured provider fails with
+`provider_not_configured`.
 
 Cancellation flows through the `AbortSignal` passed to every port. `GitSourceReader`
 reads blobs with `git cat-file` at the SHA, with the same hardened Git invocation as
@@ -416,3 +430,128 @@ synthesis keeps the rest. Each is enforced on its own; reaching one stops resear
 Deep variables use the `LOOKY_DEEP_RESEARCH_` prefix. `loadResearchConfig()` reads them.
 Values must be positive integers, Deep must be at least as large as Fast in every limit,
 and Deep must allow more passes.
+
+## Answers
+
+`LookyAnswerEngine` turns verified evidence into a complete explanation, the way one
+engineer explains a system to another. It starts with the direct answer, then explains
+the flow, the connections between files and the important exceptions in ordinary
+prose, with source links next to the claims they support. It uses only the guarded
+session, so its tools are scoped index search and pinned source reads. It cannot edit
+files, run scripts or shell commands, fetch URLs, create issues or start other
+research.
+
+| Mode | Steps                                                                                                                                                                                                                                                                                                         |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fast | The Fast evidence pass, then one synthesis call, plus one repair call only if the reply cannot be parsed. Thin evidence gives a clearly limited answer with `suggestedMode: "deep"`. Fast never runs Deep's stages.                                                                                           |
+| Deep | The Deep evidence plan, then up to `LOOKY_DEEP_ROUNDS` (default 2) rounds where the model plans follow-up searches from a digest of the evidence. Those searches run as research passes with the same byte-exact verification. Then synthesis, then a cross-check of the draft against the evidence it cites. |
+
+A Deep follow-up can only be a search: words, `definitionOf`, `referencesOf`, `kinds`
+or a path prefix. Any other field the model returns is discarded. Follow-ups have their
+own limits on top of the Deep research limits, and each round gets what is left.
+`LOOKY_DEEP_MAX_FOLLOW_UPS_PER_ROUND` (default 4) caps the searches in one round.
+
+<!-- follow-up-limits:start -->
+
+| Limit            | Default | Variable                                 |
+| ---------------- | ------- | ---------------------------------------- |
+| `maxPasses`      | 6       | `LOOKY_DEEP_FOLLOW_UP_MAX_PASSES`        |
+| `maxReads`       | 10      | `LOOKY_DEEP_FOLLOW_UP_MAX_READS`         |
+| `maxReadBytes`   | 98304   | `LOOKY_DEEP_FOLLOW_UP_MAX_READ_BYTES`    |
+| `maxReadLines`   | 160     | `LOOKY_DEEP_FOLLOW_UP_MAX_READ_LINES`    |
+| `maxHitsPerPass` | 8       | `LOOKY_DEEP_FOLLOW_UP_MAX_HITS_PER_PASS` |
+| `maxElapsedMs`   | 45000   | `LOOKY_DEEP_FOLLOW_UP_MAX_ELAPSED_MS`    |
+
+<!-- follow-up-limits:end -->
+
+Every model call is still charged to the mode budget. Evidence that does not fit the
+input token budget is left out and disclosed, never cut mid-range. An answer over
+`maxAnswerChars` is shortened at a paragraph or sentence boundary and says so.
+
+### Grounding and citations
+
+Repository and index text is untrusted. Evidence goes to the model in fenced,
+line-numbered blocks that cannot close their fence, and the instructions say text in
+them is data, never instructions. The model cites with `[E3]` or `[E3:14-18]`. Before
+delivery each marker is checked against the inspected evidence records. The id must
+exist and the lines must lie inside that record. Path-and-line references written in
+the prose, such as `src/a.ts:12`, are checked the same way.
+
+Valid citations become links and `evidence` references. Invalid ones are removed, the
+answer says how many were removed, and a `supported` outcome becomes `partial`. An
+answer with no valid citation is delivered as `unknown`, never as verified. Set
+`LOOKY_SOURCE_LINK_TEMPLATE` to link to a code host, for example
+`https://github.com/org/repo/blob/{sha}/{path}#L{startLine}-L{endLine}`.
+`{repositoryId}` is also available. Without a template, links are plain
+`path:lines` labels.
+
+### Honest outcomes
+
+- **Code, docs and inference.** The answer states what the code does with citations,
+  attributes what docs say, and marks inferences.
+- **Stale docs.** A research conflict is always listed in `caveats`. When the question
+  or the cited docs involve it, the outcome becomes `conflicting`.
+- **Rationale.** A reason counts as documented only if the answer cites docs. Otherwise
+  the rationale is unknown, the answer says so, and `suggestedHumanQuestion` carries a
+  question for the team.
+- **Coverage.** `caveats` lists research gaps, limits reached and how many ranges and
+  files were inspected. They never claim the whole repository was read. When research
+  stopped early or the outcome is partial, the prose ends with one sentence saying so.
+- **No evidence.** When research finds nothing, the answer is `unknown` and no
+  synthesis call is made.
+
+Authorization runs before every search, read and model call and again before delivery.
+Cancellation, revocation or a stale client generation stops research immediately and
+no answer is delivered.
+
+## Model providers
+
+Looky calls models only through a provider it is configured with. No provider is
+required, and Claude is not required. `ProviderRouter` tries the selected provider for
+every call. It moves to a fallback only when the selected one cannot serve: its local
+quota is spent, it reported a quota or rate limit, or it is down. A fallback is never
+consulted while the selected provider works, so an unused provider's exhausted quota
+never blocks an answer. A provider that reported a quota or rate limit is skipped
+until its `Retry-After` passes, or one minute without a hint; a spent quota waits 15
+minutes. Cancellation is never retried on another provider. Rejected requests, such as
+HTTP 400, fail instead of falling back.
+
+| Kind        | Endpoint                              | Default base URL            |
+| ----------- | ------------------------------------- | --------------------------- |
+| `openai`    | OpenAI-compatible `/chat/completions` | `https://api.openai.com/v1` |
+| `anthropic` | Anthropic Messages API `/v1/messages` | `https://api.anthropic.com` |
+
+The `openai` kind also fits many hosted and local model servers that speak the same
+protocol. Configure providers with environment variables. `<ID>` is the provider id
+upper-cased, with `-` written as `_`.
+
+| Variable                                      | Meaning                                                          |
+| --------------------------------------------- | ---------------------------------------------------------------- |
+| `LOOKY_PROVIDER`                              | Selected provider id. Unset means no provider                    |
+| `LOOKY_PROVIDER_FALLBACK`                     | Optional comma-separated fallback ids, tried in order            |
+| `LOOKY_PROVIDERS`                             | Optional list of every configured id, if more than the above     |
+| `LOOKY_PROVIDER_<ID>_KIND`                    | `openai` or `anthropic`                                          |
+| `LOOKY_PROVIDER_<ID>_MODEL`                   | Model name sent to the provider                                  |
+| `LOOKY_PROVIDER_<ID>_BASE_URL`                | Optional endpoint base URL                                       |
+| `LOOKY_PROVIDER_<ID>_API_KEY`                 | Optional credential                                              |
+| `LOOKY_PROVIDER_<ID>_TIMEOUT_MS`              | Per-call timeout, default 60000                                  |
+| `LOOKY_PROVIDER_<ID>_MAX_TOKENS_FIELD`        | `openai` only: `max_tokens` (default) or `max_completion_tokens` |
+| `LOOKY_PROVIDER_<ID>_MAX_REQUESTS_PER_MINUTE` | Optional local request quota                                     |
+| `LOOKY_PROVIDER_<ID>_MAX_TOKENS_PER_MINUTE`   | Optional local token quota, input plus output                    |
+
+For example, a local server with a hosted fallback:
+
+```sh
+LOOKY_PROVIDER=local LOOKY_PROVIDER_FALLBACK=hosted \
+LOOKY_PROVIDER_LOCAL_KIND=openai LOOKY_PROVIDER_LOCAL_MODEL=<model> \
+LOOKY_PROVIDER_LOCAL_BASE_URL=http://127.0.0.1:11434/v1 \
+LOOKY_PROVIDER_HOSTED_KIND=anthropic LOOKY_PROVIDER_HOSTED_MODEL=<model> \
+LOOKY_PROVIDER_HOSTED_API_KEY=<key> \
+bun run looky ask --repo /path/to/repo --sha <sha> "How does recovery work?"
+```
+
+Error messages report the HTTP status and the provider's error type, never credentials
+or response bodies. Usage a provider does not report is charged as an estimate. In code,
+`createConfiguredProvider()` builds the router from the environment, and
+`new ProviderRouter({ providers, policy })` accepts any `ModelProvider`
+implementations with optional quotas.

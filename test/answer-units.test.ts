@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { validateCitations } from "../src/answer/citations";
 import { DEFAULT_FOLLOW_UP_LIMITS } from "../src/answer/engine";
-import { loadAnswerConfig } from "../src/config";
+import { followUpLimitEnvName, loadAnswerConfig } from "../src/config";
 import { estimateTokens } from "../src/ask/session";
 import {
   ModelOutputError,
@@ -16,7 +16,11 @@ import {
   planSystemPrompt,
   synthesisPrompt,
 } from "../src/answer/prompts";
-import type { Evidence, EvidenceBundle } from "../src/retrieval/research";
+import {
+  RESEARCH_LIMIT_FIELDS,
+  type Evidence,
+  type EvidenceBundle,
+} from "../src/retrieval/research";
 
 function evidence(id: string, path: string, startLine: number, text: string): Evidence {
   const lines = text.split("\n").length;
@@ -207,5 +211,23 @@ describe("answer configuration", () => {
     expect(loadAnswerConfig({}).deepRounds).toBeUndefined();
     expect(() => loadAnswerConfig({ LOOKY_DEEP_ROUNDS: "lots" })).toThrow("LOOKY_DEEP_ROUNDS");
     expect(() => loadAnswerConfig({ LOOKY_SOURCE_LINK_TEMPLATE: "javascript:alert(1)" })).toThrow();
+  });
+});
+
+describe("documented follow-up limits", () => {
+  test("README table matches the enforced defaults and variable names", async () => {
+    const readme = await Bun.file(new URL("../README.md", import.meta.url)).text();
+    const table =
+      readme
+        .split("<!-- follow-up-limits:start -->")[1]
+        ?.split("<!-- follow-up-limits:end -->")[0] ?? "";
+    for (const field of RESEARCH_LIMIT_FIELDS) {
+      const row = table.split("\n").find((line) => line.includes(`\`${field}\``));
+      const cells = row?.split("|").map((cell) => cell.trim());
+      expect(cells?.slice(2, 4)).toEqual([
+        String(DEFAULT_FOLLOW_UP_LIMITS[field]),
+        `\`${followUpLimitEnvName(field)}\``,
+      ]);
+    }
   });
 });
