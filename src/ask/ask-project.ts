@@ -3,7 +3,9 @@ import { tightenBudget, type ModeBudget } from "../contract/budgets";
 import { checkContext, type LookyRequestContext } from "../contract/context";
 import { DEFAULT_MODE, isMode, parseAskProjectInput, type Mode } from "../contract/input";
 import {
+  isPolicyAwareProvider,
   LookyUnavailableError,
+  ProviderConfigError,
   type AnswerEngine,
   type ClientAdapter,
   type EngineAnswer,
@@ -177,6 +179,7 @@ export async function askProject(
     }
 
     stage = "answer";
+    const provider = providerFor(services.provider, adapter);
     session = new GuardedSession({
       question,
       mode,
@@ -187,7 +190,7 @@ export async function askProject(
       adapter,
       retriever: services.retriever,
       sourceReader: services.sourceReader,
-      provider: services.provider,
+      provider,
       now,
       startedAt,
     });
@@ -215,7 +218,11 @@ export async function askProject(
       index: { generationId: generation.generationId, sha: generation.sha },
       scope: scopeOf(context),
       usage: session.usage(),
+      providers: session.providers(),
       ...(mode === "fast" && answer.suggestDeep ? { suggestedMode: "deep" as const } : {}),
+      ...(answer.suggestedHumanQuestion
+        ? { suggestedHumanQuestion: { ...answer.suggestedHumanQuestion } }
+        : {}),
     };
     return response;
   } catch (error) {
@@ -265,6 +272,19 @@ export async function askProject(
         ...usage,
       };
     }
+    if (error instanceof ProviderConfigError) {
+      return {
+        status: "failed",
+        requestId,
+        mode: executed,
+        limitations: [],
+        stage,
+        code: "provider_not_configured",
+        message: error.message,
+        retryable: false,
+        ...usage,
+      };
+    }
     return {
       status: "failed",
       requestId,
@@ -279,6 +299,23 @@ export async function askProject(
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * Apply the client's provider policy. A policy is a selection among providers
+ * Looky configured; a provider that cannot honor one fails closed rather than
+ * silently ignoring the client's choice.
+ */
+function providerFor(provider: ModelProvider, adapter: ClientAdapter): ModelProvider {
+  const policy = adapter.providerPolicy;
+  if (policy === undefined) return provider;
+  if (!isPolicyAwareProvider(provider)) {
+    throw new ProviderConfigError(
+      `The client selected provider ${policy.selected}, but provider ${provider.id} does not ` +
+        "support provider selection",
+    );
+  }
+  return provider.withPolicy(policy);
 }
 
 function requestedModeOf(rawArgs: unknown): Mode {
@@ -437,6 +474,15 @@ function validateAnswer(
   }
   if (answer.suggestDeep && mode !== "fast") {
     throw new ContractViolationError("Only Fast answers may suggest Deep");
+  }
+  const human = answer.suggestedHumanQuestion;
+  if (
+    human !== undefined &&
+    (typeof human.question !== "string" ||
+      human.question.trim().length === 0 ||
+      typeof human.reason !== "string")
+  ) {
+    throw new ContractViolationError("Malformed suggested human question");
   }
   return { ...answer, text };
 }

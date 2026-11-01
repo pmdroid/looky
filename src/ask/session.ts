@@ -101,6 +101,7 @@ export class GuardedSession implements ResearchSession {
 
   readonly #deps: GuardedSessionDeps;
   readonly #reads: SourceText[] = [];
+  readonly #providers: string[] = [];
   #closed = false;
   #retrievalPasses = 0;
   #sourceReads = 0;
@@ -133,6 +134,11 @@ export class GuardedSession implements ResearchSession {
       outputTokens: this.#outputTokens,
       elapsedMs: Math.max(0, this.#deps.now() - this.#deps.startedAt),
     };
+  }
+
+  /** Configured providers that served model calls, in first-use order. */
+  providers(): readonly string[] {
+    return [...this.#providers];
   }
 
   remaining(): ModeBudget {
@@ -273,6 +279,8 @@ export class GuardedSession implements ResearchSession {
     this.#ensureOpen();
     this.#inputTokens += result.inputTokens;
     this.#outputTokens += result.outputTokens;
+    const servedBy = result.providerId ?? this.#deps.provider.id;
+    if (!this.#providers.includes(servedBy)) this.#providers.push(servedBy);
     // Refuse provider output that overran the request's allowance.
     if (this.#inputTokens > this.budget.maxInputTokens) {
       throw new BudgetExhaustedError("maxInputTokens");
