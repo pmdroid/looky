@@ -423,7 +423,13 @@ async function serve(): Promise<number> {
   });
   let http: ReturnType<typeof startHttpServer>;
   try {
-    http = startHttpServer({ service, config, askConfig: loadAskConfig() });
+    const { sourceLink } = loadAnswerConfig();
+    http = startHttpServer({
+      service,
+      config,
+      askConfig: loadAskConfig(),
+      ...(sourceLink ? { sourceLink } : {}),
+    });
   } catch (error) {
     await service.close();
     throw error;

@@ -20,6 +20,7 @@
  *   /browser/v1/*                       same-origin browser adapter, when configured
  *   GET    /*                           built browser assets, when configured
  */
+import type { SourceLinkBuilder } from "../answer/citations";
 import { BrowserAdapter, BROWSER_PREFIX, type BrowserLimits } from "../browser/adapter";
 import { serveAsset } from "../browser/assets";
 import type { LookyAskConfig } from "../config";
@@ -55,6 +56,8 @@ export interface HttpServerOptions {
   readonly askConfig: Pick<LookyAskConfig, "maxQuestionChars">;
   /** Overrides of the browser adapter's bounds, for tests. */
   readonly browserLimits?: Partial<BrowserLimits>;
+  /** Source links the browser adapter attaches to answered evidence. */
+  readonly sourceLink?: SourceLinkBuilder;
 }
 
 export interface RunningHttpServer {
@@ -318,6 +321,7 @@ export function startHttpServer(options: HttpServerOptions): RunningHttpServer {
           repositories: config.repositories ?? new Map(),
           localOrigins: isLoopbackHost(config.host) ? loopbackOrigins(server.port!) : [],
           ...(options.browserLimits ? { limits: options.browserLimits } : {}),
+          ...(options.sourceLink ? { sourceLink: options.sourceLink } : {}),
         })
       : undefined;
 
