@@ -25,7 +25,8 @@ bun install --frozen-lockfile && bun run check
 
 Installation needs registry access. Checks run locally without provider
 credentials, API calls, or external services. Pull request CI uses the same
-runtime and commands. Runtime code uses Bun built-ins only.
+runtime and commands. The service's runtime code uses Bun built-ins only. React is a
+development dependency, bundled into the [browser app](#the-browser-app) at build time.
 
 ## Development commands
 
@@ -41,6 +42,8 @@ runtime and commands. Runtime code uses Bun built-ins only.
 | `bun test --watch`     | Rerun tests during development                                                    |
 | `bun start`            | Open storage, verify FTS5, migrate, report readiness, and close                   |
 | `bun run serve`        | Run the [MCP service](#mcp-service) over HTTP                                     |
+| `bun run web:build`    | Build the [browser app](#the-browser-app) into `dist/web`                         |
+| `bun run web:dev`      | Rebuild the browser app on change and run `serve` with it                         |
 | `bun run looky …`      | Build, inspect and search codebase indexes; see [Codebase index](#codebase-index) |
 
 Tool configurations exclude dependencies, build output, coverage, and local
@@ -331,12 +334,13 @@ LOOKY_CLIENTS=paws,web \
 LOOKY_CLIENT_PAWS_TOKEN=<secret> LOOKY_CLIENT_PAWS_REPOSITORIES=paws-app \
 LOOKY_CLIENT_WEB_TOKEN=<another secret> LOOKY_CLIENT_WEB_REPOSITORIES=paws-app \
 LOOKY_BROWSER_CLIENT=web \
-LOOKY_BROWSER_ASSETS_DIR=/path/to/built/app \
+LOOKY_BROWSER_ASSETS_DIR=dist/web \
+LOOKY_SOURCE_LINK_TEMPLATE='https://github.com/org/paws-app/blob/{sha}/{path}#L{startLine}-L{endLine}' \
 LOOKY_PROVIDER=… \
 bun run serve
 ```
 
-Open `http://127.0.0.1:7341/`. With the default `LOOKY_BROWSER_AUTH=local`, signing in
+Run `bun run web:build` first to produce `dist/web`. Open `http://127.0.0.1:7341/`. With the default `LOOKY_BROWSER_AUTH=local`, signing in
 needs no credential. Looky accepts that only while `LOOKY_HOST` is a loopback address.
 Requests must also name a loopback host, which defeats DNS rebinding. On a shared
 machine every local user can reach the port, so use token sign-in there.
@@ -392,10 +396,60 @@ bun run serve
 question and result, so a retried delivery never pays for research twice. Reusing it for
 another question is `409 request_key_reused`.
 
+An answered question also carries `sourceLinks`: one link or `null` per `evidence`
+entry, built from `LOOKY_SOURCE_LINK_TEMPLATE` with the answer's own repository and SHA.
+Only http and https links are offered. Without a template every entry is `null`.
+
 A running question that nobody polls for 45 seconds is cancelled as abandoned. One browser
 session may run 4 questions at once and keep 32. It may hold 8 revision selections; the
 least recently used selection ends beyond that. Finished results are kept for 10
 minutes.
+
+### The browser app
+
+`web/` holds a single React screen for people. It uses the browser API above and has no
+index, answer engine or storage of its own.
+
+```sh
+bun run web:build              # dist/web, or: bun run web:build <outdir>
+LOOKY_BROWSER_ASSETS_DIR=dist/web … bun run serve
+```
+
+The build uses Bun's HTML bundler with `web/index.html` as the only entry. It emits hashed
+script and style files with absolute URLs and no inline script or style, so the CSP that
+Looky serves assets with holds. Production builds are minified and have no source maps.
+For development, `bun run web:dev` rebuilds into `dist/web` on every change under `web/`
+and runs `bun run serve` with `LOOKY_BROWSER_ASSETS_DIR` pointing there. Every other
+`LOOKY_*` setting comes from the environment as usual. Reload the page after a rebuild.
+
+- **Selection.** Repositories and branches, tags and `HEAD` come from the API, or a full
+  commit SHA can be entered. A choice is resolved once to a SHA, and the screen shows the
+  pinned SHA and index readiness. The repository and ref are kept in the URL, as
+  `?repo=…&ref=…`, so a reload selects them again. Questions and answers are not kept
+  in the URL, and nothing is written to `localStorage` or `sessionStorage`.
+- **Asking.** Fast is selected by default and Deep is an explicit choice. Ask is disabled
+  while a question runs, so a double click never submits twice. A lost submission is resent
+  with the same `clientRequestId`. Cancel stops the question at Looky and says so.
+  Choosing another repository or revision, signing out or leaving the page cancels the
+  running question. Every result is checked against the question's snapshot of its mode,
+  repository, selection and SHA, so a late or mismatched response is never shown.
+- **Waiting.** Each poll is a bounded long poll, with a limited number of them. Index
+  readiness is checked at the server's `retryAfterMs`, clamped to 1 to 15 seconds, for at
+  most 10 minutes. Then the person decides whether to keep waiting. Progress appears only
+  when Looky supplies it. The app never invents percentages or streaming.
+- **Retries.** An `indexing` result means no research ran. The app therefore asks the same
+  question again once the index is ready. After `busy`, a retryable failure or a timeout,
+  the app shows a Retry or Ask again button, enabled after any `retryAfterMs`. "Ask in
+  Deep" is only a button. A Fast question never becomes Deep by itself.
+- **Answers.** The full prose comes first. Caveats, the certainty (outcome and any
+  question for the team), the cited ranges at the SHA, and the mode, revision and
+  committed-source scope follow. Answer text is untrusted. It is rendered through a small
+  Markdown subset directly to React elements, without an HTML path. A link is clickable
+  only when it equals one of the answer's `sourceLinks` and uses http or https.
+- **Access.** The screen works from 320 px wide to desktop. All controls are labelled and
+  reachable by keyboard. Ctrl or ⌘ + Enter asks and Escape cancels. Status changes are
+  announced in a live region, and focus moves to the outcome when a question ends.
+  Unicode and right-to-left text render as written.
 
 ## Codebase index
 

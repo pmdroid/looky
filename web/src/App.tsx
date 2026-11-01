@@ -762,7 +762,7 @@ function Workspace(props: {
               value={props.question}
               onChange={(event) => props.onQuestion(event.target.value)}
               onKeyDown={onQuestionKey}
-              placeholder="How does a refresh reuse unchanged files from the previous index?"
+              placeholder="For example: how does a refresh reuse unchanged files from the previous index?"
               aria-describedby="question-help"
             />
             <p id="question-help" className="hint">

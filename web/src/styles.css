@@ -684,6 +684,7 @@ input[aria-invalid="true"] {
 }
 
 .answer-head .section-title {
+  display: inline-block;
   margin-bottom: 0.35rem;
   color: var(--muted);
   font-size: var(--step--1);

@@ -20,6 +20,10 @@ const UNCOMMITTED: Record<Answered["scope"]["uncommittedChanges"], string> = {
   unknown: "Uncommitted changes, if any, are not included.",
 };
 
+function count(value: number, noun: string): string {
+  return `${value.toLocaleString()} ${noun}${value === 1 ? "" : "s"}`;
+}
+
 function range(start: number, end: number): string {
   return start === end ? `${start}` : `${start}–${end}`;
 }
@@ -180,8 +184,9 @@ export function AnswerView({
           <div>
             <dt>Research</dt>
             <dd>
-              {formatDuration(response.usage.elapsedMs)}, {response.usage.sourceReads} source reads,{" "}
-              {response.usage.modelCalls} model calls
+              {formatDuration(response.usage.elapsedMs)},{" "}
+              {count(response.usage.sourceReads, "source read")},{" "}
+              {count(response.usage.modelCalls, "model call")}
               {response.providers.length > 0 ? ` via ${response.providers.join(", ")}` : ""}
             </dd>
           </div>
