@@ -499,8 +499,14 @@ export class IndexService implements IndexCatalog {
   // Retention
 
   private releaseLease(leaseId: string, buildId: string): void {
-    releaseLease(this.db, leaseId);
-    if (getBuild(this.db, buildId)?.retiredAt) this.collectWhenIdle();
+    try {
+      releaseLease(this.db, leaseId);
+      if (getBuild(this.db, buildId)?.retiredAt) this.collectWhenIdle();
+    } catch (error) {
+      // Releasing runs as a request ends and must not replace its result. An
+      // unreleased lease only delays cleanup until it expires.
+      console.error("looky: could not release index lease:", errorText(error));
+    }
   }
 
   /**
@@ -523,7 +529,13 @@ export class IndexService implements IndexCatalog {
 
   private collectWhenIdle(): void {
     if (this.closed || this.running.size > 0 || this.queue.length > 0) return;
-    this.collectGarbage();
+    try {
+      this.collectGarbage();
+    } catch (error) {
+      // Runs from build completion callbacks. Retention is retried at the next
+      // idle point, so a failed pass, such as a busy database, is only reported.
+      console.error("looky: index garbage collection failed:", errorText(error));
+    }
   }
 
   /** Stop accepting builds, cancel queued and running ones, and wait for them to stop. */
@@ -595,6 +607,10 @@ export function progressOf(build: BuildRecord): IndexProgress {
     phase: build.phase,
     ...(build.filesTotal > 0 ? { filesDone: build.filesDone, filesTotal: build.filesTotal } : {}),
   };
+}
+
+function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function failureMessage(build: BuildRecord): string {

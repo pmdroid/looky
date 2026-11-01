@@ -462,8 +462,8 @@ export interface GarbageReport {
  * bound their records, and delete chunk content no build references.
  *
  * It never runs while a build is queued or running, because a build may be
- * about to reference stored content or carry rows from its base build. The
- * newest served generation of every repository is always kept.
+ * about to reference stored content or carry rows from its base build. At
+ * least one served generation of every repository is always kept.
  */
 export function collectGarbage(db: Database, policy: RetentionPolicy): GarbageReport {
   if (policy.retainReadyPerRepository < 1 || policy.retainFailedPerRepository < 1) {
