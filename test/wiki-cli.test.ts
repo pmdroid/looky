@@ -117,6 +117,41 @@ test("wiki generate indexes, writes and publishes, then reuses the published wik
     const again = await cli(args, { ...provider.env, LOOKY_DATA_DIR: dataDir });
     expect(again.code).toBe(0);
     expect(provider.requests).toBe(calls);
+    const firstId = (JSON.parse(again.stdout) as { generation: { id: string } }).generation.id;
+
+    // A deliberate rebuild writes every page again and replaces the published wiki.
+    const rebuilt = await cli([...args, "--rebuild"], { ...provider.env, LOOKY_DATA_DIR: dataDir });
+    expect(rebuilt.code).toBe(0);
+    const rebuild = JSON.parse(rebuilt.stdout) as {
+      generation: { id: string; usage: { modelCalls: number; pagesReused: number } };
+      published: boolean;
+      pages: { refresh?: string }[];
+    };
+    expect(rebuild.published).toBe(true);
+    expect(rebuild.generation.id).not.toBe(firstId);
+    expect(rebuild.generation.usage.pagesReused).toBe(0);
+    expect(provider.requests).toBe(calls * 2);
+    expect(rebuild.pages.filter((page) => page.refresh).every((p) => p.refresh === "rebuild")).toBe(
+      true,
+    );
+
+    // Pages and search hits name their commit; the replaced generation is historical.
+    const env = { LOOKY_DATA_DIR: dataDir };
+    const current = await cli(
+      ["wiki", "page", rebuild.generation.id, "overview", "--id", "pilot"],
+      env,
+    );
+    expect(JSON.parse(current.stdout)).toMatchObject({ sha, currency: "current", outcome: "page" });
+    const old = await cli(["wiki", "page", firstId, "overview", "--id", "pilot"], env);
+    expect(JSON.parse(old.stdout)).toMatchObject({ sha, currency: "historical" });
+    const search = await cli(
+      ["wiki", "search", rebuild.generation.id, "Billing", "--id", "pilot"],
+      env,
+    );
+    expect(search.code).toBe(0);
+    const found = JSON.parse(search.stdout) as { sha: string; hits: { slug: string }[] };
+    expect(found.sha).toBe(sha);
+    expect(found.hits.map((hit) => hit.slug)).toContain("modules/billing");
   } finally {
     provider.stop();
   }
