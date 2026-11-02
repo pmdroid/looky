@@ -1131,7 +1131,8 @@ bun run looky wiki search <generation-id> <query> --id <repository-id> [--limit 
 ```
 
 `wiki generate` on a new commit refreshes from the last published wiki and lists each
-page's refresh reason. `wiki page` and `wiki search` print the commit of the generation
+page's refresh reason. [docs/wiki-runbook.md](docs/wiki-runbook.md) walks through install, configuration,
+generation, browsing, refresh, failure inspection and recovery in order. `wiki page` and `wiki search` print the commit of the generation
 and whether it is `current` or `historical`.
 
 ## The ask_project contract
