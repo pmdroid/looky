@@ -13,19 +13,24 @@
  * produced from these replies after its own citation checks.
  */
 import type { ModelRequest } from "../../src/contract/ports";
+import { WIKI_SYSTEM_MARKER } from "../../src/wiki/prompts";
 import {
   kindOf,
   promptEvidence,
   type CallKind,
   type PromptEvidence,
 } from "../../test/support/scripted-model";
+import { groundedPage, type WikiCall } from "../../test/support/wiki-fixture";
 
 export type CallStatus = "running" | "replied" | "aborted";
 
 export interface ProviderCall {
   readonly seq: number;
-  readonly kind: CallKind;
+  /** `wiki` for a call that writes one generated wiki page. */
+  readonly kind: CallKind | "wiki";
   readonly question: string;
+  /** For a wiki call: the page title and the neighbouring slugs it may link to. */
+  readonly page?: { readonly title: string; readonly neighbours: readonly string[] };
   readonly evidence: readonly PromptEvidence[];
   readonly model: string;
   /** Whether Looky sent the configured API key, which never reaches a browser. */
@@ -46,6 +51,12 @@ export type Reply =
     };
 
 export type Script = (call: ProviderCall, signal: AbortSignal) => Reply | Promise<Reply>;
+
+/** A wiki page script; undefined passes the call on to earlier scripts and then the default. */
+export type WikiScript = (
+  call: ProviderCall,
+  signal: AbortSignal,
+) => Reply | undefined | Promise<Reply | undefined>;
 
 export interface Hold {
   /** Resolves with the first held call once Looky makes it. */
@@ -99,7 +110,19 @@ export function groundedAnswer(call: ProviderCall, maxFiles = 4): Reply {
   };
 }
 
+/** A grounded wiki page from the evidence the prompt showed, as a model would write it. */
+export function wikiPage(call: ProviderCall): Reply {
+  return {
+    json: groundedPage({
+      evidence: call.evidence,
+      title: call.page?.title ?? "",
+      neighbours: call.page?.neighbours ?? [],
+    } as unknown as WikiCall),
+  };
+}
+
 function defaultScript(call: ProviderCall): Reply {
+  if (call.kind === "wiki") return wikiPage(call);
   if (call.kind === "plan") return { json: { followUps: [], done: true } };
   if (call.kind === "check") return { json: { verdict: "ok" } };
   return groundedAnswer(call);
@@ -108,6 +131,7 @@ function defaultScript(call: ProviderCall): Reply {
 export class ScriptedProvider {
   readonly calls: ProviderCall[] = [];
   readonly #rules: Rule[] = [];
+  readonly #wikiRules: WikiScript[] = [];
   readonly #server: ReturnType<typeof Bun.serve>;
 
   constructor() {
@@ -128,6 +152,45 @@ export class ScriptedProvider {
   /** Script calls whose question contains `marker`. Later scripts win. */
   script(marker: string, script: Script): void {
     this.#rules.unshift({ marker, script });
+  }
+
+  /** Script wiki page calls. Later scripts win; a script returning undefined passes on. */
+  scriptWiki(script: WikiScript): void {
+    this.#wikiRules.unshift(script);
+  }
+
+  async #wikiReply(call: ProviderCall, signal: AbortSignal): Promise<Reply> {
+    for (const script of this.#wikiRules) {
+      const reply = await script(call, signal);
+      if (reply) return reply;
+    }
+    return wikiPage(call);
+  }
+
+  /** Hold every wiki page call until released, then write the page as usual. */
+  holdWiki(): Hold {
+    let release!: () => void;
+    const opened = new Promise<void>((resolve) => (release = resolve));
+    let started!: (call: ProviderCall) => void;
+    const first = new Promise<ProviderCall>((resolve) => (started = resolve));
+    let released = false;
+    this.scriptWiki(async (call, signal) => {
+      if (released) return undefined;
+      started(call);
+      await new Promise<void>((resolve, reject) => {
+        if (signal.aborted) reject(signal.reason);
+        signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+        void opened.then(resolve);
+      });
+      return undefined;
+    });
+    return {
+      started: first,
+      release: () => {
+        released = true;
+        release();
+      },
+    };
   }
 
   /**
@@ -187,10 +250,19 @@ export class ScriptedProvider {
     };
     const system = body.messages.find((message) => message.role === "system")?.content ?? "";
     const prompt = body.messages.find((message) => message.role === "user")?.content ?? "";
+    const wiki = system.startsWith(WIKI_SYSTEM_MARKER);
     const call: ProviderCall = {
       seq: this.calls.length + 1,
-      kind: kindOf({ system, prompt } as ModelRequest),
+      kind: wiki ? "wiki" : kindOf({ system, prompt } as ModelRequest),
       question: /<question>\n([\s\S]*?)\n<\/question>/.exec(prompt)?.[1] ?? "",
+      ...(wiki
+        ? {
+            page: {
+              title: /^Title: (.*)$/m.exec(prompt)?.[1] ?? "",
+              neighbours: [...prompt.matchAll(/^- \[\[([^\]]+)\]\]/gm)].map((m) => m[1]!),
+            },
+          }
+        : {}),
       evidence: promptEvidence(prompt),
       model: body.model,
       authorized: request.headers.get("authorization") === `Bearer ${PROVIDER_API_KEY}`,
@@ -205,10 +277,13 @@ export class ScriptedProvider {
       },
       { once: true },
     );
-    const rule = this.#rules.find((item) => call.question.includes(item.marker));
+    const rule = wiki ? undefined : this.#rules.find((item) => call.question.includes(item.marker));
+    const script: Script = wiki
+      ? (item, abort) => this.#wikiReply(item, abort)
+      : (rule?.script ?? defaultScript);
     let reply: Reply;
     try {
-      reply = await (rule?.script ?? defaultScript)(call, signal);
+      reply = await script(call, signal);
     } catch (error) {
       if (signal.aborted) {
         call.status = "aborted";
