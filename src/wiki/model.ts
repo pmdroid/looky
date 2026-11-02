@@ -291,6 +291,81 @@ export interface WikiPlanReport {
   readonly disclosures: readonly WikiDisclosure[];
 }
 
+// ---------------------------------------------------------------------------
+// Refresh
+
+/** How a generation relates to the repository's previously published wiki. */
+export type WikiRefreshMode =
+  /** No earlier published generation to compare with. */
+  | "initial"
+  /** Compared with the latest published generation; unaffected pages may be reused. */
+  | "refresh"
+  /** A deliberate rebuild: every page is written again, nothing is reused. */
+  | "rebuild";
+
+/**
+ * Why a page was written again or reused. Only `reused` pages kept earlier
+ * prose, and only after every blob they read was checked at the new commit.
+ */
+export const WIKI_REFRESH_REASONS = [
+  "reused",
+  /** The concept has no earlier published page or draft. */
+  "new_page",
+  /** Plan text, planned sources, structural scope or neighbours changed. */
+  "inputs_changed",
+  /** The writer fingerprint (model, prompt, budgets, link template) changed. */
+  "configuration_changed",
+  /** Inputs matched, but a cited or inspected file differs at the new commit. */
+  "sources_changed",
+  /** The earlier page has no record of what it read, so its impact is unknown. */
+  "dependency_unknown",
+  /** A navigation page whose child or linked page changed, appeared or disappeared. */
+  "navigation",
+  /** The earlier body could not be relabelled to the new commit verifiably. */
+  "relabel_unverified",
+  /** Requested rebuild. */
+  "rebuild",
+] as const;
+export type WikiRefreshReason = (typeof WIKI_REFRESH_REASONS)[number];
+
+/** Indexed paths that differ between the base generation's commit and this one. */
+export interface WikiPathChanges {
+  readonly added: number;
+  readonly changed: number;
+  readonly deleted: number;
+  readonly renamed: number;
+  /** At most `WIKI_CHANGE_LIST_LIMIT` paths per kind, in path order. */
+  readonly paths: {
+    readonly added: readonly string[];
+    readonly changed: readonly string[];
+    readonly deleted: readonly string[];
+    readonly renamed: readonly { readonly from: string; readonly to: string }[];
+  };
+}
+
+export const WIKI_CHANGE_LIST_LIMIT = 50;
+
+export interface WikiRefreshReport {
+  readonly mode: WikiRefreshMode;
+  /** The published generation this one was compared with. */
+  readonly base: { readonly generationId: string; readonly sha: string } | null;
+  /** Why no comparison was possible, when mode is `initial` despite earlier generations. */
+  readonly baseUnavailable?: string;
+  readonly changes: WikiPathChanges | null;
+  /** Pages of the base generation that this generation no longer has. */
+  readonly removedPages: readonly {
+    readonly pageId: string;
+    readonly slug: string;
+    readonly title: string;
+  }[];
+  /** Filled in when pages are decided: how many were reused or written, and why. */
+  readonly pages?: {
+    readonly reused: number;
+    readonly regenerated: number;
+    readonly reasons: Readonly<Partial<Record<WikiRefreshReason, number>>>;
+  };
+}
+
 export interface WikiPlan extends WikiPlanReport {
   readonly repositoryId: string;
   readonly sha: string;

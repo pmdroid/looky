@@ -349,6 +349,39 @@ export const migrations: readonly Migration[] = [
       DELETE FROM wiki_search_generations WHERE generation_id = old.id;
     END;`,
   },
+  {
+    // Incremental wiki refresh (PAS-998). A generation records the indexed
+    // files it was planned from (`wiki_generation_files`), so a later commit
+    // can be compared with it even after index retention deleted the build,
+    // and the published generation it refreshed from. Pages record the
+    // sha-neutral key of their inputs, the blobs they inspected and their
+    // structural dependencies, so reuse is verified against the new commit
+    // rather than assumed. Documentation search is the PAS-999 index of
+    // version 7. Reader leases keep a retired generation readable until the
+    // reader is done.
+    version: 8,
+    sql: `ALTER TABLE wiki_generations ADD COLUMN base_generation_id TEXT;
+    ALTER TABLE wiki_generations ADD COLUMN refresh TEXT;
+    ALTER TABLE wiki_pages ADD COLUMN input_key TEXT;
+    ALTER TABLE wiki_pages ADD COLUMN inspected TEXT;
+    ALTER TABLE wiki_pages ADD COLUMN dependencies TEXT;
+    ALTER TABLE wiki_pages ADD COLUMN refresh_reason TEXT;
+
+    CREATE TABLE wiki_generation_files (
+      generation_id TEXT NOT NULL REFERENCES wiki_generations (id) ON DELETE CASCADE,
+      path TEXT NOT NULL,
+      blob_oid TEXT NOT NULL,
+      PRIMARY KEY (generation_id, path)
+    ) STRICT;
+
+    CREATE TABLE wiki_leases (
+      id TEXT PRIMARY KEY NOT NULL,
+      generation_id TEXT NOT NULL REFERENCES wiki_generations (id) ON DELETE CASCADE,
+      acquired_at TEXT NOT NULL,
+      expires_at INTEGER NOT NULL
+    ) STRICT;
+    CREATE INDEX wiki_leases_generation ON wiki_leases (generation_id, expires_at);`,
+  },
 ];
 
 export function schemaVersion(db: Database): number {

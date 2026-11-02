@@ -172,7 +172,9 @@ describe("generated wiki model", () => {
       .all()
       .map((row) => row.name);
     expect(tables).toEqual([
+      "wiki_generation_files",
       "wiki_generations",
+      "wiki_leases",
       "wiki_page_bodies",
       "wiki_page_drafts",
       "wiki_page_links",

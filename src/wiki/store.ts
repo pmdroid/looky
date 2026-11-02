@@ -26,6 +26,8 @@ import {
   type WikiPageState,
   type WikiPlan,
   type WikiPlanReport,
+  type WikiRefreshReason,
+  type WikiRefreshReport,
   type WikiSourceRef,
   type WikiUsage,
 } from "./model";
@@ -76,6 +78,10 @@ export interface WikiGenerationRecord extends WikiScope {
   readonly budget: Readonly<Record<string, unknown>> | null;
   /** What it spent so far, once it started. */
   readonly usage: WikiUsage | null;
+  /** The published generation this one refreshed from, if any. */
+  readonly baseGenerationId: string | null;
+  /** Path changes since the base, removed pages and reuse decisions. Null before migration 7. */
+  readonly refresh: WikiRefreshReport | null;
 }
 
 interface GenerationRow {
@@ -99,6 +105,8 @@ interface GenerationRow {
   retired_at: string | null;
   budget: string | null;
   usage: string | null;
+  base_generation_id: string | null;
+  refresh: string | null;
 }
 
 function toGeneration(row: GenerationRow): WikiGenerationRecord {
@@ -123,7 +131,33 @@ function toGeneration(row: GenerationRow): WikiGenerationRecord {
     retiredAt: row.retired_at,
     budget: row.budget === null ? null : (JSON.parse(row.budget) as Record<string, unknown>),
     usage: row.usage === null ? null : (JSON.parse(row.usage) as WikiUsage),
+    baseGenerationId: row.base_generation_id,
+    refresh: row.refresh === null ? null : (JSON.parse(row.refresh) as WikiRefreshReport),
   };
+}
+
+/**
+ * What a page's content depends on, beyond its planned and cited sources.
+ * Recorded so a later refresh can tell whether the page is affected.
+ */
+export interface WikiPageDependencies {
+  /** Writer fingerprint that produced or would produce the body. */
+  readonly writerKey: string;
+  /**
+   * Hash of the indexed files in the page's structural scope: every file
+   * under a module's directory, every file of the commit for the overview and
+   * architecture pages. Changes there invalidate the page even if no planned
+   * source changed.
+   */
+  readonly structureKey: string;
+  readonly structureFiles: number;
+  /** Neighbouring pages the body may link to, as slug and title. */
+  readonly neighbours: readonly string[];
+  /**
+   * Navigation pages only: the input keys of the child and linked pages they
+   * describe. A changed child changes the navigation page's key.
+   */
+  readonly dependsOn?: readonly string[];
 }
 
 export interface WikiPageRecord {
@@ -146,6 +180,13 @@ export interface WikiPageRecord {
   readonly draftKey: string | null;
   /** What writing this page spent; zero calls when a cached draft was reused. */
   readonly usage: (WikiUsage & { readonly reused?: boolean }) | null;
+  /** Sha-neutral key of every input the page body depends on. */
+  readonly inputKey: string | null;
+  /** Blobs the body was written from. Null when unknown, which blocks reuse. */
+  readonly inspected: readonly InspectedBlob[] | null;
+  readonly dependencies: WikiPageDependencies | null;
+  /** Why the page was reused or written in this generation. */
+  readonly refreshReason: WikiRefreshReason | null;
 }
 
 interface PageRow {
@@ -166,6 +207,10 @@ interface PageRow {
   updated_at: string;
   draft_key: string | null;
   usage: string | null;
+  input_key: string | null;
+  inspected: string | null;
+  dependencies: string | null;
+  refresh_reason: WikiRefreshReason | null;
 }
 
 function toPage(row: PageRow): WikiPageRecord {
@@ -187,6 +232,11 @@ function toPage(row: PageRow): WikiPageRecord {
     updatedAt: row.updated_at,
     draftKey: row.draft_key,
     usage: row.usage === null ? null : (JSON.parse(row.usage) as WikiUsage),
+    inputKey: row.input_key,
+    inspected: row.inspected === null ? null : (JSON.parse(row.inspected) as InspectedBlob[]),
+    dependencies:
+      row.dependencies === null ? null : (JSON.parse(row.dependencies) as WikiPageDependencies),
+    refreshReason: row.refresh_reason,
   };
 }
 
@@ -366,6 +416,7 @@ export function createWikiGeneration(
   db: Database,
   plan: WikiPlan,
   generator: WikiGeneratorConfig["generator"],
+  refresh?: WikiRefreshReport,
 ): { readonly created: boolean; readonly generation: WikiGenerationRecord } {
   validateWikiPlan(plan);
   const config: WikiGeneratorConfig = { limits: plan.limits, generator };
@@ -386,8 +437,9 @@ export function createWikiGeneration(
       const report: WikiPlanReport = { coverage: plan.coverage, disclosures: plan.disclosures };
       db.query(
         `INSERT INTO wiki_generations (id, repository_id, sha, index_key, index_build_id,
-           generator_key, generator_config, plan_report, page_count, state, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'queued', ?, ?)`,
+           generator_key, generator_config, plan_report, page_count, state, created_at, updated_at,
+           base_generation_id, refresh)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?)`,
       ).run(
         id,
         scope.repositoryId,
@@ -400,7 +452,15 @@ export function createWikiGeneration(
         plan.pages.length,
         timestamp,
         timestamp,
+        refresh?.base?.generationId ?? null,
+        refresh === undefined ? null : JSON.stringify(refresh),
       );
+      // The indexed files the plan was read from, kept with the generation so a
+      // later commit can be compared with it after the index build is collected.
+      db.query(
+        `INSERT INTO wiki_generation_files (generation_id, path, blob_oid)
+         SELECT ?, path, blob_oid FROM index_files WHERE build_id = ? AND status = 'indexed'`,
+      ).run(id, plan.indexBuildId);
       const insertPage = db.query(
         `INSERT INTO wiki_pages (generation_id, page_id, concept_key, slug, kind, title,
            description, parent_page_id, depth, ordinal, scope_path, state, unavailable_reason,
@@ -529,6 +589,49 @@ export function recordWikiPageUsage(
     record.usage === undefined ? null : JSON.stringify(record.usage),
     generationId,
     pageId,
+  );
+}
+
+/**
+ * Record the sha-neutral input key, dependencies and refresh decision of a
+ * page before it is written or reused. Allowed in any state.
+ */
+export function recordWikiPageInputs(
+  db: Database,
+  generationId: string,
+  pageId: string,
+  record: {
+    readonly inputKey: string;
+    readonly dependencies: WikiPageDependencies;
+    readonly refreshReason: WikiRefreshReason;
+  },
+): void {
+  db.query(
+    `UPDATE wiki_pages SET input_key = ?, dependencies = ?, refresh_reason = ?
+     WHERE generation_id = ? AND page_id = ?`,
+  ).run(
+    record.inputKey,
+    JSON.stringify(record.dependencies),
+    record.refreshReason,
+    generationId,
+    pageId,
+  );
+}
+
+/** Add the page reuse decisions to a generation's refresh report. */
+export function recordWikiRefreshPages(
+  db: Database,
+  generationId: string,
+  pages: NonNullable<WikiRefreshReport["pages"]>,
+): void {
+  const generation = getWikiGeneration(db, generationId);
+  if (!generation) return;
+  const refresh: WikiRefreshReport = generation.refresh
+    ? { ...generation.refresh, pages }
+    : { mode: "initial", base: null, changes: null, removedPages: [], pages };
+  db.query("UPDATE wiki_generations SET refresh = ? WHERE id = ?").run(
+    JSON.stringify(refresh),
+    generationId,
   );
 }
 
@@ -682,6 +785,8 @@ export function storeWikiPageBody(
     readonly provenance: WikiPageProvenance;
     readonly draftKey?: string;
     readonly usage?: WikiUsage & { readonly reused?: boolean };
+    /** Every blob the body was written from; reuse is refused for pages without it. */
+    readonly inspected?: readonly InspectedBlob[];
   },
 ): WikiPageRecord {
   if (input.body.trim().length === 0) throw new WikiIntegrityError(["page body is empty"]);
@@ -710,9 +815,15 @@ export function storeWikiPageBody(
       );
       insertSources(db, input.generationId, input.pageId, "cited", input.citations);
       db.query(
-        `UPDATE wiki_pages SET state = 'ready', error_message = NULL, updated_at = ?
+        `UPDATE wiki_pages SET state = 'ready', error_message = NULL, updated_at = ?,
+           inspected = coalesce(?, inspected)
          WHERE generation_id = ? AND page_id = ?`,
-      ).run(timestamp, input.generationId, input.pageId);
+      ).run(
+        timestamp,
+        input.inspected === undefined ? null : JSON.stringify(input.inspected),
+        input.generationId,
+        input.pageId,
+      );
       recordWikiPageUsage(db, input.generationId, input.pageId, {
         ...(input.draftKey !== undefined ? { draftKey: input.draftKey } : {}),
         ...(input.usage !== undefined ? { usage: input.usage } : {}),
@@ -794,7 +905,69 @@ export function wikiIntegrityProblems(db: Database, generationId: string): strin
       }
     }
   }
+  problems.push(...mixedRevisionProblems(db, generation, byId));
   return problems;
+}
+
+/**
+ * Evidence of another commit inside a generation: a planned, cited or
+ * inspected blob that is not the blob indexed at the generation's commit, or
+ * a body whose provenance names another commit. Generations stored before
+ * migration 7 have no file manifest and are not checked.
+ */
+function mixedRevisionProblems(
+  db: Database,
+  generation: WikiGenerationRecord,
+  byId: ReadonlyMap<string, PageRow>,
+): string[] {
+  const files = wikiGenerationFiles(db, generation.id);
+  if (files.size === 0) return [];
+  const problems: string[] = [];
+  const slug = (pageId: string) => byId.get(pageId)?.slug ?? pageId;
+  const sources = db
+    .query<{ page_id: string; role: string; path: string; blob_oid: string }, [string]>(
+      "SELECT page_id, role, path, blob_oid FROM wiki_page_sources WHERE generation_id = ?",
+    )
+    .all(generation.id);
+  for (const source of sources) {
+    if (files.get(source.path) !== source.blob_oid) {
+      problems.push(
+        `page ${slug(source.page_id)} has a ${source.role} source ${source.path} from another commit`,
+      );
+    }
+  }
+  for (const page of byId.values()) {
+    if (page.inspected === null) continue;
+    for (const blob of JSON.parse(page.inspected) as InspectedBlob[]) {
+      if (files.get(blob.path) !== blob.blobOid) {
+        problems.push(`page ${page.slug} was written from ${blob.path} of another commit`);
+      }
+    }
+  }
+  const provenance = db
+    .query<{ page_id: string; provenance: string }, [string]>(
+      "SELECT page_id, provenance FROM wiki_page_bodies WHERE generation_id = ?",
+    )
+    .all(generation.id);
+  for (const row of provenance) {
+    const sha = (JSON.parse(row.provenance) as WikiPageProvenance).sha;
+    if (sha !== undefined && sha !== generation.sha) {
+      problems.push(`page ${slug(row.page_id)} was generated for commit ${String(sha)}`);
+    }
+  }
+  return problems;
+}
+
+/** Path → blob of every indexed file a generation was planned from. Empty before migration 7. */
+export function wikiGenerationFiles(db: Database, generationId: string): Map<string, string> {
+  return new Map(
+    db
+      .query<{ path: string; blob_oid: string }, [string]>(
+        "SELECT path, blob_oid FROM wiki_generation_files WHERE generation_id = ?",
+      )
+      .all(generationId)
+      .map((row) => [row.path, row.blob_oid]),
+  );
 }
 
 /** Internal page links in a stored body, written as `[Title](wiki:slug)`. */
@@ -852,6 +1025,21 @@ export function publishWikiGeneration(db: Database, generationId: string): WikiG
 export type WikiStatusState = "unavailable" | WikiGenerationState;
 
 export interface WikiStatus extends WikiScope {
+  /** The commit the caller selected. Equal to `sha`. */
+  readonly selectedSha: string;
+  /**
+   * The commit of the content a reader can see for this selection: the
+   * selected commit when a generation of it is published, otherwise the
+   * commit of the historical generation in `stale`, otherwise null.
+   */
+  readonly generatedSha: string | null;
+  /**
+   * `current` when a generation of exactly this scope is published. `stale`
+   * when only another commit or configuration has a published wiki, which is
+   * readable only as historical content pinned to its own commit. `none`
+   * otherwise.
+   */
+  readonly freshness: "current" | "stale" | "none";
   /**
    * `ready` only for a published generation of exactly this scope. Otherwise
    * the latest attempt's state, or `unavailable` when there was none.
@@ -876,11 +1064,14 @@ export function wikiStatus(db: Database, scope: WikiScope): WikiStatus {
   const latest = findGeneration(db, scope, "1 = 1");
   const base = {
     ...scope,
+    selectedSha: scope.sha,
+    generatedSha: null as string | null,
+    freshness: "none" as WikiStatus["freshness"],
     ...(ready ? { ready } : {}),
     ...(active ? { active } : {}),
     ...(latest ? { latest } : {}),
   };
-  if (ready) return { ...base, state: "ready" };
+  if (ready) return { ...base, generatedSha: ready.sha, freshness: "current", state: "ready" };
   const staleRow = db
     .query<GenerationRow, [string]>(
       `SELECT * FROM wiki_generations
@@ -892,6 +1083,8 @@ export function wikiStatus(db: Database, scope: WikiScope): WikiStatus {
   const withStale = stale
     ? {
         ...base,
+        generatedSha: stale.sha,
+        freshness: "stale" as const,
         stale: {
           generation: stale,
           reasons: [
@@ -925,6 +1118,111 @@ export function wikiPageCounts(
 
 // ---------------------------------------------------------------------------
 // Authorized reads
+
+/**
+ * `current`: the published generation serving its own scope under the
+ * caller's index and generator keys. `historical`: anything else that is still
+ * stored, such as a generation replaced by a newer one of its scope, retired
+ * by retention, or made under another configuration. Historical content is
+ * only ever shown pinned to its own commit.
+ */
+export type WikiCurrency = "current" | "historical";
+
+export function wikiCurrency(
+  generation: WikiGenerationRecord,
+  keys?: { readonly indexKey: string; readonly generatorKey: string },
+): WikiCurrency {
+  const current =
+    generation.state === "ready" &&
+    generation.retiredAt === null &&
+    (keys === undefined ||
+      (generation.indexKey === keys.indexKey && generation.generatorKey === keys.generatorKey));
+  return current ? "current" : "historical";
+}
+
+/** A read named one commit but the generation belongs to another. */
+export class WikiRevisionMismatchError extends Error {
+  override readonly name = "WikiRevisionMismatchError";
+}
+
+export interface PinnedWikiPage {
+  /** The commit every citation and body of the response belongs to. */
+  readonly sha: string;
+  readonly generationId: string;
+  readonly currency: WikiCurrency;
+  readonly resolution: SlugResolution;
+  /** The page content when the slug resolved to a page or a redirect. */
+  readonly content?: WikiPageContent;
+}
+
+/**
+ * Read one page of a published generation, pinned to the commit the caller
+ * names. A generation of another commit is refused rather than served under
+ * the wrong revision; a superseded or differently configured generation is
+ * returned explicitly as `historical`. Unpublished generations are not read.
+ */
+export function pinnedWikiPage(
+  db: Database,
+  request: {
+    readonly repositoryId: string;
+    readonly sha: string;
+    readonly generationId: string;
+    readonly slug: string;
+    readonly keys?: { readonly indexKey: string; readonly generatorKey: string };
+  },
+): PinnedWikiPage | undefined {
+  const generation = authorizedGeneration(db, request.repositoryId, request.generationId);
+  if (!generation || generation.state !== "ready") return undefined;
+  if (generation.sha !== request.sha) {
+    throw new WikiRevisionMismatchError(
+      `Wiki generation ${generation.id} belongs to commit ${generation.sha}, not ${request.sha}`,
+    );
+  }
+  const resolution = resolveWikiSlug(db, request);
+  const page =
+    resolution.outcome === "page" || resolution.outcome === "redirect"
+      ? resolution.page
+      : undefined;
+  const content = page ? wikiPage(db, { ...request, pageId: page.pageId }) : undefined;
+  return {
+    sha: generation.sha,
+    generationId: generation.id,
+    currency: wikiCurrency(generation, request.keys),
+    resolution,
+    ...(content ? { content } : {}),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Reader leases
+
+/**
+ * Pin a published generation, current or retired, while a reader uses it.
+ * Retention never deletes a generation with an unexpired lease. Undefined
+ * when the generation is gone or was never published.
+ */
+export function acquireWikiLease(
+  db: Database,
+  generationId: string,
+  ttlMs: number,
+): { readonly leaseId: string; readonly expiresAt: number } | undefined {
+  return db
+    .transaction(() => {
+      const generation = getWikiGeneration(db, generationId);
+      if (!generation || generation.state !== "ready") return undefined;
+      const leaseId = `wlease_${crypto.randomUUID()}`;
+      const expiresAt = Date.now() + ttlMs;
+      db.query(
+        "INSERT INTO wiki_leases (id, generation_id, acquired_at, expires_at) VALUES (?, ?, ?, ?)",
+      ).run(leaseId, generationId, now(), expiresAt);
+      return { leaseId, expiresAt };
+    })
+    .immediate();
+}
+
+export function releaseWikiLease(db: Database, leaseId: string): void {
+  db.query("DELETE FROM wiki_leases WHERE id = ?").run(leaseId);
+}
 
 /** The generation, refused if it belongs to another repository. */
 export function authorizedGeneration(
@@ -1341,8 +1639,13 @@ export function collectWikiGarbage(
              ) WHERE rank > ?2)`,
         )
         .run(now(), retention.retainReadyPerRepository).changes;
+      // Expired leases no longer protect anything; live ones keep their generation.
+      db.query("DELETE FROM wiki_leases WHERE expires_at <= ?").run(Date.now());
       const deletedRetired = db
-        .query("DELETE FROM wiki_generations WHERE state = 'ready' AND retired_at IS NOT NULL")
+        .query(
+          `DELETE FROM wiki_generations WHERE state = 'ready' AND retired_at IS NOT NULL
+             AND NOT EXISTS (SELECT 1 FROM wiki_leases l WHERE l.generation_id = wiki_generations.id)`,
+        )
         .run().changes;
       const deletedFailed = db
         .query(
