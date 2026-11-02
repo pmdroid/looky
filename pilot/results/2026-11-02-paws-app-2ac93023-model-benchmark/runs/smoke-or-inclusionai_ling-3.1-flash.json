@@ -1,0 +1,90 @@
+{
+  "run": "smoke-or-inclusionai_ling-3.1-flash",
+  "model": "inclusionai/ling-3.1-flash",
+  "effort": null,
+  "proxy": "http://127.0.0.1:7400",
+  "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+  "lookyCommit": "1c806ba41800b53824f01cf2bfd920d14102277c",
+  "indexWaitMs": 1,
+  "rows": [
+    {
+      "run": "smoke-or-inclusionai_ling-3.1-flash",
+      "q": "q01",
+      "mode": "fast",
+      "model": "inclusionai/ling-3.1-flash",
+      "totalMs": 30006,
+      "modelMs": 29915,
+      "nonModelMs": 91,
+      "calls": [
+        {
+          "at": "2026-11-02T03:10:37.343Z",
+          "kind": "synthesis",
+          "maxTokens": 1500,
+          "ms": 29915,
+          "networkError": "AbortError"
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "timed_out",
+        "requestId": "43e5bfea-0fed-460d-bf39-53a741de82de",
+        "mode": {
+          "requested": "fast",
+          "executed": "fast"
+        },
+        "limitations": [],
+        "limitMs": 30000,
+        "usage": {
+          "retrievalPasses": 2,
+          "sourceReads": 5,
+          "sourceBytes": 13768,
+          "modelCalls": 1,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "elapsedMs": 30002
+        }
+      }
+    },
+    {
+      "run": "smoke-or-inclusionai_ling-3.1-flash",
+      "q": "q01",
+      "mode": "deep",
+      "model": "inclusionai/ling-3.1-flash",
+      "totalMs": 13912,
+      "modelMs": 13704,
+      "nonModelMs": 208,
+      "calls": [
+        {
+          "at": "2026-11-02T03:11:07.467Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 13704,
+          "inputTokens": 4626,
+          "outputTokens": 600,
+          "cachedTokens": 0,
+          "reasoningTokens": 553,
+          "finishReason": "length",
+          "contentChars": null,
+          "reasoningChars": 2166,
+          "extraKeys": ["provider", "service_tier"],
+          "meterHeaders": {},
+          "estUsd": 0.000482,
+          "spentUsd": 0.000482
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "unavailable",
+        "requestId": "91ee3432-9bb4-4eae-b718-74de71f728ca",
+        "mode": {
+          "requested": "deep",
+          "executed": "deep"
+        },
+        "limitations": [],
+        "message": "No configured model provider could serve the request. ocgo: unavailable (Provider ocgo returned a response without text)",
+        "retryable": true
+      }
+    }
+  ]
+}

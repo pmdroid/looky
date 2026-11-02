@@ -1,0 +1,433 @@
+{
+  "run": "smoke-or-low-z-ai_glm-5.3-flash",
+  "model": "z-ai/glm-5.3-flash",
+  "effort": "low",
+  "proxy": "http://127.0.0.1:7400",
+  "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+  "lookyCommit": "1c806ba41800b53824f01cf2bfd920d14102277c",
+  "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+  "indexWaitMs": 1,
+  "rows": [
+    {
+      "run": "smoke-or-low-z-ai_glm-5.3-flash",
+      "q": "q01",
+      "mode": "fast",
+      "model": "z-ai/glm-5.3-flash",
+      "totalMs": 8992,
+      "modelMs": 8889,
+      "nonModelMs": 103,
+      "calls": [
+        {
+          "at": "2026-11-02T03:18:24.515Z",
+          "kind": "synthesis",
+          "maxTokens": 1500,
+          "status": 200,
+          "ms": 5091,
+          "inputTokens": 4609,
+          "outputTokens": 596,
+          "cachedTokens": 0,
+          "reasoningTokens": 6,
+          "finishReason": "stop",
+          "contentChars": 2330,
+          "reasoningChars": 28,
+          "extraKeys": ["provider", "service_tier"],
+          "meterHeaders": {},
+          "estUsd": 0.000732,
+          "spentUsd": 0.084311
+        },
+        {
+          "at": "2026-11-02T03:18:29.608Z",
+          "kind": "repair",
+          "maxTokens": 904,
+          "status": 200,
+          "ms": 3798,
+          "inputTokens": 4638,
+          "outputTokens": 180,
+          "cachedTokens": 3840,
+          "reasoningTokens": 0,
+          "finishReason": "stop",
+          "contentChars": 695,
+          "reasoningChars": null,
+          "extraKeys": ["provider", "service_tier"],
+          "meterHeaders": {},
+          "estUsd": 0.000265,
+          "spentUsd": 0.084576
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "answered",
+        "requestId": "8ee5f9c4-ac9f-44f6-9b9f-a2323d697b39",
+        "mode": {
+          "requested": "fast",
+          "executed": "fast"
+        },
+        "limitations": [
+          "Pinned to 2ac93023d31b, resolved from bench when the request started. Later movement of bench is not reflected.",
+          "The index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them."
+        ],
+        "answer": {
+          "text": "On startup, Paws walks every work item in the startup states (`recoverOnStartup` in `src/db/recovery.ts`) and applies `decideStartup` (`src/core/recovery.ts`) to decide, per item, whether to resume it, re-verify it, keep its merge-queue place, or ask the user what to do (`src/db/recovery.ts:46-99`)(`src/core/recovery.ts:84-106`). A runner lease also gets its downtime shifted by `offlineBudgetMs`, so Paws downtime does not count against an open lease (`src/db/recovery.ts:41-52`).\n\nThis is based on 5 source ranges in 5 files, not the whole repository. Asking again with mode \"deep\" can follow the remaining leads.",
+          "outcome": "supported",
+          "caveats": [
+            "The answer described a reason that no cited documentation states, so the rationale is treated as unknown.",
+            "The intent or rationale is not documented in the inspected evidence.",
+            "Research only inspected 5 source ranges; supporting functions like `applyDecision`, `decideStartup` internals for `applyDecision` behavior, and `STARTUP_STATES` were not read",
+            "README.md:1-75 mentions `blocks`, `checks`, `failedChecks`; Fast did not check these against code at this revision.",
+            "Based on 5 inspected source ranges in 5 files at commit 2ac93023d31b; the rest of the repository was not read for this answer."
+          ]
+        },
+        "evidence": [
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 46,
+            "endLine": 99,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 84,
+            "endLine": 106,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 41,
+            "endLine": 52,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          }
+        ],
+        "revision": {
+          "repositoryId": "paws-app",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "ref": "bench"
+        },
+        "index": {
+          "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+        },
+        "coverage": {
+          "indexedFiles": 1775,
+          "excludedFiles": 18,
+          "excludedByReason": {
+            "binary": 9,
+            "generated": 3,
+            "long_lines": 1,
+            "secret_content": 4,
+            "secret_path": 1
+          }
+        },
+        "scope": {
+          "source": "committed",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "uncommittedChanges": "none"
+        },
+        "usage": {
+          "retrievalPasses": 2,
+          "sourceReads": 5,
+          "sourceBytes": 13768,
+          "modelCalls": 2,
+          "inputTokens": 9247,
+          "outputTokens": 776,
+          "elapsedMs": 8987
+        },
+        "providers": ["ocgo"],
+        "suggestedMode": "deep",
+        "suggestedHumanQuestion": {
+          "question": "What is the intended reason behind this behavior: What does Paws do with work items that were in flight when the process starts up again?",
+          "reason": "Neither the code nor the documentation inspected at 2ac93023d31b states the intent or rationale."
+        }
+      }
+    },
+    {
+      "run": "smoke-or-low-z-ai_glm-5.3-flash",
+      "q": "q01",
+      "mode": "deep",
+      "model": "z-ai/glm-5.3-flash",
+      "totalMs": 27682,
+      "modelMs": 27424,
+      "nonModelMs": 258,
+      "calls": [
+        {
+          "at": "2026-11-02T03:18:33.618Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 3686,
+          "inputTokens": 3975,
+          "outputTokens": 353,
+          "cachedTokens": 0,
+          "reasoningTokens": 29,
+          "finishReason": "stop",
+          "contentChars": 1314,
+          "reasoningChars": 113,
+          "extraKeys": ["provider", "service_tier"],
+          "meterHeaders": {},
+          "estUsd": 0.000583,
+          "spentUsd": 0.085159
+        },
+        {
+          "at": "2026-11-02T03:18:37.353Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 7208,
+          "inputTokens": 4617,
+          "outputTokens": 407,
+          "cachedTokens": 0,
+          "reasoningTokens": 45,
+          "finishReason": "stop",
+          "contentChars": 1478,
+          "reasoningChars": 188,
+          "extraKeys": ["provider", "service_tier"],
+          "meterHeaders": {},
+          "estUsd": 0.000896,
+          "spentUsd": 0.086055
+        },
+        {
+          "at": "2026-11-02T03:18:44.567Z",
+          "kind": "synthesis",
+          "maxTokens": 3620,
+          "status": 200,
+          "ms": 11850,
+          "inputTokens": 14031,
+          "outputTokens": 1025,
+          "cachedTokens": 0,
+          "reasoningTokens": 9,
+          "finishReason": "stop",
+          "contentChars": 3712,
+          "reasoningChars": 34,
+          "extraKeys": ["provider", "service_tier"],
+          "meterHeaders": {},
+          "estUsd": 0.000494,
+          "spentUsd": 0.086549
+        },
+        {
+          "at": "2026-11-02T03:18:56.420Z",
+          "kind": "check",
+          "maxTokens": 6215,
+          "status": 200,
+          "ms": 4680,
+          "inputTokens": 15162,
+          "outputTokens": 214,
+          "cachedTokens": 0,
+          "reasoningTokens": 219,
+          "finishReason": "stop",
+          "contentChars": 17,
+          "reasoningChars": 856,
+          "extraKeys": ["provider", "service_tier"],
+          "meterHeaders": {},
+          "estUsd": 0.000452,
+          "spentUsd": 0.087001
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "answered",
+        "requestId": "9f7eb466-73bd-4fb2-baab-8e0f19c5a062",
+        "mode": {
+          "requested": "deep",
+          "executed": "deep"
+        },
+        "limitations": [
+          "Pinned to 2ac93023d31b, resolved from bench when the request started. Later movement of bench is not reflected.",
+          "The index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them."
+        ],
+        "answer": {
+          "text": "On startup, Paws walks every work item that was in flight (states `running`, `verifying`, `recovering`, `merge_queue`, plus `awaiting_input`) and decides, per item, whether to resume it, re-verify it, keep its merge-queue place, or ask in Linear whether to restart it.\n\nThe entry point is `recoverOnStartup` in `src/db/recovery.ts` (`src/db/recovery.ts:46-101`). Inside one immediate transaction it: (1) shifts runner leases forward so Paws downtime up to `offlineBudgetMs` does not count against an open runner lease [E1:44,52]; (2) lists all items in the startup states (`src/db/recovery.ts:53`, `src/db/recovery.ts:31-37`); and (3) for each item, decides and applies a `StartupDecision`.\n\nThe decision logic lives in `decideStartup` (`src/core/recovery.ts`) (`src/core/recovery.ts:84-106`):\n\n1. **Merge queue** — an item waiting in the merge queue keeps its place (`keep_place`). The comment says its merge job first asks GitHub whether a merge call that may have been in flight went through [E4:79-80,96]. `mergeCallInFlight` reads the `merge_call` table for the item (`src/db/remote-merges.ts:78-80`). If the run was still active in the lane (cut short mid-work), the item re-verifies instead (`src/core/recovery.ts:94-95`).\n2. **Merge was in progress** (per checkpoint) — re-verify (`src/core/recovery.ts:97`).\n3. **Runner still holds the work** — a verifying item whose runner still holds its Closeout review re-verifies and attaches to that work (`src/core/recovery.ts:98`, `src/core/recovery.ts:81-82`); other states resume in a fresh session with `reattach: true`, reattaching to the same runner commands (`src/core/recovery.ts:99-100`).\n4. **Crash-loop guard** — if the item was already resumed once (`recoveryAttempts >= 1`) and the previous resume is recent (`sinceResumeMs < RESUME_AGAIN_AFTER_MS`), it instead raises an `ask_restart` question in Linear (`src/core/recovery.ts:101-102`, `src/core/recovery.test.ts:82-109`).\n5. **Otherwise** — a verifying item with a verification candidate re-verifies; everything else resumes once in a fresh session, from its checkpoint or, without one, from its branch (`src/core/recovery.ts:103-105`, `src/core/recovery.ts:76-78`).\n\nBack in `recoverOnStartup`, a decision is only applied if nothing already enqueued covers it: skips include a parked capacity-wait job already pending [E1:62,103-114], a pending answer-resume, a pending transient retry (`src/db/recovery.ts:63-64`), and an existing pending process-restart resume (for `resume` with reattach) or open re-verify (for a verifying re-verify) (`src/db/recovery.ts:76-82`). Resumes are staggered: each resume is scheduled at 5-second spacing (`STARTUP_RESUME_SPACING_MS = 5_000`) so a restart doesn't fire everything at once [E1:55-56,85, E6:39]. `applyDecision` (`src/db/decisions.ts`) dispatches each type — `resume`, `reverify`, `keep_place`, `ask_restart` — to its apply function within the same transaction as the follow-up job (`src/db/decisions.ts:17-48`).\n\nAfter the loop, `awaiting_input` items have their run capacity released, and if any open questions exist a `catchup` job (`startup-questions`) is enqueued once (`src/db/recovery.ts:89-98`).\n\nThe docs agree: \"A restart is safe while work is running… Paws reattaches to the same commands after startup, including in-flight Closeout reviews and answer tasks\" (`README.md:54`). A test fixture confirms items land in `recovering` after shutdown and are recovered by `recoverOnStartup` with staggered resume jobs (`test/startup-resume-stagger.test.ts:150-184`). Separately, `requeueOrphanedWork` re-queues in-flight items nothing is moving, failing closed a merge in progress into a re-verify (`src/db/recovery.ts:218-275`).\n\nThis is based on 19 source ranges in 16 files, and research stopped at the deep limit maxPasses, so other relevant code may not have been inspected.",
+          "outcome": "supported",
+          "caveats": [
+            "Research stopped at maxPasses; the bodies of applyResume/applyReverify/applyKeepPlace/applyAskRestart in src/db/decisions.ts beyond line 49 were not inspected.",
+            "Constants RESUME_AGAIN_AFTER_MS and the details of ask_restart handling are defined outside the inspected ranges.",
+            "Research stopped at the deep limit maxPasses.",
+            "Based on 19 inspected source ranges in 16 files at commit 2ac93023d31b; the rest of the repository was not read for this answer."
+          ]
+        },
+        "evidence": [
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 46,
+            "endLine": 101,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 53,
+            "endLine": 53,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 31,
+            "endLine": 37,
+            "symbol": "ShutdownWipCommit",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 84,
+            "endLine": 106,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/remote-merges.ts",
+            "startLine": 78,
+            "endLine": 80,
+            "symbol": "mergeCallInFlight",
+            "note": "definition of mergeCallInFlight, used in src/db/recovery.ts"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 94,
+            "endLine": 95,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 97,
+            "endLine": 97,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 98,
+            "endLine": 98,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 81,
+            "endLine": 82,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 99,
+            "endLine": 100,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 101,
+            "endLine": 102,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.test.ts",
+            "startLine": 82,
+            "endLine": 109,
+            "note": "call site of decideStartup"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 103,
+            "endLine": 105,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 76,
+            "endLine": 78,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 63,
+            "endLine": 64,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 76,
+            "endLine": 82,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/decisions.ts",
+            "startLine": 17,
+            "endLine": 48,
+            "symbol": "applyDecision",
+            "note": "follow-up: The rest of recoverOnStartup (E1 is truncated at line 115) and how each StartupDecision (resume, reverify, ask_restart, merge-queue handling) is applied to the "
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 89,
+            "endLine": 98,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "README.md",
+            "startLine": 54,
+            "endLine": 54,
+            "note": "matches the question"
+          },
+          {
+            "path": "test/startup-resume-stagger.test.ts",
+            "startLine": 150,
+            "endLine": 184,
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 218,
+            "endLine": 275,
+            "symbol": "requeueOrphanedWork",
+            "note": "follow-up: Exported alongside recoverOnStartup; may handle in-flight runner jobs/leases at startup and is unexamined."
+          }
+        ],
+        "revision": {
+          "repositoryId": "paws-app",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "ref": "bench"
+        },
+        "index": {
+          "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+        },
+        "coverage": {
+          "indexedFiles": 1775,
+          "excludedFiles": 18,
+          "excludedByReason": {
+            "binary": 9,
+            "generated": 3,
+            "long_lines": 1,
+            "secret_content": 4,
+            "secret_path": 1
+          }
+        },
+        "scope": {
+          "source": "committed",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "uncommittedChanges": "none"
+        },
+        "usage": {
+          "retrievalPasses": 14,
+          "sourceReads": 19,
+          "sourceBytes": 40555,
+          "modelCalls": 4,
+          "inputTokens": 37785,
+          "outputTokens": 1999,
+          "elapsedMs": 27680
+        },
+        "providers": ["ocgo"]
+      }
+    }
+  ]
+}

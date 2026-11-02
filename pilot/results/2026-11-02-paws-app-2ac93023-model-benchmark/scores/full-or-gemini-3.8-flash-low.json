@@ -1,0 +1,227 @@
+{
+  "run": "full-or-gemini-3.8-flash-low",
+  "scale": "0 wrong/missing, 1 partly, 2 good; useful = usable by an engineer without rewriting",
+  "scores": [
+    {
+      "q": "q01",
+      "mode": "fast",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Every decideStartup branch, skips, lease shift, stagger and awaiting_input handling, from 5 ranges. Best Fast q01 of the three."
+    },
+    {
+      "q": "q01",
+      "mode": "deep",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Complete and well structured; 5 s stagger with the constant."
+    },
+    {
+      "q": "q02",
+      "mode": "fast",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "ask_restart condition and precedence right; misses applyAskRestart effects, says so."
+    },
+    {
+      "q": "q02",
+      "mode": "deep",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "applyAskRestart steps incl. no-session failure and question text; window value marked unseen."
+    },
+    {
+      "q": "q03",
+      "mode": "fast",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "prepareShutdown sequence correct."
+    },
+    {
+      "q": "q03",
+      "mode": "deep",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Adds commit policy and wiring in src/index.ts."
+    },
+    {
+      "q": "q04",
+      "mode": "fast",
+      "correct": 2,
+      "useful": 1,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Handler pipeline right; says the orchestrator hand-off is not covered."
+    },
+    {
+      "q": "q04",
+      "mode": "deep",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Reaches followUp -> orchestrator.onLinearEvent and reconcile, matching the key."
+    },
+    {
+      "q": "q05",
+      "mode": "fast",
+      "correct": 2,
+      "useful": 1,
+      "clear": 2,
+      "uncertainty": 1,
+      "citations": 2,
+      "isUseful": true,
+      "note": "applyBypasses matching and outcome correct; does not show recoveryOptions; outcome 'supported' is generous."
+    },
+    {
+      "q": "q05",
+      "mode": "deep",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Full path: askCloseoutHelp, approval rows, recoveryOptions, gate options, applyBypasses, summary."
+    },
+    {
+      "q": "q06",
+      "mode": "fast",
+      "correct": 1,
+      "useful": 1,
+      "clear": 1,
+      "uncertainty": 1,
+      "citations": 2,
+      "isUseful": false,
+      "note": "Docs and client validation only; presents 1..720 as the validation for the file too (file parser accepts any int, clamps on read). Raw marker [E2:5,36,79-81] in prose. Outcome 'supported'."
+    },
+    {
+      "q": "q06",
+      "mode": "deep",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "asInt parse, readQueueSettings default and clamp, parseQueueSettings strict. Misses orchestrator fallback."
+    },
+    {
+      "q": "q07",
+      "mode": "fast",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "All three error paths, ladder, pump timer, lane ordering."
+    },
+    {
+      "q": "q07",
+      "mode": "deep",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "As fast plus concurrency 2 and first-attempt-only failure activity."
+    },
+    {
+      "q": "q08",
+      "mode": "fast",
+      "correct": 1,
+      "useful": 0,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": false,
+      "note": "Restates the docs and says the code cannot confirm it. Honest, not useful."
+    },
+    {
+      "q": "q08",
+      "mode": "deep",
+      "correct": 0,
+      "useful": 0,
+      "clear": 2,
+      "uncertainty": 1,
+      "citations": 2,
+      "isUseful": false,
+      "note": "Answers 'Yes, Paws refuses' and misses that [queue], [caps] and others ignore unknown keys; stale-docs trap. Caveat hedges, outcome 'supported'."
+    },
+    {
+      "q": "q09",
+      "mode": "fast",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Mechanism and 'rationale not stated'; outcome label 'supported' although rationale unknown."
+    },
+    {
+      "q": "q09",
+      "mode": "deep",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Constant, nextResumeAt, no invented reason; good human question."
+    },
+    {
+      "q": "q10",
+      "mode": "fast",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Regex, lowercase, both unclassified cases incl. CLASS_LIMIT."
+    },
+    {
+      "q": "q10",
+      "mode": "deep",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Plus summarizeReviewRounds exclusion and storage."
+    }
+  ],
+  "fabricatedOrCrossRevision": 0
+}

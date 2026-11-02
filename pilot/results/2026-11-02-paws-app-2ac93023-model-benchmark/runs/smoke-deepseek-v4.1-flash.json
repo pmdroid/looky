@@ -1,0 +1,327 @@
+{
+  "run": "smoke-deepseek-v4.1-flash",
+  "model": "deepseek-v4.1-flash",
+  "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+  "lookyCommit": "1c806ba41800b53824f01cf2bfd920d14102277c",
+  "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+  "indexWaitMs": 0,
+  "rows": [
+    {
+      "run": "smoke-deepseek-v4.1-flash",
+      "q": "q01",
+      "mode": "fast",
+      "model": "deepseek-v4.1-flash",
+      "totalMs": 10517,
+      "modelMs": 10455,
+      "nonModelMs": 62,
+      "calls": [
+        {
+          "at": "2026-11-02T02:50:38.118Z",
+          "kind": "synthesis",
+          "maxTokens": 1500,
+          "status": 200,
+          "ms": 10455,
+          "inputTokens": 4806,
+          "outputTokens": 1500,
+          "cachedTokens": 0,
+          "reasoningTokens": 1500,
+          "finishReason": "length",
+          "contentChars": 0,
+          "reasoningChars": 6549,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a2a-7cde-7d58-a71d-9b99b7e8a86d"
+          },
+          "estUsd": 0.003242,
+          "spentUsd": 0.011388
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "failed",
+        "requestId": "b9a96639-9d0e-41f8-9b0c-7a2e1cf1afbb",
+        "mode": {
+          "requested": "fast",
+          "executed": "fast"
+        },
+        "limitations": [],
+        "stage": "answer",
+        "code": "model_output_invalid",
+        "message": "The model reply has no JSON object",
+        "retryable": true,
+        "usage": {
+          "retrievalPasses": 2,
+          "sourceReads": 5,
+          "sourceBytes": 13768,
+          "modelCalls": 1,
+          "inputTokens": 4806,
+          "outputTokens": 1500,
+          "elapsedMs": 10514
+        }
+      }
+    },
+    {
+      "run": "smoke-deepseek-v4.1-flash",
+      "q": "q01",
+      "mode": "deep",
+      "model": "deepseek-v4.1-flash",
+      "totalMs": 81692,
+      "modelMs": 81550,
+      "nonModelMs": 142,
+      "calls": [
+        {
+          "at": "2026-11-02T02:50:48.707Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 6280,
+          "inputTokens": 4136,
+          "outputTokens": 600,
+          "cachedTokens": 0,
+          "reasoningTokens": 478,
+          "finishReason": "length",
+          "contentChars": 466,
+          "reasoningChars": 1886,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a2a-a639-7fbd-b2cc-59a4dd9231bc"
+          },
+          "estUsd": 0.001961,
+          "spentUsd": 0.013348
+        },
+        {
+          "at": "2026-11-02T02:50:54.989Z",
+          "kind": "synthesis",
+          "maxTokens": 3700,
+          "status": 200,
+          "ms": 38423,
+          "inputTokens": 13124,
+          "outputTokens": 3700,
+          "cachedTokens": 0,
+          "reasoningTokens": 3700,
+          "finishReason": "length",
+          "contentChars": 0,
+          "reasoningChars": 15812,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a2a-bebe-7a3a-b4cc-72da8c968f01"
+          },
+          "estUsd": 0.008377,
+          "spentUsd": 0.021726
+        },
+        {
+          "at": "2026-11-02T02:51:33.414Z",
+          "kind": "repair",
+          "maxTokens": 3700,
+          "status": 200,
+          "ms": 21839,
+          "inputTokens": 13153,
+          "outputTokens": 2063,
+          "cachedTokens": 0,
+          "reasoningTokens": 760,
+          "finishReason": "stop",
+          "contentChars": 5046,
+          "reasoningChars": 3081,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a2b-54e4-797c-ab62-e72925cb49b2"
+          },
+          "estUsd": 0.006422,
+          "spentUsd": 0.028147
+        },
+        {
+          "at": "2026-11-02T02:51:55.258Z",
+          "kind": "check",
+          "maxTokens": 1637,
+          "status": 200,
+          "ms": 15008,
+          "inputTokens": 14547,
+          "outputTokens": 1637,
+          "cachedTokens": 0,
+          "reasoningTokens": 1637,
+          "finishReason": "length",
+          "contentChars": 0,
+          "reasoningChars": 6529,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a2b-aa3f-76d9-884c-ed41ffde8b92"
+          },
+          "estUsd": 0.006328,
+          "spentUsd": 0.034476
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "answered",
+        "requestId": "f62234bb-b83a-4a1d-b938-d933d1239579",
+        "mode": {
+          "requested": "deep",
+          "executed": "deep"
+        },
+        "limitations": [
+          "Pinned to 2ac93023d31b, resolved from bench when the request started. Later movement of bench is not reflected.",
+          "The index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them."
+        ],
+        "answer": {
+          "text": "Paws does not blindly restart everything: on startup it walks every work item that was mid-flight and makes a per-item decision, either re-attaching to work that is still alive elsewhere or re-launching it locally.\n\nThe entry point is `recoverOnStartup` in `src/db/recovery.ts`, which runs the whole pass inside one `immediate` transaction (`src/db/recovery.ts:46-51`). It first calls `shiftRunnerLeasesForDowntime` so that Paws' own downtime, up to `offlineBudgetMs`, is not charged against an open runner lease [E1:44,52]. It then loads items in the startup state set — `awaiting_input`, `running`, `verifying`, `recovering` and `merge_queue` — via `listWorkItemsByStates`, which returns them ordered by `created_at, id`, so the pass is deterministic (`src/db/recovery.ts:31-37`, `src/db/recovery.ts:53`, `src/db/items.ts:148-159`).\n\nEach item is handled in this order (`src/db/recovery.ts:57-87`):\n\n1. If `ensureRestartQuestion` says the item needs a restart question, the decision `ask_restart` is recorded and the loop moves on — the choice is put to the user in Linear rather than resumed.\n2. Items with a parked capacity wait (`hasParkedCapacityWait`), a pending answer-driven resume, or a pending transient retry are skipped entirely, because a job for them already exists. The capacity-wait check looks for a pending `start`/`resume`/`reverify` job carrying the item id and a `capacityWait` payload field at the item's current version [E1:62-64,103-113].\n3. Otherwise it gathers facts — whether a runner still holds the work, whether a `merge_call` row exists for the item (i.e. a merge call may have been in flight) (`src/db/remote-merges.ts:78-80`), whether a run is still active, and how long since the last resume — and passes them to `decideStartup`.\n\nThe decision table in `src/core/recovery.ts` is the heart of it (`src/core/recovery.ts:93-105`). States that are not resumable yield `none`. An item in `merge_queue` whose run is not active keeps its place (`keep_place`), annotated with whether a merge call may have been in flight; the merge job is then expected to ask GitHub whether that call went through before moving (`src/db/recovery.ts:42-43`, `src/core/recovery.ts:95-96`). If the checkpoint shows a merge was in progress, or the item is `verifying` while the runner still holds its Closeout review or check run, the answer is `reverify` (`src/core/recovery.ts:97-98`). If the runner holds work in any other state, it resumes a fresh session with `reattach: true` so it can attach to the runner's existing command (`src/core/recovery.ts:99-100`). An item with at least one prior recovery attempt that was resumed recently comes back as `ask_restart` rather than being resumed again — the crash-loop guard — while a verifying item with a verification candidate re-verifies from its checkpoint, and everything else resumes a fresh session from its checkpoint or, without one, from its branch [E4:76-82,101-105].\n\nBefore applying anything, `recoverOnStartup` checks whether the decision is already \"followed\": a reattaching resume with a pending `process_restart` resume, or a re-verify where the runner holds work, the item is `verifying` and an open re-verify exists. Those are left alone so the existing job is not duplicated; only the others go through `applyDecision` (`src/db/recovery.ts:75-86`). Resumes are spread out by assigning `runAt` values spaced `STARTUP_RESUME_SPACING_MS` (5 seconds) apart, so a restart does not fire every resume at once [E6:39, E1:56,85]. The stagger test exercises exactly this: after shutdown the items sit in `recovering`, then `recoverOnStartup` runs and the loop resumes them four at a time under a fake clock (`test/startup-resume-stagger.test.ts:150-184`).\n\nTwo extra things happen at the end of the pass. Every `awaiting_input` item with a `currentRunId` has its run capacity released, and if there were any `awaiting_input` items it enqueues one `catchup` job with reason `open_questions` (deduplicated by a job key containing the timestamp) (`src/db/recovery.ts:89-98`).\n\nThe README frames the user-visible promise: a restart is safe while work is running, runners keep working while Paws is down and retain results until it returns, and Paws reattaches to the same commands after startup, including in-flight Closeout reviews and answer tasks (`README.md:54`). The unit tests in `src/core/recovery.test.ts` pin the individual branches — ask again after one resume, resume again when the earlier resume was long ago, keep place in the merge queue, re-verify when a run was active, re-verify a queued item's cut-short re-check, and leave a parked question alone (`src/core/recovery.test.ts:82-156`).\n\nThis is based on 17 source ranges in 15 files, and research stopped at the deep limit maxPasses, so other relevant code may not have been inspected.",
+          "outcome": "supported",
+          "caveats": [
+            "The research pass hit its deep limit, so `applyDecision`, `ensureRestartQuestion`, `hasPendingAnswerResume`, `hasPendingTransientRetry`, `runActive`, `runnerHoldsWork` and the `RESUMABLE` set were not inspected; how each decision is turned into concrete jobs is therefore not shown here.",
+            "The order in which the checks run and their exact side effects beyond the cited lines may differ from what the summary implies.",
+            "The default value of `offlineBudgetMs` and the exact duration of `RESUME_AGAIN_AFTER_MS` are not visible in the evidence.",
+            "Research stopped at the deep limit maxPasses.",
+            "A Deep research plan could not be read, so planning stopped early.",
+            "The Deep cross-check of this answer against its evidence did not run.",
+            "Based on 17 inspected source ranges in 15 files at commit 2ac93023d31b; the rest of the repository was not read for this answer."
+          ]
+        },
+        "evidence": [
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 46,
+            "endLine": 51,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 31,
+            "endLine": 37,
+            "symbol": "ShutdownWipCommit",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 53,
+            "endLine": 53,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/items.ts",
+            "startLine": 148,
+            "endLine": 159,
+            "symbol": "listWorkItemsByStates",
+            "note": "definition of listInFlightItems, used in src/db/recovery.ts"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 57,
+            "endLine": 87,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/remote-merges.ts",
+            "startLine": 78,
+            "endLine": 80,
+            "symbol": "mergeCallInFlight",
+            "note": "definition of mergeCallInFlight, used in src/db/recovery.ts"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 93,
+            "endLine": 105,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 42,
+            "endLine": 43,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 95,
+            "endLine": 96,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 97,
+            "endLine": 98,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 99,
+            "endLine": 100,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 75,
+            "endLine": 86,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "test/startup-resume-stagger.test.ts",
+            "startLine": 150,
+            "endLine": 184,
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 89,
+            "endLine": 98,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "README.md",
+            "startLine": 54,
+            "endLine": 54,
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.test.ts",
+            "startLine": 82,
+            "endLine": 156,
+            "note": "call site of decideStartup"
+          }
+        ],
+        "revision": {
+          "repositoryId": "paws-app",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "ref": "bench"
+        },
+        "index": {
+          "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+        },
+        "coverage": {
+          "indexedFiles": 1775,
+          "excludedFiles": 18,
+          "excludedByReason": {
+            "binary": 9,
+            "generated": 3,
+            "long_lines": 1,
+            "secret_content": 4,
+            "secret_path": 1
+          }
+        },
+        "scope": {
+          "source": "committed",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "uncommittedChanges": "none"
+        },
+        "usage": {
+          "retrievalPasses": 8,
+          "sourceReads": 17,
+          "sourceBytes": 36531,
+          "modelCalls": 4,
+          "inputTokens": 44960,
+          "outputTokens": 8000,
+          "elapsedMs": 81690
+        },
+        "providers": ["ocgo"]
+      }
+    }
+  ]
+}

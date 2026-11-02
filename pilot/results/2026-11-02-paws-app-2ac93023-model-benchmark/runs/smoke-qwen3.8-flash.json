@@ -1,0 +1,97 @@
+{
+  "run": "smoke-qwen3.8-flash",
+  "model": "qwen3.8-flash",
+  "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+  "lookyCommit": "1c806ba41800b53824f01cf2bfd920d14102277c",
+  "indexWaitMs": 1,
+  "rows": [
+    {
+      "run": "smoke-qwen3.8-flash",
+      "q": "q01",
+      "mode": "fast",
+      "model": "qwen3.8-flash",
+      "totalMs": 30004,
+      "modelMs": 29939,
+      "nonModelMs": 65,
+      "calls": [
+        {
+          "at": "2026-11-02T02:55:17.342Z",
+          "kind": "synthesis",
+          "maxTokens": 1500,
+          "ms": 29939,
+          "networkError": "AbortError"
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "timed_out",
+        "requestId": "32ccf414-aeb5-420b-80c9-9142355ec0a2",
+        "mode": {
+          "requested": "fast",
+          "executed": "fast"
+        },
+        "limitations": [],
+        "limitMs": 30000,
+        "usage": {
+          "retrievalPasses": 2,
+          "sourceReads": 5,
+          "sourceBytes": 13768,
+          "modelCalls": 1,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "elapsedMs": 30001
+        }
+      }
+    },
+    {
+      "run": "smoke-qwen3.8-flash",
+      "q": "q01",
+      "mode": "deep",
+      "model": "qwen3.8-flash",
+      "totalMs": 96003,
+      "modelMs": 95855,
+      "nonModelMs": 148,
+      "calls": [
+        {
+          "at": "2026-11-02T02:55:47.426Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 35855,
+          "inputTokens": 4599,
+          "outputTokens": 1571,
+          "cachedTokens": 0,
+          "reasoningTokens": 1216,
+          "finishReason": "stop",
+          "contentChars": 1314,
+          "reasoningChars": 5468,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a2f-353c-73fb-9424-38f328440d2f"
+          },
+          "estUsd": 0.001428,
+          "spentUsd": 0.051234
+        },
+        {
+          "at": "2026-11-02T02:56:23.284Z",
+          "kind": "synthesis",
+          "maxTokens": 3214,
+          "ms": 60000,
+          "networkError": "AbortError"
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "unavailable",
+        "requestId": "49d5fb60-dcac-4431-b046-e9cdc6483299",
+        "mode": {
+          "requested": "deep",
+          "executed": "deep"
+        },
+        "limitations": [],
+        "message": "No configured model provider could serve the request. ocgo: unavailable (Provider ocgo timed out after 60000ms)",
+        "retryable": true
+      }
+    }
+  ]
+}

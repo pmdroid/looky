@@ -1,0 +1,95 @@
+{
+  "run": "smoke-minimax-m3.1-flash",
+  "model": "minimax-m3.1-flash",
+  "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+  "lookyCommit": "1c806ba41800b53824f01cf2bfd920d14102277c",
+  "indexWaitMs": 0,
+  "rows": [
+    {
+      "run": "smoke-minimax-m3.1-flash",
+      "q": "q01",
+      "mode": "fast",
+      "model": "minimax-m3.1-flash",
+      "totalMs": 22591,
+      "modelMs": 22523,
+      "nonModelMs": 68,
+      "calls": [
+        {
+          "at": "2026-11-02T02:52:10.490Z",
+          "kind": "synthesis",
+          "maxTokens": 1500,
+          "status": 200,
+          "ms": 22523,
+          "inputTokens": 4809,
+          "outputTokens": 1500,
+          "cachedTokens": 128,
+          "reasoningTokens": 1499,
+          "finishReason": "length",
+          "contentChars": null,
+          "reasoningChars": 7166,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a2b-e5ac-7d8b-9496-d4b50a7989e7"
+          },
+          "estUsd": 0.001621,
+          "spentUsd": 0.036097
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "unavailable",
+        "requestId": "a02720e5-f767-4428-86ac-a73338e9c972",
+        "mode": {
+          "requested": "fast",
+          "executed": "fast"
+        },
+        "limitations": [],
+        "message": "No configured model provider could serve the request. ocgo: unavailable (Provider ocgo returned a response without text)",
+        "retryable": true
+      }
+    },
+    {
+      "run": "smoke-minimax-m3.1-flash",
+      "q": "q01",
+      "mode": "deep",
+      "model": "minimax-m3.1-flash",
+      "totalMs": 4751,
+      "modelMs": 4605,
+      "nonModelMs": 146,
+      "calls": [
+        {
+          "at": "2026-11-02T02:52:33.160Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 4605,
+          "inputTokens": 4161,
+          "outputTokens": 600,
+          "cachedTokens": 0,
+          "reasoningTokens": 599,
+          "finishReason": "length",
+          "contentChars": null,
+          "reasoningChars": 2993,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a2c-3e3f-72ff-9d80-cfd0822f0050"
+          },
+          "estUsd": 0.000984,
+          "spentUsd": 0.037081
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "unavailable",
+        "requestId": "c7ccf653-2659-4d40-881b-10a184daed2a",
+        "mode": {
+          "requested": "deep",
+          "executed": "deep"
+        },
+        "limitations": [],
+        "message": "No configured model provider could serve the request. ocgo: unavailable (Provider ocgo returned a response without text)",
+        "retryable": true
+      }
+    }
+  ]
+}

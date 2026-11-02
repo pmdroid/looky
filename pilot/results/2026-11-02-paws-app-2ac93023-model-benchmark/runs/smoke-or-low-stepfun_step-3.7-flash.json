@@ -1,0 +1,234 @@
+{
+  "run": "smoke-or-low-stepfun_step-3.7-flash",
+  "model": "stepfun/step-3.7-flash",
+  "effort": "low",
+  "proxy": "http://127.0.0.1:7400",
+  "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+  "lookyCommit": "1c806ba41800b53824f01cf2bfd920d14102277c",
+  "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+  "indexWaitMs": 1,
+  "rows": [
+    {
+      "run": "smoke-or-low-stepfun_step-3.7-flash",
+      "q": "q01",
+      "mode": "fast",
+      "model": "stepfun/step-3.7-flash",
+      "totalMs": 16934,
+      "modelMs": 16845,
+      "nonModelMs": 89,
+      "calls": [
+        {
+          "at": "2026-11-02T03:16:37.540Z",
+          "kind": "synthesis",
+          "maxTokens": 1500,
+          "status": 200,
+          "ms": 16845,
+          "inputTokens": 4798,
+          "outputTokens": 1500,
+          "cachedTokens": 0,
+          "reasoningTokens": 0,
+          "finishReason": "length",
+          "contentChars": 511,
+          "reasoningChars": 5216,
+          "extraKeys": ["provider", "service_tier"],
+          "meterHeaders": {},
+          "estUsd": 0.002685,
+          "spentUsd": 0.069362
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "failed",
+        "requestId": "8fd9d3dc-a8df-4aac-8cd5-92bf2832272e",
+        "mode": {
+          "requested": "fast",
+          "executed": "fast"
+        },
+        "limitations": [],
+        "stage": "answer",
+        "code": "model_output_invalid",
+        "message": "The model reply has no JSON object",
+        "retryable": true,
+        "usage": {
+          "retrievalPasses": 2,
+          "sourceReads": 5,
+          "sourceBytes": 13768,
+          "modelCalls": 1,
+          "inputTokens": 4798,
+          "outputTokens": 1500,
+          "elapsedMs": 16930
+        }
+      }
+    },
+    {
+      "run": "smoke-or-low-stepfun_step-3.7-flash",
+      "q": "q01",
+      "mode": "deep",
+      "model": "stepfun/step-3.7-flash",
+      "totalMs": 89873,
+      "modelMs": 89656,
+      "nonModelMs": 217,
+      "calls": [
+        {
+          "at": "2026-11-02T03:16:54.594Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 9140,
+          "inputTokens": 4128,
+          "outputTokens": 600,
+          "cachedTokens": 0,
+          "reasoningTokens": 0,
+          "finishReason": "length",
+          "contentChars": 1014,
+          "reasoningChars": 1345,
+          "extraKeys": ["provider", "service_tier"],
+          "meterHeaders": {},
+          "estUsd": 0.001516,
+          "spentUsd": 0.070878
+        },
+        {
+          "at": "2026-11-02T03:17:03.737Z",
+          "kind": "synthesis",
+          "maxTokens": 3700,
+          "status": 200,
+          "ms": 30698,
+          "inputTokens": 13116,
+          "outputTokens": 2260,
+          "cachedTokens": 0,
+          "reasoningTokens": 0,
+          "finishReason": "stop",
+          "contentChars": 3219,
+          "reasoningChars": 5767,
+          "extraKeys": ["provider", "service_tier"],
+          "meterHeaders": {},
+          "estUsd": 0.005222,
+          "spentUsd": 0.0761
+        },
+        {
+          "at": "2026-11-02T03:17:34.437Z",
+          "kind": "repair",
+          "maxTokens": 5140,
+          "status": 200,
+          "ms": 18444,
+          "inputTokens": 13145,
+          "outputTokens": 1247,
+          "cachedTokens": 12800,
+          "reasoningTokens": 0,
+          "finishReason": "stop",
+          "contentChars": 890,
+          "reasoningChars": 4538,
+          "extraKeys": ["provider", "service_tier"],
+          "meterHeaders": {},
+          "estUsd": 0.002015,
+          "spentUsd": 0.078115
+        },
+        {
+          "at": "2026-11-02T03:17:52.885Z",
+          "kind": "check",
+          "maxTokens": 3893,
+          "status": 200,
+          "ms": 31374,
+          "inputTokens": 13461,
+          "outputTokens": 2410,
+          "cachedTokens": 0,
+          "reasoningTokens": 0,
+          "finishReason": "stop",
+          "contentChars": 21,
+          "reasoningChars": 9738,
+          "extraKeys": ["provider", "service_tier"],
+          "meterHeaders": {},
+          "estUsd": 0.005464,
+          "spentUsd": 0.083579
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "answered",
+        "requestId": "3b82af84-a891-42c1-ac07-a24b37d3ae22",
+        "mode": {
+          "requested": "deep",
+          "executed": "deep"
+        },
+        "limitations": [
+          "Pinned to 2ac93023d31b, resolved from bench when the request started. Later movement of bench is not reflected.",
+          "The index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them."
+        ],
+        "answer": {
+          "text": "Paws reattaches to work that was in flight when the process restarts. During startup it runs `recoverOnStartup`, which iterates over items in states `awaiting_input`, `running`, `verifying`, `recovering`, and `merge_queue` and, depending on conditions, asks GitHub whether an in-flight merge call completed (keeping the item’s place in the merge queue), resumes the item in a fresh session, re-verifies if the run was still active or the runner holds the work, or asks the user whether to restart if the item was already resumed recently (`src/db/recovery.ts:41-115`)(`src/core/recovery.ts:75-106`)(`src/db/recovery.ts:1-40`). Runner leases are also adjusted so that downtime up to `offlineBudgetMs` does not count against the lease (`src/db/recovery.ts:41-115`).\n\nThis is based on 17 source ranges in 15 files, and research stopped at the deep limit maxPasses, so other relevant code may not have been inspected.",
+          "outcome": "supported",
+          "caveats": [
+            "The answer described a reason that no cited documentation states, so the rationale is treated as unknown.",
+            "The intent or rationale is not documented in the inspected evidence.",
+            "Research stopped early because of the maxPasses deep-limit; other startup code may exist that was not inspected.",
+            "Research stopped at the deep limit maxPasses.",
+            "A Deep research plan could not be read, so planning stopped early.",
+            "Based on 17 inspected source ranges in 15 files at commit 2ac93023d31b; the rest of the repository was not read for this answer."
+          ]
+        },
+        "evidence": [
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 41,
+            "endLine": 115,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 75,
+            "endLine": 106,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 1,
+            "endLine": 40,
+            "symbol": "ShutdownWipCommit",
+            "note": "matches the question"
+          }
+        ],
+        "revision": {
+          "repositoryId": "paws-app",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "ref": "bench"
+        },
+        "index": {
+          "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+        },
+        "coverage": {
+          "indexedFiles": 1775,
+          "excludedFiles": 18,
+          "excludedByReason": {
+            "binary": 9,
+            "generated": 3,
+            "long_lines": 1,
+            "secret_content": 4,
+            "secret_path": 1
+          }
+        },
+        "scope": {
+          "source": "committed",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "uncommittedChanges": "none"
+        },
+        "usage": {
+          "retrievalPasses": 8,
+          "sourceReads": 17,
+          "sourceBytes": 36531,
+          "modelCalls": 4,
+          "inputTokens": 43850,
+          "outputTokens": 6517,
+          "elapsedMs": 89872
+        },
+        "providers": ["ocgo"],
+        "suggestedHumanQuestion": {
+          "question": "What is the intended reason behind this behavior: What does Paws do with work items that were in flight when the process starts up again?",
+          "reason": "Neither the code nor the documentation inspected at 2ac93023d31b states the intent or rationale."
+        }
+      }
+    }
+  ]
+}
