@@ -169,6 +169,131 @@ export const migrations: readonly Migration[] = [
     CREATE INDEX client_sessions_scope
       ON client_sessions (repository_id, sha, state, expires_at);`,
   },
+  {
+    // Generated wiki document model (PAS-996). A wiki generation is one
+    // immutable page set for exactly one repository, commit, index key and
+    // generator fingerprint. `index_build_id` records the index generation the
+    // plan was read from; it is provenance, not a foreign key, because index
+    // retention may delete that build while the wiki for the commit stays
+    // valid. Navigation (`wiki_pages`), page bodies, source references and
+    // internal links are separate tables; composite foreign keys keep every
+    // parent, link and source inside its own generation. Slug aliases outlive
+    // generations so an old link resolves to the same page or to an explicit
+    // removed outcome.
+    version: 5,
+    sql: `CREATE TABLE wiki_generations (
+      id TEXT PRIMARY KEY NOT NULL,
+      repository_id TEXT NOT NULL,
+      sha TEXT NOT NULL,
+      index_key TEXT NOT NULL,
+      index_build_id TEXT NOT NULL,
+      generator_key TEXT NOT NULL,
+      generator_config TEXT NOT NULL,
+      plan_report TEXT NOT NULL,
+      page_count INTEGER NOT NULL,
+      state TEXT NOT NULL CHECK (state IN ('queued', 'running', 'ready', 'failed', 'cancelled')),
+      error_code TEXT,
+      error_message TEXT,
+      retryable INTEGER CHECK (retryable IN (0, 1)),
+      created_at TEXT NOT NULL,
+      started_at TEXT,
+      updated_at TEXT NOT NULL,
+      finished_at TEXT,
+      retired_at TEXT
+    ) STRICT;
+    CREATE UNIQUE INDEX wiki_generations_one_ready
+      ON wiki_generations (repository_id, sha, index_key, generator_key)
+      WHERE state = 'ready' AND retired_at IS NULL;
+    CREATE UNIQUE INDEX wiki_generations_one_active
+      ON wiki_generations (repository_id, sha, index_key, generator_key)
+      WHERE state IN ('queued', 'running');
+    CREATE INDEX wiki_generations_repository
+      ON wiki_generations (repository_id, state, finished_at);
+
+    CREATE TABLE wiki_pages (
+      generation_id TEXT NOT NULL REFERENCES wiki_generations (id) ON DELETE CASCADE,
+      page_id TEXT NOT NULL,
+      concept_key TEXT NOT NULL,
+      slug TEXT NOT NULL,
+      kind TEXT NOT NULL
+        CHECK (kind IN ('overview', 'architecture', 'section', 'module', 'workflow')),
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      parent_page_id TEXT,
+      depth INTEGER NOT NULL CHECK (depth >= 0),
+      ordinal INTEGER NOT NULL CHECK (ordinal >= 0),
+      scope_path TEXT,
+      state TEXT NOT NULL
+        CHECK (state IN ('unavailable', 'queued', 'running', 'ready', 'failed', 'cancelled')),
+      unavailable_reason TEXT,
+      error_message TEXT,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (generation_id, page_id),
+      UNIQUE (generation_id, slug),
+      UNIQUE (generation_id, concept_key),
+      FOREIGN KEY (generation_id, parent_page_id)
+        REFERENCES wiki_pages (generation_id, page_id) ON DELETE CASCADE,
+      CHECK ((parent_page_id IS NULL) = (depth = 0)),
+      CHECK ((state = 'unavailable') = (unavailable_reason IS NOT NULL))
+    ) STRICT;
+    CREATE UNIQUE INDEX wiki_pages_one_root ON wiki_pages (generation_id) WHERE parent_page_id IS NULL;
+    CREATE UNIQUE INDEX wiki_pages_sibling_order
+      ON wiki_pages (generation_id, parent_page_id, ordinal) WHERE parent_page_id IS NOT NULL;
+
+    CREATE TABLE wiki_page_bodies (
+      generation_id TEXT NOT NULL,
+      page_id TEXT NOT NULL,
+      body TEXT NOT NULL CHECK (length(body) > 0),
+      body_hash TEXT NOT NULL,
+      generated_at TEXT NOT NULL,
+      provenance TEXT NOT NULL,
+      PRIMARY KEY (generation_id, page_id),
+      FOREIGN KEY (generation_id, page_id)
+        REFERENCES wiki_pages (generation_id, page_id) ON DELETE CASCADE
+    ) STRICT;
+
+    CREATE TABLE wiki_page_sources (
+      generation_id TEXT NOT NULL,
+      page_id TEXT NOT NULL,
+      role TEXT NOT NULL CHECK (role IN ('planned', 'cited')),
+      ordinal INTEGER NOT NULL,
+      path TEXT NOT NULL,
+      blob_oid TEXT NOT NULL,
+      start_line INTEGER NOT NULL CHECK (start_line >= 1),
+      end_line INTEGER NOT NULL,
+      kind TEXT NOT NULL CHECK (kind IN ('code', 'test', 'config', 'docs')),
+      PRIMARY KEY (generation_id, page_id, role, ordinal),
+      FOREIGN KEY (generation_id, page_id)
+        REFERENCES wiki_pages (generation_id, page_id) ON DELETE CASCADE,
+      CHECK (end_line >= start_line)
+    ) STRICT;
+    CREATE INDEX wiki_page_sources_path ON wiki_page_sources (generation_id, path);
+
+    CREATE TABLE wiki_page_links (
+      generation_id TEXT NOT NULL,
+      from_page_id TEXT NOT NULL,
+      to_page_id TEXT NOT NULL,
+      relation TEXT NOT NULL CHECK (relation IN ('uses', 'related')),
+      ordinal INTEGER NOT NULL,
+      PRIMARY KEY (generation_id, from_page_id, to_page_id),
+      FOREIGN KEY (generation_id, from_page_id)
+        REFERENCES wiki_pages (generation_id, page_id) ON DELETE CASCADE,
+      FOREIGN KEY (generation_id, to_page_id)
+        REFERENCES wiki_pages (generation_id, page_id) ON DELETE CASCADE,
+      CHECK (from_page_id != to_page_id)
+    ) STRICT;
+    CREATE INDEX wiki_page_links_target ON wiki_page_links (generation_id, to_page_id);
+
+    CREATE TABLE wiki_slug_aliases (
+      repository_id TEXT NOT NULL,
+      slug TEXT NOT NULL,
+      page_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      generation_id TEXT NOT NULL,
+      recorded_at TEXT NOT NULL,
+      PRIMARY KEY (repository_id, slug)
+    ) STRICT;`,
+  },
 ];
 
 export function schemaVersion(db: Database): number {
