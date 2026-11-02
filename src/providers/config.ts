@@ -10,6 +10,7 @@
  *   LOOKY_PROVIDER_<ID>_API_KEY=…             optional
  *   LOOKY_PROVIDER_<ID>_TIMEOUT_MS=…          optional
  *   LOOKY_PROVIDER_<ID>_MAX_TOKENS_FIELD=…    optional, openai only
+ *   LOOKY_PROVIDER_<ID>_REASONING_EFFORT=…    optional, openai only
  *   LOOKY_PROVIDER_<ID>_MAX_REQUESTS_PER_MINUTE / _MAX_TOKENS_PER_MINUTE   optional quotas
  *
  * `<ID>` is the id upper-cased with `-` as `_`.
@@ -99,6 +100,12 @@ export function loadProviderConfig(env: Env = process.env): ProviderConfig | und
         `${providerEnvName(id, "MAX_TOKENS_FIELD")} must be max_tokens or max_completion_tokens`,
       );
     }
+    const reasoningEffort = nonEmpty(env, providerEnvName(id, "REASONING_EFFORT"));
+    if (reasoningEffort !== undefined && !/^[a-z]{1,16}$/.test(reasoningEffort)) {
+      throw new ProviderConfigError(
+        `${providerEnvName(id, "REASONING_EFFORT")} must be a lowercase word such as low`,
+      );
+    }
     const baseUrl = nonEmpty(env, providerEnvName(id, "BASE_URL"));
     const apiKey = nonEmpty(env, providerEnvName(id, "API_KEY"));
     const maxRequestsPerMinute = positiveInt(env, providerEnvName(id, "MAX_REQUESTS_PER_MINUTE"));
@@ -111,6 +118,7 @@ export function loadProviderConfig(env: Env = process.env): ProviderConfig | und
       ...(baseUrl !== undefined ? { baseUrl } : {}),
       ...(apiKey !== undefined ? { apiKey } : {}),
       ...(field !== undefined ? { maxTokensField: field } : {}),
+      ...(reasoningEffort !== undefined ? { reasoningEffort } : {}),
       quota: {
         ...(maxRequestsPerMinute !== undefined ? { maxRequestsPerMinute } : {}),
         ...(maxTokensPerMinute !== undefined ? { maxTokensPerMinute } : {}),

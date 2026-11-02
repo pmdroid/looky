@@ -1056,6 +1056,7 @@ upper-cased, with `-` written as `_`.
 | `LOOKY_PROVIDER_<ID>_API_KEY`                 | Optional credential                                              |
 | `LOOKY_PROVIDER_<ID>_TIMEOUT_MS`              | Per-call timeout, default 60000                                  |
 | `LOOKY_PROVIDER_<ID>_MAX_TOKENS_FIELD`        | `openai` only: `max_tokens` (default) or `max_completion_tokens` |
+| `LOOKY_PROVIDER_<ID>_REASONING_EFFORT`        | `openai` only: optional `reasoning_effort`, such as `low`        |
 | `LOOKY_PROVIDER_<ID>_MAX_REQUESTS_PER_MINUTE` | Optional local request quota                                     |
 | `LOOKY_PROVIDER_<ID>_MAX_TOKENS_PER_MINUTE`   | Optional local token quota, input plus output                    |
 

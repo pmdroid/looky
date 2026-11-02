@@ -43,6 +43,7 @@ export interface HttpProviderOptions {
   readonly timeoutMs?: number;
   /** OpenAI only: the output limit field, `max_tokens` (default) or `max_completion_tokens`. */
   readonly maxTokensField?: "max_tokens" | "max_completion_tokens";
+  readonly reasoningEffort?: string;
   readonly fetch?: typeof fetch;
 }
 
@@ -134,6 +135,7 @@ function bodyFor(options: HttpProviderOptions, request: ModelRequest): Record<st
   return {
     model: options.model,
     [options.maxTokensField ?? "max_tokens"]: request.maxOutputTokens,
+    ...(options.reasoningEffort !== undefined ? { reasoning_effort: options.reasoningEffort } : {}),
     messages: [
       { role: "system", content: request.system },
       { role: "user", content: request.prompt },
