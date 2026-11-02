@@ -484,8 +484,19 @@ describe("versioned index refresh and recovery", () => {
       ready: { id: first.id },
     });
 
+    // Retrying the cancelled rebuild rebuilds again rather than reporting the
+    // generation it was meant to replace.
+    const retried = await svc.retry(cancelledId);
+    expect(retried.state).toBe("building");
+    const retriedBuild = await svc.waitForBuild((retried as { build: BuildRecord }).build.id);
+    expect(retriedBuild).toMatchObject({
+      state: "ready",
+      refresh: { mode: "full", reason: "rebuild_requested" },
+    });
+    expect(retriedBuild.id).not.toBe(first.id);
+
     const rebuilt = await ready(svc, base, true);
-    expect(rebuilt.id).not.toBe(first.id);
+    expect(rebuilt.id).not.toBe(retriedBuild.id);
     expect(await svc.resolve({ repositoryId: "fixture", sha: base }, signal)).toMatchObject({
       state: "ready",
       generation: { generationId: rebuilt.id },

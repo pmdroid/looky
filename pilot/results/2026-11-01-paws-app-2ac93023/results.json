@@ -1,0 +1,2089 @@
+{
+  "environment": {
+    "startedAt": "2026-11-02T00:11:03.614Z",
+    "bun": "1.4.4",
+    "looky": {
+      "sha": "bc88d804e3207beb22f9673835093542d1665130",
+      "dirty": false
+    },
+    "source": "https://github.com/pmdroid/paws-app.git",
+    "work": "/tmp/pilot/run5",
+    "providerConfigured": false,
+    "configuredLimits": {
+      "index": {
+        "maxFileBytes": 1048576,
+        "maxLineBytes": 4000,
+        "maxFiles": 200000,
+        "maxIndexedBytes": 1073741824,
+        "chunkLines": 80,
+        "chunkBytes": 8000,
+        "chunkOverlapLines": 8,
+        "readConcurrency": 4
+      },
+      "budgets": {
+        "fast": {
+          "maxRetrievalPasses": 2,
+          "maxResultsPerPass": 10,
+          "maxSourceReads": 8,
+          "maxSourceBytes": 65536,
+          "maxModelCalls": 2,
+          "maxInputTokens": 24000,
+          "maxOutputTokens": 1500,
+          "maxAnswerChars": 6000,
+          "maxElapsedMs": 30000
+        },
+        "deep": {
+          "maxRetrievalPasses": 14,
+          "maxResultsPerPass": 20,
+          "maxSourceReads": 48,
+          "maxSourceBytes": 524288,
+          "maxModelCalls": 10,
+          "maxInputTokens": 200000,
+          "maxOutputTokens": 8000,
+          "maxAnswerChars": 24000,
+          "maxElapsedMs": 180000
+        }
+      },
+      "research": {
+        "fast": {
+          "maxPasses": 2,
+          "maxReads": 6,
+          "maxReadBytes": 49152,
+          "maxReadLines": 120,
+          "maxHitsPerPass": 8,
+          "maxElapsedMs": 10000
+        },
+        "deep": {
+          "maxPasses": 8,
+          "maxReads": 36,
+          "maxReadBytes": 393216,
+          "maxReadLines": 160,
+          "maxHitsPerPass": 16,
+          "maxElapsedMs": 90000
+        }
+      }
+    }
+  },
+  "service": {
+    "name": "looky",
+    "version": "0.1.0",
+    "protocolVersions": ["1"],
+    "startedAt": "2026-11-02T00:11:07.329Z",
+    "host": "agentbox",
+    "pid": 4172016,
+    "dataDir": "/tmp/pilot/run5/data",
+    "indexKey": "p1-4bbce1d89061240c",
+    "repositories": ["paws-app"],
+    "capacity": {
+      "maxConcurrentAsks": 2,
+      "maxQueuedAsks": 8,
+      "maxAsksPerSession": 2,
+      "admissionWaitMs": 10000,
+      "indexWaitMs": 20000,
+      "sessionTtlMs": 43200000,
+      "resultTtlMs": 600000,
+      "fetchTimeoutMs": 120000,
+      "asksActive": 0,
+      "asksQueued": 0,
+      "requestsInFlight": 0,
+      "maxConcurrentBuilds": 1
+    }
+  },
+  "cold": {
+    "buildId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+    "waitMs": 2345,
+    "buildMs": 2330,
+    "progress": [
+      "building queued ?/?",
+      "building indexing 0/1793",
+      "building indexing 256/1793",
+      "building indexing 512/1793",
+      "building indexing 768/1793",
+      "building indexing 1024/1793",
+      "building indexing 1280/1793",
+      "building indexing 1536/1793",
+      "ready"
+    ],
+    "build": {
+      "id": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+      "repositoryId": "paws-app",
+      "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+      "policyVersion": 1,
+      "indexKey": "p1-4bbce1d89061240c",
+      "requestedMode": "auto",
+      "state": "ready",
+      "phase": "ready",
+      "filesTotal": 1793,
+      "filesDone": 1793,
+      "filesIndexed": 1775,
+      "filesExcluded": 18,
+      "filesReused": 0,
+      "chunkCount": 6791,
+      "indexedBytes": 14148510,
+      "refresh": {
+        "mode": "full",
+        "reason": "no_base",
+        "baseBuildId": null,
+        "baseSha": null,
+        "added": 0,
+        "modified": 0,
+        "deleted": 0,
+        "renamed": 0,
+        "carried": 0
+      },
+      "errorCode": null,
+      "errorMessage": null,
+      "retryable": null,
+      "createdAt": "2026-11-02T00:11:07.340Z",
+      "startedAt": "2026-11-02T00:11:07.350Z",
+      "updatedAt": "2026-11-02T00:11:09.680Z",
+      "finishedAt": "2026-11-02T00:11:09.680Z",
+      "retiredAt": null,
+      "lastUsedAt": null,
+      "progress": {
+        "phase": "ready",
+        "filesDone": 1793,
+        "filesTotal": 1793
+      }
+    },
+    "databaseBytes": 29954048,
+    "coverage": {
+      "build": {
+        "id": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+        "repositoryId": "paws-app",
+        "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+        "policyVersion": 1,
+        "indexKey": "p1-4bbce1d89061240c",
+        "requestedMode": "auto",
+        "state": "ready",
+        "phase": "ready",
+        "filesTotal": 1793,
+        "filesDone": 1793,
+        "filesIndexed": 1775,
+        "filesExcluded": 18,
+        "filesReused": 0,
+        "chunkCount": 6791,
+        "indexedBytes": 14148510,
+        "refresh": {
+          "mode": "full",
+          "reason": "no_base",
+          "baseBuildId": null,
+          "baseSha": null,
+          "added": 0,
+          "modified": 0,
+          "deleted": 0,
+          "renamed": 0,
+          "carried": 0
+        },
+        "errorCode": null,
+        "errorMessage": null,
+        "retryable": null,
+        "createdAt": "2026-11-02T00:11:07.340Z",
+        "startedAt": "2026-11-02T00:11:07.350Z",
+        "updatedAt": "2026-11-02T00:11:09.680Z",
+        "finishedAt": "2026-11-02T00:11:09.680Z",
+        "retiredAt": null,
+        "lastUsedAt": null
+      },
+      "complete": true,
+      "indexedByLanguage": {
+        "css": 2,
+        "html": 2,
+        "javascript": 16,
+        "json": 37,
+        "markdown": 48,
+        "python": 21,
+        "shell": 2,
+        "text": 20,
+        "toml": 3,
+        "typescript": 1600,
+        "yaml": 24
+      },
+      "excludedByReason": {
+        "binary": 9,
+        "generated": 3,
+        "long_lines": 1,
+        "secret_content": 4,
+        "secret_path": 1
+      },
+      "excluded": [
+        {
+          "path": ".env.example",
+          "reason": "secret_path"
+        },
+        {
+          "path": ".impeccable/design.json",
+          "reason": "long_lines"
+        },
+        {
+          "path": ".paws-proof/agents-1m-1440.png",
+          "reason": "binary"
+        },
+        {
+          "path": ".paws-proof/agents-1m-390.png",
+          "reason": "binary"
+        },
+        {
+          "path": ".paws-proof/onboarding-paused-1440.png",
+          "reason": "binary"
+        },
+        {
+          "path": ".paws-proof/onboarding-paused-390.png",
+          "reason": "binary"
+        },
+        {
+          "path": ".paws-proof/runner-paused-1440.png",
+          "reason": "binary"
+        },
+        {
+          "path": ".paws-proof/runner-paused-390.png",
+          "reason": "binary"
+        },
+        {
+          "path": "bun.lock",
+          "reason": "generated"
+        },
+        {
+          "path": "examples/paws-demo/bun.lock",
+          "reason": "generated"
+        },
+        {
+          "path": "landing/bun.lock",
+          "reason": "generated"
+        },
+        {
+          "path": "landing/public/fonts/bricolage.woff2",
+          "reason": "binary"
+        },
+        {
+          "path": "landing/public/fonts/dm-mono.woff2",
+          "reason": "binary"
+        },
+        {
+          "path": "landing/public/images/sleeping-pup.png",
+          "reason": "binary"
+        },
+        {
+          "path": "src/github/auth/token-provider.test.ts",
+          "reason": "secret_content"
+        },
+        {
+          "path": "src/github/merge.test.ts",
+          "reason": "secret_content"
+        },
+        {
+          "path": "src/runner-protocol/commands.test.ts",
+          "reason": "secret_content"
+        },
+        {
+          "path": "test/installer-secrets.test.ts",
+          "reason": "secret_content"
+        }
+      ]
+    }
+  },
+  "firstQuery": {
+    "indexStatus": {
+      "repositoryId": "paws-app",
+      "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+      "state": "ready",
+      "ready": {
+        "buildId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+        "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+      }
+    },
+    "fast": {
+      "ms": 71,
+      "response": {
+        "status": "unavailable",
+        "mode": {
+          "requested": "fast",
+          "executed": "fast"
+        },
+        "limitations": [],
+        "message": "No model provider is configured for this Looky service; set LOOKY_PROVIDER",
+        "retryable": true
+      }
+    },
+    "deep": {
+      "ms": 157,
+      "response": {
+        "status": "unavailable",
+        "mode": {
+          "requested": "deep",
+          "executed": "deep"
+        },
+        "limitations": [],
+        "message": "No model provider is configured for this Looky service; set LOOKY_PROVIDER",
+        "retryable": true
+      }
+    }
+  },
+  "retrieval": [
+    {
+      "id": "q01",
+      "mode": "fast",
+      "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+      "coverage": {
+        "rangesHit": 2,
+        "filesHit": 2,
+        "pins": 2,
+        "missed": []
+      },
+      "citationProblems": [],
+      "evidence": [
+        "src/db/recovery.ts:41-115",
+        "test/fixtures/linear-revoked-startup.ts:1-43",
+        "README.md:1-75",
+        "src/core/recovery.ts:75-106",
+        "src/db/remote-merges.ts:78-91"
+      ],
+      "files": 5,
+      "usage": {
+        "passes": 2,
+        "reads": 5,
+        "bytes": 13768,
+        "elapsedMs": 77
+      },
+      "stop": {
+        "reason": "complete"
+      },
+      "gaps": [
+        "README.md:1-75 mentions `blocks`, `checks`, `failedChecks`; Fast did not check these against code at this revision."
+      ],
+      "conflicts": 0,
+      "suggestDeep": true,
+      "withinLimits": true,
+      "coldMs": 77,
+      "warmMs": 65
+    },
+    {
+      "id": "q01",
+      "mode": "deep",
+      "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+      "coverage": {
+        "rangesHit": 2,
+        "filesHit": 2,
+        "pins": 2,
+        "missed": []
+      },
+      "citationProblems": [],
+      "evidence": [
+        "src/db/recovery.ts:41-115",
+        "test/fixtures/linear-revoked-startup.ts:1-43",
+        "README.md:1-75",
+        "src/core/recovery.ts:75-106",
+        "test/startup-resume-stagger.test.ts:105-184",
+        "src/db/recovery.ts:1-40",
+        "src/db/items.ts:148-181",
+        "src/db/remote-merges.ts:78-91",
+        "src/db/items.ts:1-76",
+        "scripts/verify-merge-settings-ui.ts:1-70",
+        "test/fixtures/runner-paws-restart.ts:128-198",
+        "src/db/index.ts:289-368",
+        "src/index.ts:73-152",
+        "src/db/loops.ts:1-47",
+        "src/host/index.ts:1-37",
+        "src/core/index.ts:73-152",
+        "src/core/recovery.test.ts:77-156"
+      ],
+      "files": 15,
+      "usage": {
+        "passes": 8,
+        "reads": 17,
+        "bytes": 36531,
+        "elapsedMs": 171
+      },
+      "stop": {
+        "reason": "limit",
+        "limit": "maxPasses"
+      },
+      "gaps": ["Research stopped at the deep limit maxPasses."],
+      "conflicts": 0,
+      "suggestDeep": false,
+      "withinLimits": true,
+      "coldMs": 171,
+      "warmMs": 166
+    },
+    {
+      "id": "q02",
+      "mode": "fast",
+      "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+      "coverage": {
+        "rangesHit": 1,
+        "filesHit": 1,
+        "pins": 4,
+        "missed": [
+          "src/db/decisions.ts:91-111",
+          "src/db/restart-hold.ts:5-6",
+          "src/core/limits.ts:4-4"
+        ]
+      },
+      "citationProblems": [],
+      "evidence": [
+        "src/core/recovery.ts:75-106",
+        "src/db/restart.ts:97-145",
+        "src/db/recovery.ts:41-115",
+        "src/core/recovery.ts:1-74",
+        "src/core/recovery.test.ts:5-84",
+        "src/core/recovery.test.ts:1-4"
+      ],
+      "files": 4,
+      "usage": {
+        "passes": 2,
+        "reads": 6,
+        "bytes": 12234,
+        "elapsedMs": 65
+      },
+      "stop": {
+        "reason": "complete"
+      },
+      "gaps": [],
+      "conflicts": 0,
+      "suggestDeep": false,
+      "withinLimits": true,
+      "coldMs": 65,
+      "warmMs": 62
+    },
+    {
+      "id": "q02",
+      "mode": "deep",
+      "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+      "coverage": {
+        "rangesHit": 3,
+        "filesHit": 3,
+        "pins": 4,
+        "missed": ["src/core/limits.ts:4-4"]
+      },
+      "citationProblems": [],
+      "evidence": [
+        "src/core/recovery.ts:75-106",
+        "src/db/restart.ts:97-145",
+        "src/db/recovery.ts:41-115",
+        "src/core/recovery.ts:1-74",
+        "src/db/decisions.ts:50-112",
+        ".agents/skills/verify-paws/SKILL.md:381-396",
+        "src/db/recovery.ts:116-164",
+        "src/web/src/client/render.ts:607-663",
+        "evals/review-escapes.jsonl:5-14",
+        "evals/review-escapes.jsonl:15-16",
+        "src/db/recovery.ts:1-40",
+        "src/core/index.ts:73-152",
+        "src/db/restart-hold.ts:1-72",
+        "src/db/runner-lease.ts:1-64",
+        "src/db/index.ts:721-800",
+        "src/loop/orchestrator.ts:1-80",
+        "src/db/restart.ts:20-96",
+        "src/loop/operations.ts:1-68"
+      ],
+      "files": 13,
+      "usage": {
+        "passes": 8,
+        "reads": 18,
+        "bytes": 48950,
+        "elapsedMs": 180
+      },
+      "stop": {
+        "reason": "limit",
+        "limit": "maxPasses"
+      },
+      "gaps": ["Research stopped at the deep limit maxPasses."],
+      "conflicts": 0,
+      "suggestDeep": false,
+      "withinLimits": true,
+      "coldMs": 180,
+      "warmMs": 187
+    },
+    {
+      "id": "q03",
+      "mode": "fast",
+      "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+      "coverage": {
+        "rangesHit": 1,
+        "filesHit": 2,
+        "pins": 2,
+        "missed": ["src/index.ts:1567-1577"]
+      },
+      "citationProblems": [],
+      "evidence": [
+        "src/db/recovery.ts:165-217",
+        "test/shutdown-wip.test.ts:238-268",
+        "src/index.ts:1983-2062",
+        "src/index.ts:2063-2088"
+      ],
+      "files": 3,
+      "usage": {
+        "passes": 2,
+        "reads": 4,
+        "bytes": 6609,
+        "elapsedMs": 72
+      },
+      "stop": {
+        "reason": "complete"
+      },
+      "gaps": ["No definition of `SIGTERM` was found in the index at this revision."],
+      "conflicts": 0,
+      "suggestDeep": true,
+      "withinLimits": true,
+      "coldMs": 72,
+      "warmMs": 73
+    },
+    {
+      "id": "q03",
+      "mode": "deep",
+      "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+      "coverage": {
+        "rangesHit": 2,
+        "filesHit": 2,
+        "pins": 2,
+        "missed": []
+      },
+      "citationProblems": [],
+      "evidence": [
+        "src/db/recovery.ts:165-217",
+        "test/shutdown-wip.test.ts:238-268",
+        "src/index.ts:1983-2062",
+        "src/index.ts:2063-2088",
+        ".agents/skills/verify-paws/SKILL.md:50-73",
+        "test/runner-lease-downtime.test.ts:118-180",
+        "src/shutdown.ts:1-78",
+        "src/core/journal.ts:1-54",
+        "src/web/src/journal.ts:1-67",
+        "scripts/verify-merge-settings-ui.ts:1-70",
+        "test/fixtures/runner-paws-restart.ts:128-198",
+        "src/runner-placement/index.ts:65-134",
+        "src/index.ts:1515-1587",
+        "src/db/index.ts:289-368",
+        "src/db/runs.ts:151-189"
+      ],
+      "files": 13,
+      "usage": {
+        "passes": 8,
+        "reads": 15,
+        "bytes": 35913,
+        "elapsedMs": 188
+      },
+      "stop": {
+        "reason": "limit",
+        "limit": "maxPasses"
+      },
+      "gaps": [
+        "No definition of `SIGTERM` was found in the index at this revision.",
+        "Research stopped at the deep limit maxPasses."
+      ],
+      "conflicts": 0,
+      "suggestDeep": false,
+      "withinLimits": true,
+      "coldMs": 188,
+      "warmMs": 180
+    },
+    {
+      "id": "q04",
+      "mode": "fast",
+      "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+      "coverage": {
+        "rangesHit": 1,
+        "filesHit": 1,
+        "pins": 4,
+        "missed": [
+          "src/server/serve.ts:665-669",
+          "src/linear/intake-queue.ts:36-50",
+          "src/index.ts:428-430"
+        ]
+      },
+      "citationProblems": [],
+      "evidence": [
+        "src/db/linear-webhook.ts:1-43",
+        "src/linear/webhook.ts:1-73",
+        "src/linear/webhook.ts:102-181",
+        "src/linear/webhook.ts:182-256",
+        "src/db/journal.test.ts:1-36",
+        "src/db/linear-access.test.ts:1-37"
+      ],
+      "files": 4,
+      "usage": {
+        "passes": 2,
+        "reads": 6,
+        "bytes": 11767,
+        "elapsedMs": 75
+      },
+      "stop": {
+        "reason": "complete"
+      },
+      "gaps": [],
+      "conflicts": 0,
+      "suggestDeep": true,
+      "withinLimits": true,
+      "coldMs": 75,
+      "warmMs": 72
+    },
+    {
+      "id": "q04",
+      "mode": "deep",
+      "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+      "coverage": {
+        "rangesHit": 1,
+        "filesHit": 2,
+        "pins": 4,
+        "missed": [
+          "src/server/serve.ts:665-669",
+          "src/linear/intake-queue.ts:36-50",
+          "src/index.ts:428-430"
+        ]
+      },
+      "citationProblems": [],
+      "evidence": [
+        "src/db/linear-webhook.ts:1-43",
+        "src/linear/webhook.ts:1-73",
+        "src/linear/webhook.ts:102-181",
+        "src/linear/webhook.ts:182-256",
+        "src/index.ts:939-1018",
+        "test/linear-webhook-ack.test.ts:19-98",
+        "src/db/journal.test.ts:1-36",
+        "src/db/linear-access.test.ts:1-37",
+        "src/webhook-body/index.ts:1-46",
+        "src/db/index.ts:649-728",
+        "src/db/index.ts:729-800",
+        "src/web/src/live/provider.ts:495-556",
+        "src/server/health.ts:1-31",
+        "src/server/health.ts:104-150",
+        "src/linear/runtime.ts:1-55",
+        "src/linear/index.ts:145-202",
+        "src/core/commands.ts:1-39",
+        "test/linear-webhook-ack.test.ts:1-18"
+      ],
+      "files": 13,
+      "usage": {
+        "passes": 8,
+        "reads": 18,
+        "bytes": 34332,
+        "elapsedMs": 196
+      },
+      "stop": {
+        "reason": "limit",
+        "limit": "maxPasses"
+      },
+      "gaps": ["Research stopped at the deep limit maxPasses."],
+      "conflicts": 0,
+      "suggestDeep": false,
+      "withinLimits": true,
+      "coldMs": 196,
+      "warmMs": 197
+    },
+    {
+      "id": "q05",
+      "mode": "fast",
+      "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+      "coverage": {
+        "rangesHit": 1,
+        "filesHit": 1,
+        "pins": 4,
+        "missed": [
+          "src/loop/closeout-recovery.ts:14-54",
+          "src/loop/orchestrator.ts:3480-3480",
+          "src/closeout/run.ts:144-144"
+        ]
+      },
+      "citationProblems": [],
+      "evidence": [
+        "src/closeout/gate.ts:1-62",
+        "src/doctor/doctor.ts:220-276",
+        "src/closeout/bypass.ts:1-75",
+        "src/db/closeout-bypass.ts:1-76",
+        "src/closeout-spec/run/run.ts:1-78"
+      ],
+      "files": 5,
+      "usage": {
+        "passes": 2,
+        "reads": 5,
+        "bytes": 10783,
+        "elapsedMs": 60
+      },
+      "stop": {
+        "reason": "complete"
+      },
+      "gaps": [],
+      "conflicts": 0,
+      "suggestDeep": true,
+      "withinLimits": true,
+      "coldMs": 60,
+      "warmMs": 63
+    },
+    {
+      "id": "q05",
+      "mode": "deep",
+      "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+      "coverage": {
+        "rangesHit": 2,
+        "filesHit": 3,
+        "pins": 4,
+        "missed": ["src/loop/orchestrator.ts:3480-3480", "src/closeout/run.ts:144-144"]
+      },
+      "citationProblems": [],
+      "evidence": [
+        "src/closeout/gate.ts:1-62",
+        "src/doctor/doctor.ts:220-276",
+        "src/closeout/bypass.ts:1-75",
+        "src/db/closeout-bypass.ts:1-76",
+        "src/loop/closeout-recovery.ts:1-58",
+        "src/web/src/client/format.ts:61-137",
+        "src/closeout-spec/run/run.ts:1-78",
+        "src/closeout/run.ts:469-534",
+        "src/closeout/run.ts:1083-1135",
+        "src/merge/advance.ts:527-572",
+        "src/worktree-checkout/index.ts:152-201",
+        "src/closeout-spec/run/progress.ts:1-66",
+        "src/closeout/report.ts:1-70",
+        "src/closeout-spec/run/run.ts:79-112",
+        "src/closeout/types.ts:1-73",
+        "src/web/src/client/main.ts:747-805"
+      ],
+      "files": 14,
+      "usage": {
+        "passes": 8,
+        "reads": 16,
+        "bytes": 32720,
+        "elapsedMs": 170
+      },
+      "stop": {
+        "reason": "limit",
+        "limit": "maxPasses"
+      },
+      "gaps": ["Research stopped at the deep limit maxPasses."],
+      "conflicts": 0,
+      "suggestDeep": false,
+      "withinLimits": true,
+      "coldMs": 170,
+      "warmMs": 180
+    },
+    {
+      "id": "q06",
+      "mode": "fast",
+      "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+      "coverage": {
+        "rangesHit": 0,
+        "filesHit": 0,
+        "pins": 3,
+        "missed": [
+          "src/config/queue.ts:3-19",
+          "src/config/file.ts:550-554",
+          "src/loop/orchestrator.ts:4690-4705"
+        ]
+      },
+      "citationProblems": [],
+      "evidence": [
+        "src/web/src/client/agent-settings.ts:175-254",
+        "docs/configuration.md:1-39",
+        "docs/configuration.md:40-99",
+        "src/core/index.ts:73-152",
+        "src/web/src/client/agent-settings.test.ts:92-171",
+        "src/web/src/client/agent-settings.test.ts:1-19"
+      ],
+      "files": 4,
+      "usage": {
+        "passes": 2,
+        "reads": 6,
+        "bytes": 24973,
+        "elapsedMs": 109
+      },
+      "stop": {
+        "reason": "complete"
+      },
+      "gaps": [
+        "docs/configuration.md:1-39 mentions `retry`, `PAWS_HOME`, `PAWS_HOST`; Fast did not check these against code at this revision.",
+        "docs/configuration.md:40-99 mentions `order`, `queue`, `project`; Fast did not check these against code at this revision."
+      ],
+      "conflicts": 0,
+      "suggestDeep": false,
+      "withinLimits": true,
+      "coldMs": 109,
+      "warmMs": 114
+    },
+    {
+      "id": "q06",
+      "mode": "deep",
+      "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+      "coverage": {
+        "rangesHit": 1,
+        "filesHit": 3,
+        "pins": 3,
+        "missed": ["src/config/file.ts:550-554", "src/loop/orchestrator.ts:4690-4705"]
+      },
+      "citationProblems": [],
+      "evidence": [
+        "src/web/src/client/agent-settings.ts:175-254",
+        "docs/configuration.md:1-39",
+        "docs/configuration.md:40-99",
+        "src/core/index.ts:73-152",
+        "src/loop/orchestrator.ts:1-80",
+        ".agents/skills/verify-paws/SKILL.md:348-380",
+        "src/config/queue.ts:1-67",
+        "src/acp/commit-policy.ts:1-47",
+        "src/config/file.ts:74-148",
+        "src/core/commit-policy.ts:1-71",
+        "src/config/agents.ts:70-125",
+        "src/settings/merging.ts:168-247",
+        "src/settings/handler.ts:104-157",
+        "src/web/src/client/agent-settings.ts:255-326",
+        "src/web/src/client/main.ts:1-80",
+        "src/web/src/client/merge-queue.ts:1-70"
+      ],
+      "files": 14,
+      "usage": {
+        "passes": 8,
+        "reads": 16,
+        "bytes": 54496,
+        "elapsedMs": 159
+      },
+      "stop": {
+        "reason": "limit",
+        "limit": "maxPasses"
+      },
+      "gaps": ["Research stopped at the deep limit maxPasses."],
+      "conflicts": 0,
+      "suggestDeep": false,
+      "withinLimits": true,
+      "coldMs": 159,
+      "warmMs": 169
+    },
+    {
+      "id": "q07",
+      "mode": "fast",
+      "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+      "coverage": {
+        "rangesHit": 2,
+        "filesHit": 2,
+        "pins": 2,
+        "missed": []
+      },
+      "citationProblems": [],
+      "evidence": [
+        "src/linear/intake-queue.ts:1-35",
+        "src/linear/intake-queue.ts:108-180",
+        "src/linear/intake-queue.ts:36-107",
+        "test/linear-intake-retry.test.ts:1-80",
+        "src/linear/events.ts:1-65",
+        "src/index.ts:145-224"
+      ],
+      "files": 4,
+      "usage": {
+        "passes": 2,
+        "reads": 6,
+        "bytes": 13276,
+        "elapsedMs": 78
+      },
+      "stop": {
+        "reason": "complete"
+      },
+      "gaps": [],
+      "conflicts": 0,
+      "suggestDeep": true,
+      "withinLimits": true,
+      "coldMs": 78,
+      "warmMs": 81
+    },
+    {
+      "id": "q07",
+      "mode": "deep",
+      "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+      "coverage": {
+        "rangesHit": 2,
+        "filesHit": 2,
+        "pins": 2,
+        "missed": []
+      },
+      "citationProblems": [],
+      "evidence": [
+        "src/linear/intake-queue.ts:1-35",
+        "src/linear/intake-queue.ts:108-180",
+        "src/linear/intake-queue.ts:36-107",
+        "test/linear-intake-retry.test.ts:1-80",
+        "test/linear-intake-retry.test.ts:81-152",
+        "src/web/src/client/intake.ts:1-52",
+        "src/linear/events.ts:1-65",
+        "src/index.ts:145-224",
+        "src/linear/budget.ts:77-153",
+        "src/loop/artifacts.ts:1-79",
+        "src/loop/linear-task-access.ts:46-125",
+        "src/index.ts:435-514",
+        "src/linear/index.ts:73-152",
+        "src/linear/index.ts:1-72",
+        "test/linear-intake-queue.test.ts:1-35",
+        "test/linear-intake-queue.test.ts:324-385",
+        "test/linear-intake-queue.test.ts:180-259",
+        "src/linear/files.ts:1-49"
+      ],
+      "files": 11,
+      "usage": {
+        "passes": 8,
+        "reads": 18,
+        "bytes": 41025,
+        "elapsedMs": 178
+      },
+      "stop": {
+        "reason": "limit",
+        "limit": "maxPasses"
+      },
+      "gaps": ["Research stopped at the deep limit maxPasses."],
+      "conflicts": 0,
+      "suggestDeep": false,
+      "withinLimits": true,
+      "coldMs": 178,
+      "warmMs": 165
+    },
+    {
+      "id": "q08",
+      "mode": "fast",
+      "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+      "coverage": {
+        "rangesHit": 1,
+        "filesHit": 4,
+        "pins": 4,
+        "missed": [
+          "src/config/file.ts:499-508",
+          "src/config/file.ts:550-554",
+          "src/config/file.ts:563-567"
+        ]
+      },
+      "citationProblems": [],
+      "evidence": [
+        "scripts/verify-merge-settings-ui.ts:1-70",
+        "docs/configuration.md:1-39",
+        "src/settings/checkout.ts:40-113",
+        "src/config/file.ts:149-221"
+      ],
+      "files": 4,
+      "usage": {
+        "passes": 2,
+        "reads": 4,
+        "bytes": 15981,
+        "elapsedMs": 88
+      },
+      "stop": {
+        "reason": "complete"
+      },
+      "gaps": [
+        "docs/configuration.md:1-39 mentions `retry`, `PAWS_HOME`, `PAWS_HOST`; Fast did not check these against code at this revision."
+      ],
+      "conflicts": 0,
+      "suggestDeep": true,
+      "withinLimits": true,
+      "coldMs": 88,
+      "warmMs": 80
+    },
+    {
+      "id": "q08",
+      "mode": "deep",
+      "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+      "coverage": {
+        "rangesHit": 1,
+        "filesHit": 4,
+        "pins": 4,
+        "missed": [
+          "src/config/file.ts:499-508",
+          "src/config/file.ts:550-554",
+          "src/config/file.ts:563-567"
+        ]
+      },
+      "citationProblems": [],
+      "evidence": [
+        "scripts/verify-merge-settings-ui.ts:1-70",
+        "docs/configuration.md:1-39",
+        "src/settings/checkout.ts:40-113",
+        "src/config/file.ts:149-221",
+        "src/settings/handler.ts:32-111",
+        ".agents/skills/verify-paws/SKILL.md:278-306",
+        "src/config/agents.ts:126-192",
+        "src/config/agents.ts:70-125",
+        "src/config/file.ts:588-666",
+        "test/merge-settings.test.ts:1-25",
+        "test/fixtures/runner-paws-restart.ts:128-198",
+        "src/provisioning/bootstrap.ts:1-72",
+        "deploy/linux/paws-runner.tmpfiles:1-6",
+        "deploy/linux/paws-runner.sysusers:1-6",
+        "src/settings/index.ts:1-29",
+        "src/server/serve.ts:1-77"
+      ],
+      "files": 14,
+      "usage": {
+        "passes": 8,
+        "reads": 16,
+        "bytes": 44323,
+        "elapsedMs": 211
+      },
+      "stop": {
+        "reason": "limit",
+        "limit": "maxPasses"
+      },
+      "gaps": ["Research stopped at the deep limit maxPasses."],
+      "conflicts": 0,
+      "suggestDeep": false,
+      "withinLimits": true,
+      "coldMs": 211,
+      "warmMs": 215
+    },
+    {
+      "id": "q09",
+      "mode": "fast",
+      "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+      "coverage": {
+        "rangesHit": 1,
+        "filesHit": 2,
+        "pins": 2,
+        "missed": ["src/db/recovery.ts:39-39"]
+      },
+      "citationProblems": [],
+      "evidence": [
+        ".agents/skills/verify-paws/SKILL.md:50-73",
+        "src/db/recovery.ts:41-115",
+        ".agents/skills/verify-paws/SKILL.md:313-333",
+        "src/core/index.ts:73-152",
+        "src/db/recovery.ts:116-164"
+      ],
+      "files": 3,
+      "usage": {
+        "passes": 2,
+        "reads": 5,
+        "bytes": 20117,
+        "elapsedMs": 70
+      },
+      "stop": {
+        "reason": "complete"
+      },
+      "gaps": [
+        ".agents/skills/verify-paws/SKILL.md:50-73 mentions `startPaws`, `PAWS_PUBLIC_URL`, `redirect_uri`; Fast did not check these against code at this revision."
+      ],
+      "conflicts": 0,
+      "suggestDeep": true,
+      "withinLimits": true,
+      "coldMs": 70,
+      "warmMs": 71
+    },
+    {
+      "id": "q09",
+      "mode": "deep",
+      "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+      "coverage": {
+        "rangesHit": 1,
+        "filesHit": 2,
+        "pins": 2,
+        "missed": ["src/db/recovery.ts:39-39"]
+      },
+      "citationProblems": [],
+      "evidence": [
+        ".agents/skills/verify-paws/SKILL.md:50-73",
+        "src/db/recovery.ts:41-115",
+        ".agents/skills/verify-paws/SKILL.md:313-333",
+        "src/core/index.ts:73-152",
+        ".agents/skills/verify-paws/SKILL.md:397-418",
+        "scripts/verify-merge-settings-ui.ts:1-70",
+        "src/db/recovery.ts:116-164",
+        "src/core/recovery.ts:1-74",
+        "test/fixtures/runner-paws-restart.ts:128-198",
+        "src/core/recovery.ts:75-106",
+        "src/db/index.ts:289-368",
+        "src/index.ts:73-152",
+        "src/db/tasks.ts:1-55",
+        "src/core/limits.ts:1-4",
+        "src/core/types.ts:1-63",
+        "src/db/checkpoint.ts:1-17"
+      ],
+      "files": 12,
+      "usage": {
+        "passes": 8,
+        "reads": 16,
+        "bytes": 45746,
+        "elapsedMs": 193
+      },
+      "stop": {
+        "reason": "limit",
+        "limit": "maxPasses"
+      },
+      "gaps": ["Research stopped at the deep limit maxPasses."],
+      "conflicts": 0,
+      "suggestDeep": false,
+      "withinLimits": true,
+      "coldMs": 193,
+      "warmMs": 191
+    },
+    {
+      "id": "q10",
+      "mode": "fast",
+      "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+      "coverage": {
+        "rangesHit": 1,
+        "filesHit": 1,
+        "pins": 2,
+        "missed": ["src/closeout/rounds.test.ts:9-17"]
+      },
+      "citationProblems": [],
+      "evidence": [
+        "src/closeout/rounds.ts:1-30",
+        "src/loop/review-findings.ts:1-54",
+        "src/db/review-findings.ts:149-221",
+        "src/db/review-findings.ts:369-401",
+        "scripts/verify-finding-issues-ui.ts:1-41",
+        "src/closeout-spec/types.ts:441-504"
+      ],
+      "files": 5,
+      "usage": {
+        "passes": 2,
+        "reads": 6,
+        "bytes": 10022,
+        "elapsedMs": 76
+      },
+      "stop": {
+        "reason": "complete"
+      },
+      "gaps": [],
+      "conflicts": 0,
+      "suggestDeep": true,
+      "withinLimits": true,
+      "coldMs": 76,
+      "warmMs": 80
+    },
+    {
+      "id": "q10",
+      "mode": "deep",
+      "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+      "coverage": {
+        "rangesHit": 1,
+        "filesHit": 1,
+        "pins": 2,
+        "missed": ["src/closeout/rounds.test.ts:9-17"]
+      },
+      "citationProblems": [],
+      "evidence": [
+        "src/closeout/rounds.ts:1-30",
+        "src/loop/review-findings.ts:1-54",
+        "src/db/review-findings.ts:149-221",
+        "src/db/review-findings.ts:369-401",
+        "src/loop/review-findings.ts:97-136",
+        "src/db/review-findings.ts:1-67",
+        "src/closeout/run.ts:598-658",
+        "src/closeout-spec/facade.ts:453-532",
+        "src/closeout-spec/facade.ts:374-452",
+        "src/loop/open-findings.ts:1-62",
+        "src/web/src/client/link-ask.ts:79-144",
+        "src/web/src/client/review-findings.ts:1-65",
+        "src/web/src/contract.ts:1820-1876",
+        "src/closeout/rounds.ts:31-82",
+        ".agents/probes/api-contract.ts:72-131",
+        "src/web/src/contract.ts:2156-2234"
+      ],
+      "files": 10,
+      "usage": {
+        "passes": 8,
+        "reads": 16,
+        "bytes": 38125,
+        "elapsedMs": 194
+      },
+      "stop": {
+        "reason": "limit",
+        "limit": "maxPasses"
+      },
+      "gaps": ["Research stopped at the deep limit maxPasses."],
+      "conflicts": 0,
+      "suggestDeep": false,
+      "withinLimits": true,
+      "coldMs": 194,
+      "warmMs": 181
+    }
+  ],
+  "warm": {
+    "ask": {
+      "fast": {
+        "status": "unavailable",
+        "ms": [58, 56, 56],
+        "medianMs": 56
+      },
+      "deep": {
+        "status": "unavailable",
+        "ms": [155, 149, 170],
+        "medianMs": 155
+      }
+    },
+    "indexStatus": {
+      "repositoryId": "paws-app",
+      "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+      "state": "ready",
+      "ready": {
+        "buildId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+        "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+      }
+    }
+  },
+  "restart": {
+    "stoppedService": {
+      "exitCode": 0,
+      "cpuMs": 3901,
+      "maxRssMb": 102
+    },
+    "indexStatus": {
+      "repositoryId": "paws-app",
+      "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+      "state": "ready",
+      "ready": {
+        "buildId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+        "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+      }
+    },
+    "mcpIndexStatus": {
+      "repositoryId": "paws-app",
+      "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+      "state": "ready",
+      "ready": {
+        "buildId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+        "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+      }
+    },
+    "firstAsk": {
+      "ms": 84,
+      "status": "unavailable"
+    },
+    "builds": 1
+  },
+  "refresh": {
+    "base": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+    "next": "163ae9601785516a3be6d53033602796094da977",
+    "nameStatus": [
+      "A\tdocs/closeout-round-summary.md",
+      "M\tsrc/closeout/index.ts",
+      "R099\tsrc/closeout/rounds.ts\tsrc/closeout/round-summary.ts",
+      "M\tsrc/closeout/rounds.test.ts",
+      "M\tsrc/closeout/run.ts",
+      "D\ttest/fixtures/runner-answer-uid.ts"
+    ],
+    "duringBuild": {
+      "ms": 136,
+      "response": {
+        "status": "unavailable",
+        "mode": {
+          "requested": "fast",
+          "executed": "fast"
+        },
+        "limitations": [],
+        "message": "No model provider is configured for this Looky service; set LOOKY_PROVIDER",
+        "retryable": true
+      }
+    },
+    "waitMs": 0,
+    "progress": ["ready"],
+    "build": {
+      "id": "build_1c39b4f2-6481-402f-8748-6294adebf57d",
+      "repositoryId": "paws-app",
+      "sha": "163ae9601785516a3be6d53033602796094da977",
+      "policyVersion": 1,
+      "indexKey": "p1-4bbce1d89061240c",
+      "requestedMode": "auto",
+      "state": "ready",
+      "phase": "ready",
+      "filesTotal": 1793,
+      "filesDone": 1793,
+      "filesIndexed": 1775,
+      "filesExcluded": 18,
+      "filesReused": 1770,
+      "chunkCount": 6791,
+      "indexedBytes": 14147750,
+      "refresh": {
+        "mode": "incremental",
+        "reason": null,
+        "baseBuildId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+        "baseSha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+        "added": 2,
+        "modified": 3,
+        "deleted": 2,
+        "renamed": 0,
+        "carried": 1788
+      },
+      "errorCode": null,
+      "errorMessage": null,
+      "retryable": null,
+      "createdAt": "2026-11-02T00:11:18.691Z",
+      "startedAt": "2026-11-02T00:11:18.704Z",
+      "updatedAt": "2026-11-02T00:11:18.761Z",
+      "finishedAt": "2026-11-02T00:11:18.761Z",
+      "retiredAt": null,
+      "lastUsedAt": "2026-11-02T00:11:18.769Z",
+      "progress": {
+        "phase": "ready",
+        "filesDone": 1793,
+        "filesTotal": 1793
+      }
+    },
+    "buildMs": 57,
+    "baseStill": {
+      "repositoryId": "paws-app",
+      "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+      "state": "ready",
+      "ready": {
+        "buildId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+        "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+      }
+    },
+    "supersededSession": {
+      "status": "denied",
+      "reason": "stale_session"
+    },
+    "retrievalAfter": [
+      {
+        "id": "q10-after",
+        "mode": "fast",
+        "sha": "163ae9601785516a3be6d53033602796094da977",
+        "generationId": "build_1c39b4f2-6481-402f-8748-6294adebf57d",
+        "coverage": {
+          "rangesHit": 1,
+          "filesHit": 1,
+          "pins": 2,
+          "missed": ["docs/closeout-round-summary.md:1-3"]
+        },
+        "citationProblems": [],
+        "evidence": [
+          "src/closeout/round-summary.ts:1-30",
+          "src/loop/review-findings.ts:1-54",
+          "src/db/review-findings.ts:149-221",
+          "src/db/review-findings.ts:369-401",
+          "scripts/verify-finding-issues-ui.ts:1-41",
+          "src/closeout-spec/types.ts:441-504"
+        ],
+        "files": 5,
+        "usage": {
+          "passes": 2,
+          "reads": 6,
+          "bytes": 10022,
+          "elapsedMs": 77
+        },
+        "stop": {
+          "reason": "complete"
+        },
+        "gaps": [],
+        "conflicts": 0,
+        "suggestDeep": true,
+        "withinLimits": true,
+        "coldMs": 77,
+        "warmMs": 80
+      },
+      {
+        "id": "q10-after",
+        "mode": "deep",
+        "sha": "163ae9601785516a3be6d53033602796094da977",
+        "generationId": "build_1c39b4f2-6481-402f-8748-6294adebf57d",
+        "coverage": {
+          "rangesHit": 1,
+          "filesHit": 1,
+          "pins": 2,
+          "missed": ["docs/closeout-round-summary.md:1-3"]
+        },
+        "citationProblems": [],
+        "evidence": [
+          "src/closeout/round-summary.ts:1-30",
+          "src/loop/review-findings.ts:1-54",
+          "src/db/review-findings.ts:149-221",
+          "src/db/review-findings.ts:369-401",
+          "src/loop/review-findings.ts:97-136",
+          "src/db/review-findings.ts:1-67",
+          "src/closeout/run.ts:598-658",
+          "src/closeout-spec/facade.ts:453-532",
+          "src/closeout-spec/facade.ts:374-452",
+          "src/loop/open-findings.ts:1-62",
+          "src/web/src/client/link-ask.ts:79-144",
+          "src/web/src/client/review-findings.ts:1-65",
+          "src/web/src/contract.ts:1820-1876",
+          "src/closeout/round-summary.ts:31-82",
+          ".agents/probes/api-contract.ts:72-131",
+          "src/web/src/contract.ts:2156-2234"
+        ],
+        "files": 10,
+        "usage": {
+          "passes": 8,
+          "reads": 16,
+          "bytes": 38125,
+          "elapsedMs": 169
+        },
+        "stop": {
+          "reason": "limit",
+          "limit": "maxPasses"
+        },
+        "gaps": ["Research stopped at the deep limit maxPasses."],
+        "conflicts": 0,
+        "suggestDeep": false,
+        "withinLimits": true,
+        "coldMs": 169,
+        "warmMs": 166
+      }
+    ],
+    "retrievalBefore": [
+      {
+        "id": "q10-after",
+        "mode": "fast",
+        "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+        "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+        "coverage": {
+          "rangesHit": 0,
+          "filesHit": 0,
+          "pins": 2,
+          "missed": ["src/closeout/round-summary.ts:16-29", "docs/closeout-round-summary.md:1-3"]
+        },
+        "citationProblems": [],
+        "evidence": [
+          "src/closeout/rounds.ts:1-30",
+          "src/loop/review-findings.ts:1-54",
+          "src/db/review-findings.ts:149-221",
+          "src/db/review-findings.ts:369-401",
+          "scripts/verify-finding-issues-ui.ts:1-41",
+          "src/closeout-spec/types.ts:441-504"
+        ],
+        "files": 5,
+        "usage": {
+          "passes": 2,
+          "reads": 6,
+          "bytes": 10022,
+          "elapsedMs": 80
+        },
+        "stop": {
+          "reason": "complete"
+        },
+        "gaps": [],
+        "conflicts": 0,
+        "suggestDeep": true,
+        "withinLimits": true,
+        "coldMs": 80,
+        "warmMs": 75
+      },
+      {
+        "id": "q10-after",
+        "mode": "deep",
+        "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+        "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+        "coverage": {
+          "rangesHit": 0,
+          "filesHit": 0,
+          "pins": 2,
+          "missed": ["src/closeout/round-summary.ts:16-29", "docs/closeout-round-summary.md:1-3"]
+        },
+        "citationProblems": [],
+        "evidence": [
+          "src/closeout/rounds.ts:1-30",
+          "src/loop/review-findings.ts:1-54",
+          "src/db/review-findings.ts:149-221",
+          "src/db/review-findings.ts:369-401",
+          "src/loop/review-findings.ts:97-136",
+          "src/db/review-findings.ts:1-67",
+          "src/closeout/run.ts:598-658",
+          "src/closeout-spec/facade.ts:453-532",
+          "src/closeout-spec/facade.ts:374-452",
+          "src/loop/open-findings.ts:1-62",
+          "src/web/src/client/link-ask.ts:79-144",
+          "src/web/src/client/review-findings.ts:1-65",
+          "src/web/src/contract.ts:1820-1876",
+          "src/closeout/rounds.ts:31-82",
+          ".agents/probes/api-contract.ts:72-131",
+          "src/web/src/contract.ts:2156-2234"
+        ],
+        "files": 10,
+        "usage": {
+          "passes": 8,
+          "reads": 16,
+          "bytes": 38125,
+          "elapsedMs": 157
+        },
+        "stop": {
+          "reason": "limit",
+          "limit": "maxPasses"
+        },
+        "gaps": ["Research stopped at the deep limit maxPasses."],
+        "conflicts": 0,
+        "suggestDeep": false,
+        "withinLimits": true,
+        "coldMs": 157,
+        "warmMs": 153
+      }
+    ],
+    "search": {
+      "deletedAtBase": ["test/fixtures/runner-answer-uid.ts"],
+      "deletedAtNext": [],
+      "addedAtBase": [],
+      "addedAtNext": ["docs/closeout-round-summary.md"]
+    }
+  },
+  "failure": {
+    "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
+    "limit": {
+      "LOOKY_INDEX_MAX_FILES": 100
+    },
+    "status": {
+      "repositoryId": "paws-app",
+      "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
+      "state": "failed",
+      "failure": {
+        "buildId": "build_f08253ed-9a30-4c1c-8938-3c6902497cdd",
+        "code": "limit_exceeded",
+        "message": "The commit has more than 100 tracked entries (maxFiles)",
+        "retryable": false
+      }
+    },
+    "progress": ["building queued ?/?", "failed"],
+    "ask": {
+      "status": "failed",
+      "mode": {
+        "requested": "fast",
+        "executed": null
+      },
+      "limitations": [],
+      "stage": "index",
+      "code": "index_failed",
+      "message": "Index build build_f08253ed-9a30-4c1c-8938-3c6902497cdd failed (limit_exceeded): The commit has more than 100 tracked entries (maxFiles)",
+      "retryable": false,
+      "buildId": "build_f08253ed-9a30-4c1c-8938-3c6902497cdd"
+    },
+    "afterRestart": {
+      "repositoryId": "paws-app",
+      "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
+      "state": "failed",
+      "failure": {
+        "buildId": "build_f08253ed-9a30-4c1c-8938-3c6902497cdd",
+        "code": "limit_exceeded",
+        "message": "The commit has more than 100 tracked entries (maxFiles)",
+        "retryable": false
+      }
+    },
+    "retry": {
+      "accepted": {
+        "repositoryId": "paws-app",
+        "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
+        "state": "building",
+        "active": {
+          "buildId": "build_46516112-5d66-44dc-a954-f42b3e476a88",
+          "state": "queued",
+          "progress": {
+            "phase": "queued"
+          },
+          "refresh": {
+            "mode": null,
+            "reason": null,
+            "baseBuildId": null,
+            "baseSha": null,
+            "added": 0,
+            "modified": 0,
+            "deleted": 0,
+            "renamed": 0,
+            "carried": 0
+          }
+        }
+      },
+      "progress": ["building queued ?/?", "ready"],
+      "build": {
+        "id": "build_46516112-5d66-44dc-a954-f42b3e476a88",
+        "repositoryId": "paws-app",
+        "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
+        "policyVersion": 1,
+        "indexKey": "p1-4bbce1d89061240c",
+        "requestedMode": "auto",
+        "state": "ready",
+        "phase": "ready",
+        "filesTotal": 1794,
+        "filesDone": 1794,
+        "filesIndexed": 1776,
+        "filesExcluded": 18,
+        "filesReused": 1775,
+        "chunkCount": 6792,
+        "indexedBytes": 14147814,
+        "refresh": {
+          "mode": "incremental",
+          "reason": null,
+          "baseBuildId": "build_1c39b4f2-6481-402f-8748-6294adebf57d",
+          "baseSha": "163ae9601785516a3be6d53033602796094da977",
+          "added": 1,
+          "modified": 0,
+          "deleted": 0,
+          "renamed": 0,
+          "carried": 1793
+        },
+        "errorCode": null,
+        "errorMessage": null,
+        "retryable": null,
+        "createdAt": "2026-11-02T00:11:20.603Z",
+        "startedAt": "2026-11-02T00:11:20.613Z",
+        "updatedAt": "2026-11-02T00:11:20.650Z",
+        "finishedAt": "2026-11-02T00:11:20.650Z",
+        "retiredAt": null,
+        "lastUsedAt": null,
+        "progress": {
+          "phase": "ready",
+          "filesDone": 1794,
+          "filesTotal": 1794
+        }
+      }
+    },
+    "stoppedServices": [
+      {
+        "exitCode": 0,
+        "cpuMs": 392,
+        "maxRssMb": 76
+      },
+      {
+        "exitCode": 0,
+        "cpuMs": 121,
+        "maxRssMb": 53
+      }
+    ]
+  },
+  "interrupted": {
+    "rebuildStarted": {
+      "repositoryId": "paws-app",
+      "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
+      "state": "ready",
+      "ready": {
+        "buildId": "build_46516112-5d66-44dc-a954-f42b3e476a88",
+        "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0"
+      },
+      "active": {
+        "buildId": "build_33f60870-f759-425b-a9d2-ed1d7ba38f67",
+        "state": "queued",
+        "progress": {
+          "phase": "queued"
+        },
+        "refresh": {
+          "mode": null,
+          "reason": null,
+          "baseBuildId": null,
+          "baseSha": null,
+          "added": 0,
+          "modified": 0,
+          "deleted": 0,
+          "renamed": 0,
+          "carried": 0
+        }
+      }
+    },
+    "killedWhile": "running indexing 256/1794",
+    "killedBuild": {
+      "id": "build_33f60870-f759-425b-a9d2-ed1d7ba38f67",
+      "repositoryId": "paws-app",
+      "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
+      "policyVersion": 1,
+      "indexKey": "p1-4bbce1d89061240c",
+      "requestedMode": "full",
+      "state": "failed",
+      "phase": "failed",
+      "filesTotal": 1794,
+      "filesDone": 256,
+      "filesIndexed": 243,
+      "filesExcluded": 13,
+      "filesReused": 243,
+      "chunkCount": 810,
+      "indexedBytes": 0,
+      "refresh": {
+        "mode": "full",
+        "reason": "rebuild_requested",
+        "baseBuildId": null,
+        "baseSha": null,
+        "added": 0,
+        "modified": 0,
+        "deleted": 0,
+        "renamed": 0,
+        "carried": 0
+      },
+      "errorCode": "interrupted",
+      "errorMessage": "The service stopped before this build finished",
+      "retryable": true,
+      "createdAt": "2026-11-02T00:11:20.659Z",
+      "startedAt": "2026-11-02T00:11:20.668Z",
+      "updatedAt": "2026-11-02T00:11:20.747Z",
+      "finishedAt": "2026-11-02T00:11:20.747Z",
+      "retiredAt": null,
+      "lastUsedAt": null,
+      "progress": {
+        "phase": "failed",
+        "filesDone": 256,
+        "filesTotal": 1794
+      }
+    },
+    "servedAfterKill": {
+      "repositoryId": "paws-app",
+      "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
+      "state": "ready",
+      "ready": {
+        "buildId": "build_46516112-5d66-44dc-a954-f42b3e476a88",
+        "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0"
+      }
+    },
+    "retry": {
+      "repositoryId": "paws-app",
+      "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
+      "state": "ready",
+      "ready": {
+        "buildId": "build_46516112-5d66-44dc-a954-f42b3e476a88",
+        "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0"
+      },
+      "active": {
+        "buildId": "build_a134ddee-c22a-4d75-a3dc-8f179d85ebe4",
+        "state": "queued",
+        "progress": {
+          "phase": "queued"
+        },
+        "refresh": {
+          "mode": null,
+          "reason": null,
+          "baseBuildId": null,
+          "baseSha": null,
+          "added": 0,
+          "modified": 0,
+          "deleted": 0,
+          "renamed": 0,
+          "carried": 0
+        }
+      }
+    },
+    "recoveryBuild": {
+      "id": "build_a134ddee-c22a-4d75-a3dc-8f179d85ebe4",
+      "repositoryId": "paws-app",
+      "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
+      "policyVersion": 1,
+      "indexKey": "p1-4bbce1d89061240c",
+      "requestedMode": "full",
+      "state": "ready",
+      "phase": "ready",
+      "filesTotal": 1794,
+      "filesDone": 1794,
+      "filesIndexed": 1776,
+      "filesExcluded": 18,
+      "filesReused": 1776,
+      "chunkCount": 6792,
+      "indexedBytes": 14147814,
+      "refresh": {
+        "mode": "full",
+        "reason": "rebuild_requested",
+        "baseBuildId": null,
+        "baseSha": null,
+        "added": 0,
+        "modified": 0,
+        "deleted": 0,
+        "renamed": 0,
+        "carried": 0
+      },
+      "errorCode": null,
+      "errorMessage": null,
+      "retryable": null,
+      "createdAt": "2026-11-02T00:11:20.758Z",
+      "startedAt": "2026-11-02T00:11:20.769Z",
+      "updatedAt": "2026-11-02T00:11:20.840Z",
+      "finishedAt": "2026-11-02T00:11:20.840Z",
+      "retiredAt": null,
+      "lastUsedAt": null,
+      "progress": {
+        "phase": "ready",
+        "filesDone": 1794,
+        "filesTotal": 1794
+      }
+    },
+    "recovered": {
+      "repositoryId": "paws-app",
+      "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
+      "state": "ready",
+      "ready": {
+        "buildId": "build_a134ddee-c22a-4d75-a3dc-8f179d85ebe4",
+        "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0"
+      }
+    }
+  },
+  "cancellation": {
+    "cancelled": {
+      "buildId": "build_1aa9ad93-380c-47cd-b672-22eab1d874ab",
+      "cancelled": true,
+      "index": {
+        "repositoryId": "paws-app",
+        "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
+        "state": "ready",
+        "ready": {
+          "buildId": "build_a134ddee-c22a-4d75-a3dc-8f179d85ebe4",
+          "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0"
+        },
+        "active": {
+          "buildId": "build_1aa9ad93-380c-47cd-b672-22eab1d874ab",
+          "state": "queued",
+          "progress": {
+            "phase": "queued"
+          },
+          "refresh": {
+            "mode": null,
+            "reason": null,
+            "baseBuildId": null,
+            "baseSha": null,
+            "added": 0,
+            "modified": 0,
+            "deleted": 0,
+            "renamed": 0,
+            "carried": 0
+          }
+        }
+      }
+    },
+    "build": {
+      "id": "build_1aa9ad93-380c-47cd-b672-22eab1d874ab",
+      "repositoryId": "paws-app",
+      "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
+      "policyVersion": 1,
+      "indexKey": "p1-4bbce1d89061240c",
+      "requestedMode": "full",
+      "state": "cancelled",
+      "phase": "cancelled",
+      "filesTotal": 0,
+      "filesDone": 0,
+      "filesIndexed": 0,
+      "filesExcluded": 0,
+      "filesReused": 0,
+      "chunkCount": 0,
+      "indexedBytes": 0,
+      "refresh": {
+        "mode": null,
+        "reason": null,
+        "baseBuildId": null,
+        "baseSha": null,
+        "added": 0,
+        "modified": 0,
+        "deleted": 0,
+        "renamed": 0,
+        "carried": 0
+      },
+      "errorCode": "cancelled",
+      "errorMessage": "The build was cancelled",
+      "retryable": true,
+      "createdAt": "2026-11-02T00:11:20.865Z",
+      "startedAt": "2026-11-02T00:11:20.874Z",
+      "updatedAt": "2026-11-02T00:11:20.877Z",
+      "finishedAt": "2026-11-02T00:11:20.877Z",
+      "retiredAt": null,
+      "lastUsedAt": null,
+      "progress": {
+        "phase": "cancelled"
+      }
+    },
+    "indexStatus": {
+      "repositoryId": "paws-app",
+      "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
+      "state": "ready",
+      "ready": {
+        "buildId": "build_a134ddee-c22a-4d75-a3dc-8f179d85ebe4",
+        "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0"
+      }
+    }
+  },
+  "answers": {
+    "skipped": "No model provider configured (LOOKY_PROVIDER unset); answers and reviewer scores are pending."
+  },
+  "finalService": {
+    "exitCode": 0,
+    "cpuMs": 232,
+    "maxRssMb": 63
+  },
+  "finalDatabaseBytes": 31444992,
+  "checks": [
+    {
+      "name": "pinned revision checked out",
+      "passed": true,
+      "detail": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+    },
+    {
+      "name": "pinned evidence holds at the base commit",
+      "passed": true,
+      "detail": "29 pins"
+    },
+    {
+      "name": "registration starts a build of the requested SHA",
+      "passed": true,
+      "detail": "building"
+    },
+    {
+      "name": "cold index is ready",
+      "passed": true,
+      "detail": "1775 files, 6791 chunks in 2330 ms"
+    },
+    {
+      "name": "cold build is a full build",
+      "passed": true,
+      "detail": "{\"mode\":\"full\",\"reason\":\"no_base\",\"baseBuildId\":null,\"baseSha\":null,\"added\":0,\"modified\":0,\"deleted\":0,\"renamed\":0,\"carried\":0}"
+    },
+    {
+      "name": "fast: mode is never switched",
+      "passed": true,
+      "detail": "requested fast, executed fast"
+    },
+    {
+      "name": "fast: no provider is a truthful typed result",
+      "passed": true,
+      "detail": "unavailable: No model provider is configured for this Looky service; set LOOKY_PROVIDER"
+    },
+    {
+      "name": "deep: mode is never switched",
+      "passed": true,
+      "detail": "requested deep, executed deep"
+    },
+    {
+      "name": "deep: no provider is a truthful typed result",
+      "passed": true,
+      "detail": "unavailable: No model provider is configured for this Looky service; set LOOKY_PROVIDER"
+    },
+    {
+      "name": "every retrieved range is the exact committed text of the pinned generation",
+      "passed": true,
+      "detail": "219 ranges"
+    },
+    {
+      "name": "retrieval stays within configured research limits",
+      "passed": true,
+      "detail": "passes, reads and bytes per bundle"
+    },
+    {
+      "name": "every bundle comes from the cold generation",
+      "passed": true,
+      "detail": "build_515923a5-8a7e-41ad-8087-426254bf1a92"
+    },
+    {
+      "name": "duplicate registration returns the same session",
+      "passed": true,
+      "detail": "ses_23fa63e6-77dc-4984-832b-5cfe04dab212"
+    },
+    {
+      "name": "warm repeats reuse the cold index",
+      "passed": true,
+      "detail": "1 builds"
+    },
+    {
+      "name": "restart serves the persisted index without rebuilding",
+      "passed": true,
+      "detail": "ready build_515923a5-8a7e-41ad-8087-426254bf1a92"
+    },
+    {
+      "name": "session token survives the restart",
+      "passed": true,
+      "detail": "unavailable"
+    },
+    {
+      "name": "change question pins hold at the new commit",
+      "passed": true,
+      "detail": "163ae9601785516a3be6d53033602796094da977"
+    },
+    {
+      "name": "refresh is incremental from the cold build",
+      "passed": true,
+      "detail": "{\"mode\":\"incremental\",\"reason\":null,\"baseBuildId\":\"build_515923a5-8a7e-41ad-8087-426254bf1a92\",\"baseSha\":\"2ac93023d31bab6f0ef26690a7e6e8e8d2540bff\",\"added\":2,\"modified\":3,\"deleted\":2,\"renamed\":0,\"carried\":1788}"
+    },
+    {
+      "name": "refresh counts the added, changed, deleted and renamed paths",
+      "passed": true,
+      "detail": "added 2, modified 3, deleted 2, renamed 0, carried 1788, reused 1770"
+    },
+    {
+      "name": "no answer is served from an incomplete or other snapshot during refresh",
+      "passed": true,
+      "detail": "unavailable"
+    },
+    {
+      "name": "the base revision keeps its own published index",
+      "passed": true,
+      "detail": "ready build_515923a5-8a7e-41ad-8087-426254bf1a92"
+    },
+    {
+      "name": "the superseded session is fenced",
+      "passed": true,
+      "detail": "denied stale_session"
+    },
+    {
+      "name": "new revision cites the renamed path and never the old one",
+      "passed": true,
+      "detail": "src/closeout/round-summary.ts, src/loop/review-findings.ts, src/db/review-findings.ts, scripts/verify-finding-issues-ui.ts, src/closeout-spec/types.ts, src/closeout/run.ts, src/closeout-spec/facade.ts, src/loop/open-findings.ts, src/web/src/client/link-ask.ts, src/web/src/client/review-findings.ts, src/web/src/contract.ts, .agents/probes/api-contract.ts"
+    },
+    {
+      "name": "base revision still cites the old path",
+      "passed": true,
+      "detail": "src/closeout/rounds.ts, src/loop/review-findings.ts, src/db/review-findings.ts, scripts/verify-finding-issues-ui.ts, src/closeout-spec/types.ts, src/closeout/run.ts, src/closeout-spec/facade.ts, src/loop/open-findings.ts, src/web/src/client/link-ask.ts, src/web/src/client/review-findings.ts, src/web/src/contract.ts, .agents/probes/api-contract.ts"
+    },
+    {
+      "name": "refreshed retrieval matches the new commit's text",
+      "passed": true,
+      "detail": "build_1c39b4f2-6481-402f-8748-6294adebf57d"
+    },
+    {
+      "name": "the changed code is retrieved in both modes at the new commit",
+      "passed": true,
+      "detail": "fast 1/2 (missed docs/closeout-round-summary.md:1-3); deep 1/2 (missed docs/closeout-round-summary.md:1-3)"
+    },
+    {
+      "name": "deleted file is gone from the new snapshot only",
+      "passed": true,
+      "detail": "base hits 1, new hits 0"
+    },
+    {
+      "name": "added file appears in the new snapshot only",
+      "passed": true,
+      "detail": "base hits 0, new hits 1"
+    },
+    {
+      "name": "an over-limit build fails explicitly",
+      "passed": true,
+      "detail": "limit_exceeded: The commit has more than 100 tracked entries (maxFiles)"
+    },
+    {
+      "name": "a question on the failed index gets a typed index failure",
+      "passed": true,
+      "detail": "failed"
+    },
+    {
+      "name": "a deterministic failure is reported, not silently retried",
+      "passed": true,
+      "detail": "failed"
+    },
+    {
+      "name": "retry through the API publishes the revision",
+      "passed": true,
+      "detail": "{\"mode\":\"incremental\",\"reason\":null,\"baseBuildId\":\"build_1c39b4f2-6481-402f-8748-6294adebf57d\",\"baseSha\":\"163ae9601785516a3be6d53033602796094da977\",\"added\":1,\"modified\":0,\"deleted\":0,\"renamed\":0,\"carried\":1793}"
+    },
+    {
+      "name": "a rebuild was killed while running",
+      "passed": true,
+      "detail": "running indexing 256/1794"
+    },
+    {
+      "name": "the killed build is reported as interrupted and retryable",
+      "passed": true,
+      "detail": "failed interrupted retryable true"
+    },
+    {
+      "name": "the previous generation keeps serving after the kill",
+      "passed": true,
+      "detail": "ready build_46516112-5d66-44dc-a954-f42b3e476a88"
+    },
+    {
+      "name": "retry of the interrupted rebuild rebuilds and publishes a new generation",
+      "passed": true,
+      "detail": "ready build_a134ddee-c22a-4d75-a3dc-8f179d85ebe4"
+    },
+    {
+      "name": "a cancelled rebuild leaves the ready generation serving",
+      "passed": true,
+      "detail": "cancelled; serving build_a134ddee-c22a-4d75-a3dc-8f179d85ebe4"
+    }
+  ],
+  "finishedAt": "2026-11-02T00:11:20.926Z"
+}

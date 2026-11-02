@@ -101,8 +101,13 @@ const SCORE = {
   coverage: 4,
   /** Weight of BM25 relative to the best text match, 0..1. */
   text: 4,
-  /** Tests and docs rank below code unless the question asks about them. */
-  secondaryKind: -1,
+  /**
+   * Tests rank below code unless the question asks about them. Their prose
+   * names and fixtures match questions closely, so the penalty is firm.
+   */
+  testKind: -3,
+  /** Docs rank slightly below code; they still matter for stale or documented behavior. */
+  docsKind: -1,
 } as const;
 
 export class IndexRetriever implements Retriever {
@@ -236,13 +241,16 @@ export class IndexRetriever implements Retriever {
     }
     const coverage = concepts.length > 0 ? covered / concepts.length : 0;
     const asked = new Set(concepts.map((concept) => concept.word));
-    const secondary =
-      (candidate.kind === "test" &&
-        !["test", "tests", "spec", "specs", "tested"].some((w) => asked.has(w))) ||
-      (candidate.kind === "docs" &&
-        !["doc", "docs", "documentation", "documented", "readme"].some((w) => asked.has(w)));
+    const kindPenalty =
+      candidate.kind === "test" &&
+      !["test", "tests", "spec", "specs", "tested"].some((w) => asked.has(w))
+        ? SCORE.testKind
+        : candidate.kind === "docs" &&
+            !["doc", "docs", "documentation", "documented", "readme"].some((w) => asked.has(w))
+          ? SCORE.docsKind
+          : 0;
     return (
-      (secondary ? SCORE.secondaryKind : 0) +
+      kindPenalty +
       candidate.textScore * SCORE.text +
       coverage * SCORE.coverage +
       Math.min(inPath, 2) * SCORE.pathConcept +
@@ -420,11 +428,15 @@ export class IndexRetriever implements Retriever {
       }
     }
     for (const fragment of analysis.pathFragments) {
-      const pattern = `%${likeEscape(fragment)}%`;
+      // `_` matches the separator, so `linear-webhook` also finds `linear/webhook.ts`.
+      const pattern = `%${likeEscape(fragment).replaceAll("-", "_")}%`;
       for (const row of findFiles.all(buildId, pathArgs[0], pathArgs[1], fragment, pattern)) {
-        // Only the file name counts, so `user-service` does not match every file under a directory.
-        const name = row.path.split("/").at(-1)!.toLowerCase();
-        if (!name.includes(fragment)) continue;
+        // Only the file name, or its directory and name (`linear/webhook.ts` for
+        // `linear-webhook`), counts, so `user-service` does not match every file under a directory.
+        const segments = row.path.toLowerCase().split("/");
+        const name = segments.at(-1)!;
+        const tail = segments.slice(-2).join("-");
+        if (!name.includes(fragment) && !tail.includes(fragment)) continue;
         files.set(row.path, Math.max(files.get(row.path) ?? 0, SCORE.pathFragment));
       }
     }

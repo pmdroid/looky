@@ -47,6 +47,7 @@ development dependency, bundled into the [browser app](#the-browser-app) at buil
 | `bun run web:build`    | Build the [browser app](#the-browser-app) into `dist/web`                         |
 | `bun run web:dev`      | Rebuild the browser app on change and run `serve` with it                         |
 | `bun run looky …`      | Build, inspect and search codebase indexes; see [Codebase index](#codebase-index) |
+| `bun run pilot`        | Run the real-codebase pilot on paws-app; see [pilot/README.md](pilot/README.md)   |
 
 Tool configurations exclude dependencies, build output, coverage, and local
 database/index directories. The formatter also excludes the generated lockfile.
@@ -614,7 +615,9 @@ requests for the same scope join one build, and a unique database index on queue
 running builds per scope prevents a second publisher. Exceeding `maxFiles` or
 `maxIndexedBytes` fails the build with `limit_exceeded` rather than publishing partial
 coverage. Such deterministic failures are reported to later requests instead of
-retried; `retry` starts a new attempt for the scope. Cancelled and retryable failures
+retried; `retry` starts a new attempt for the scope. Retrying an explicit rebuild that
+failed, was cancelled or was interrupted rebuilds again; any other retry of a scope that
+is already ready returns the ready build. Cancelled and retryable failures
 start a new build on the next request. A build cancelled from another process stops
 at its next batch write. Failure messages are written by Looky and never contain file
 content or matched secrets.
