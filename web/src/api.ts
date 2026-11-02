@@ -79,6 +79,14 @@ export interface QuestionView {
   /** One code host link or null per evidence reference, from Looky's configured template. */
   readonly sourceLinks?: readonly (string | null)[];
   readonly cancelRequested?: boolean;
+  /** The wiki page this question is about, at the same commit as the answer. */
+  readonly wikiPage?: {
+    readonly generationId: string;
+    readonly pageId: string;
+    readonly slug: string;
+    readonly title: string;
+    readonly sha: string;
+  };
 }
 
 export interface SubmitBody {
@@ -86,6 +94,168 @@ export interface SubmitBody {
   readonly question: string;
   readonly mode: Mode;
   readonly clientRequestId: string;
+  /** Ask about a wiki page. Looky resolves it and refuses a page of another commit. */
+  readonly wikiPage?: { readonly generationId: string; readonly pageId: string };
+}
+
+// ---------------------------------------------------------------------------
+// Generated wiki
+
+export type WikiGenerationState = "queued" | "running" | "ready" | "failed" | "cancelled";
+export type WikiPageState = "unavailable" | "queued" | "running" | "ready" | "failed" | "cancelled";
+export type WikiPageKind = "overview" | "architecture" | "section" | "module" | "workflow";
+
+export interface WikiGenerationView {
+  readonly id: string;
+  readonly repositoryId: string;
+  readonly sha: string;
+  readonly state: WikiGenerationState;
+  readonly pageCount: number;
+  /** Pages per state, for a generation being written. */
+  readonly pages?: Readonly<Partial<Record<WikiPageState, number>>>;
+  /** True when this is the wiki served now for its commit. */
+  readonly current?: boolean;
+  readonly retired: boolean;
+  readonly errorCode: string | null;
+  readonly retryable: boolean | null;
+  readonly createdAt: string;
+  readonly startedAt: string | null;
+  readonly finishedAt: string | null;
+  readonly usage?: Readonly<Record<string, number>>;
+}
+
+export interface WikiStatusView {
+  readonly revisionId: string;
+  readonly repositoryId: string;
+  readonly sha: string;
+  readonly state: "unavailable" | WikiGenerationState;
+  readonly ready?: WikiGenerationView;
+  readonly active?: WikiGenerationView;
+  readonly latest?: WikiGenerationView;
+  /** A wiki of another commit or configuration. Never current; select its commit to read it. */
+  readonly stale?: {
+    readonly generation: WikiGenerationView;
+    readonly reasons: readonly ("revision" | "index" | "configuration")[];
+  };
+}
+
+export type WikiStartView =
+  | { readonly state: "ready"; readonly generation: WikiGenerationView }
+  | {
+      readonly state: "queued" | "running";
+      readonly created: boolean;
+      readonly generation: WikiGenerationView;
+    }
+  | { readonly state: "indexing"; readonly index: { buildId: string; progress: IndexProgress } }
+  | {
+      readonly state: "index_failed";
+      readonly index: { buildId: string; code: string | null; retryable: boolean };
+    }
+  | { readonly state: "unsupported_revision" };
+
+export type WikiStartReply = WikiStartView & {
+  readonly revisionId: string;
+  readonly wiki: WikiStatusView;
+};
+
+export interface WikiPageMeta {
+  readonly pageId: string;
+  readonly slug: string;
+  readonly title: string;
+  readonly kind: WikiPageKind;
+  readonly description: string;
+  readonly parentPageId: string | null;
+  readonly depth: number;
+  readonly ordinal: number;
+  readonly scopePath: string | null;
+  readonly state: WikiPageState;
+  readonly unavailableReason: string | null;
+}
+
+export interface WikiTocEntry {
+  readonly pageId: string;
+  readonly slug: string;
+  readonly title: string;
+  readonly kind: WikiPageKind;
+  readonly state: WikiPageState;
+  readonly unavailableReason: string | null;
+  readonly description: string;
+  readonly children: readonly WikiTocEntry[];
+}
+
+export interface WikiIndexView {
+  readonly revisionId: string;
+  readonly generation: WikiGenerationView;
+  /** Generated documentation is context, not source evidence. */
+  readonly notice: string;
+  readonly toc: WikiTocEntry;
+  readonly pages: readonly WikiPageMeta[];
+  readonly truncated: boolean;
+  readonly links: readonly {
+    readonly fromPageId: string;
+    readonly toPageId: string;
+    readonly relation: "uses" | "related";
+  }[];
+  readonly report: unknown;
+}
+
+export interface WikiSourceView {
+  readonly path: string;
+  readonly startLine: number;
+  readonly endLine: number;
+  readonly kind: "code" | "test" | "config" | "docs";
+  /** Code host link at the page's commit, from Looky's template, or null. */
+  readonly link: string | null;
+}
+
+export interface WikiPageView {
+  readonly revisionId: string;
+  readonly generation: WikiGenerationView;
+  readonly notice: string;
+  /** The requested slug when it was renamed; `page.slug` is the current one. */
+  readonly redirectedFrom?: string;
+  readonly page: WikiPageMeta;
+  /** Markdown without HTML. Only `wiki:` links to ready pages and cited source links remain. */
+  readonly body?: {
+    readonly format: "markdown";
+    readonly html: false;
+    readonly markdown: string;
+    readonly generatedAt: string;
+  };
+  readonly headings: readonly { level: number; text: string; anchor: string }[];
+  readonly pageLinks: readonly { slug: string; pageId: string; title: string }[];
+  readonly citations: readonly WikiSourceView[];
+  readonly plannedSources: readonly WikiSourceView[];
+}
+
+export interface WikiSearchView {
+  readonly revisionId: string;
+  /** Documentation search over generated pages, not raw-source retrieval. */
+  readonly kind: "docs";
+  readonly notice: string;
+  readonly generation: WikiGenerationView;
+  readonly query: string;
+  readonly offset: number;
+  readonly limit: number;
+  readonly total: number;
+  readonly totalCapped: boolean;
+  readonly nextOffset?: number;
+  readonly hits: readonly {
+    readonly pageId: string;
+    readonly slug: string;
+    readonly title: string;
+    readonly kind: WikiPageKind;
+    readonly heading: string | null;
+    readonly anchor: string | null;
+    /** Plain text; `match` marks the matched words. Never HTML. */
+    readonly snippet: readonly { text: string; match: boolean }[];
+  }[];
+}
+
+export interface WikiCancelView {
+  readonly generationId: string;
+  readonly cancelled: boolean;
+  readonly wiki: WikiStatusView;
 }
 
 /** A failed API call. `status` 0 means the request never got an HTTP response. */
@@ -95,6 +265,8 @@ export class ApiError extends Error {
     readonly status: number,
     readonly code: string,
     message: string,
+    /** Typed fields of the error, such as the commit of a wiki of another revision. */
+    readonly details?: Readonly<Record<string, unknown>>,
   ) {
     super(message);
   }
@@ -166,13 +338,20 @@ export class BrowserApi {
       throw new ApiError(response.status, "bad_response", "Looky sent an unreadable response.");
     }
     if (!response.ok) {
-      const failure = (payload as { error?: { code?: unknown; message?: unknown } })?.error;
+      const failure = (
+        payload as { error?: { code?: unknown; message?: unknown; details?: unknown } }
+      )?.error;
+      const details =
+        typeof failure?.details === "object" && failure.details !== null
+          ? (failure.details as Record<string, unknown>)
+          : undefined;
       throw new ApiError(
         response.status,
         typeof failure?.code === "string" ? failure.code : "http_error",
         typeof failure?.message === "string"
           ? failure.message
           : `Request failed (${response.status})`,
+        details,
       );
     }
     return payload as T;
@@ -229,5 +408,80 @@ export class BrowserApi {
       body: {},
       keepalive,
     });
+  }
+
+  #wiki(revisionId: string, rest = ""): string {
+    return `/revisions/${encodeURIComponent(revisionId)}/wiki${rest}`;
+  }
+
+  wikiStatus(revisionId: string, signal?: AbortSignal): Promise<WikiStatusView> {
+    return this.#call("GET", this.#wiki(revisionId), { signal });
+  }
+
+  /** Start or join generation. Costs model calls; call only on an explicit request. */
+  wikiGenerate(revisionId: string, signal?: AbortSignal): Promise<WikiStartReply> {
+    return this.#call("POST", this.#wiki(revisionId, "/generate"), { body: {}, signal });
+  }
+
+  wikiCancel(revisionId: string, generationId: string): Promise<WikiCancelView> {
+    return this.#call(
+      "POST",
+      this.#wiki(revisionId, `/generations/${encodeURIComponent(generationId)}/cancel`),
+      { body: {} },
+    );
+  }
+
+  /** A new attempt after a failed or cancelled generation. Explicit only; never automatic. */
+  wikiRetry(revisionId: string, generationId: string): Promise<WikiStartReply> {
+    return this.#call(
+      "POST",
+      this.#wiki(revisionId, `/generations/${encodeURIComponent(generationId)}/retry`),
+      { body: {} },
+    );
+  }
+
+  wikiIndex(
+    revisionId: string,
+    generationId: string,
+    signal?: AbortSignal,
+  ): Promise<WikiIndexView> {
+    return this.#call(
+      "GET",
+      this.#wiki(revisionId, `/generations/${encodeURIComponent(generationId)}`),
+      { signal },
+    );
+  }
+
+  wikiPage(
+    revisionId: string,
+    generationId: string,
+    slug: string,
+    signal?: AbortSignal,
+  ): Promise<WikiPageView> {
+    const path = slug.split("/").map(encodeURIComponent).join("/");
+    return this.#call(
+      "GET",
+      this.#wiki(revisionId, `/generations/${encodeURIComponent(generationId)}/pages/${path}`),
+      { signal },
+    );
+  }
+
+  wikiSearch(
+    revisionId: string,
+    generationId: string,
+    query: { readonly q: string; readonly limit?: number; readonly offset?: number },
+    signal?: AbortSignal,
+  ): Promise<WikiSearchView> {
+    const params = new URLSearchParams({ q: query.q });
+    if (query.limit !== undefined) params.set("limit", String(query.limit));
+    if (query.offset !== undefined) params.set("offset", String(query.offset));
+    return this.#call(
+      "GET",
+      this.#wiki(
+        revisionId,
+        `/generations/${encodeURIComponent(generationId)}/search?${params.toString()}`,
+      ),
+      { signal },
+    );
   }
 }

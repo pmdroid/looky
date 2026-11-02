@@ -322,6 +322,7 @@ export function startHttpServer(options: HttpServerOptions): RunningHttpServer {
           localOrigins: isLoopbackHost(config.host) ? loopbackOrigins(server.port!) : [],
           ...(options.browserLimits ? { limits: options.browserLimits } : {}),
           ...(options.sourceLink ? { sourceLink: options.sourceLink } : {}),
+          maxQuestionChars: options.askConfig.maxQuestionChars,
         })
       : undefined;
 
