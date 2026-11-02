@@ -1,0 +1,1418 @@
+{
+  "summary": [
+    {
+      "run": "full-glm-5.3-flash",
+      "model": "glm-5.3-flash",
+      "effort": null,
+      "provider": "OpenCode Go",
+      "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+      "questions": ["q01", "q02", "q03", "q04", "q05", "q06", "q07", "q08", "q09", "q10"],
+      "modes": [
+        {
+          "mode": "fast",
+          "questions": 10,
+          "answered": 9,
+          "outcomes": {
+            "supported": 4,
+            "partial": 4,
+            "conflicting": 1,
+            "unknown": 0
+          },
+          "failures": ["q05: failed model_output_invalid"],
+          "useful": 6,
+          "scoreSums": {
+            "correct": 14,
+            "useful": 13,
+            "clear": 17,
+            "uncertainty": 16,
+            "citations": 18
+          },
+          "medianTotalMs": 12086,
+          "maxTotalMs": 24847,
+          "minTotalMs": 6669,
+          "medianModelMs": 11958,
+          "medianNonModelMs": 88,
+          "medianSourceReads": 6,
+          "modelCalls": 13,
+          "callsByKind": {
+            "synthesis": 10,
+            "repair": 3
+          },
+          "repairCalls": 3,
+          "lengthStops": 1,
+          "callErrors": 0,
+          "inputTokens": 63253,
+          "outputTokens": 8170,
+          "reasoningTokens": 696,
+          "estUsd": 0.0136,
+          "citationProblems": 0
+        },
+        {
+          "mode": "deep",
+          "questions": 10,
+          "answered": 10,
+          "outcomes": {
+            "supported": 5,
+            "partial": 5,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": [],
+          "useful": 9,
+          "scoreSums": {
+            "correct": 19,
+            "useful": 19,
+            "clear": 17,
+            "uncertainty": 19,
+            "citations": 20
+          },
+          "medianTotalMs": 49101,
+          "maxTotalMs": 95007,
+          "minTotalMs": 26847,
+          "medianModelMs": 48821,
+          "medianNonModelMs": 297,
+          "medianSourceReads": 21,
+          "modelCalls": 42,
+          "callsByKind": {
+            "plan": 20,
+            "synthesis": 10,
+            "check": 10,
+            "repair": 2
+          },
+          "repairCalls": 2,
+          "lengthStops": 0,
+          "callErrors": 0,
+          "inputTokens": 498482,
+          "outputTokens": 31578,
+          "reasoningTokens": 4871,
+          "estUsd": 0.0906,
+          "citationProblems": 0
+        }
+      ]
+    },
+    {
+      "run": "full-minimax-m3.1-flash-low",
+      "model": "minimax-m3.1-flash",
+      "effort": "low",
+      "provider": "OpenCode Go",
+      "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+      "questions": ["q01", "q02", "q03", "q04", "q05", "q06", "q07", "q08", "q09", "q10"],
+      "modes": [
+        {
+          "mode": "fast",
+          "questions": 10,
+          "answered": 10,
+          "outcomes": {
+            "supported": 8,
+            "partial": 2,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": [],
+          "useful": 8,
+          "scoreSums": {
+            "correct": 17,
+            "useful": 15,
+            "clear": 20,
+            "uncertainty": 19,
+            "citations": 20
+          },
+          "medianTotalMs": 5123,
+          "maxTotalMs": 14482,
+          "minTotalMs": 3311,
+          "medianModelMs": 5055,
+          "medianNonModelMs": 73,
+          "medianSourceReads": 6,
+          "modelCalls": 10,
+          "callsByKind": {
+            "synthesis": 10
+          },
+          "repairCalls": 0,
+          "lengthStops": 0,
+          "callErrors": 0,
+          "inputTokens": 51072,
+          "outputTokens": 4842,
+          "reasoningTokens": 1347,
+          "estUsd": 0.0106,
+          "citationProblems": 0
+        },
+        {
+          "mode": "deep",
+          "questions": 10,
+          "answered": 10,
+          "outcomes": {
+            "supported": 5,
+            "partial": 5,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": [],
+          "useful": 9,
+          "scoreSums": {
+            "correct": 19,
+            "useful": 19,
+            "clear": 20,
+            "uncertainty": 19,
+            "citations": 20
+          },
+          "medianTotalMs": 35849,
+          "maxTotalMs": 60973,
+          "minTotalMs": 21033,
+          "medianModelMs": 35589,
+          "medianNonModelMs": 293,
+          "medianSourceReads": 22,
+          "modelCalls": 41,
+          "callsByKind": {
+            "plan": 20,
+            "synthesis": 10,
+            "check": 10,
+            "repair": 1
+          },
+          "repairCalls": 1,
+          "lengthStops": 0,
+          "callErrors": 0,
+          "inputTokens": 510360,
+          "outputTokens": 27420,
+          "reasoningTokens": 6350,
+          "estUsd": 0.093,
+          "citationProblems": 0
+        }
+      ]
+    },
+    {
+      "run": "full-or-gemini-3.8-flash-low",
+      "model": "google/gemini-3.8-flash",
+      "effort": "low",
+      "provider": "OpenRouter",
+      "generationId": "build_d25203ee-7fb3-4be8-995d-ea6e5508dde8",
+      "questions": ["q01", "q02", "q03", "q04", "q05", "q06", "q07", "q08", "q09", "q10"],
+      "modes": [
+        {
+          "mode": "fast",
+          "questions": 10,
+          "answered": 10,
+          "outcomes": {
+            "supported": 8,
+            "partial": 2,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": [],
+          "useful": 8,
+          "scoreSums": {
+            "correct": 18,
+            "useful": 15,
+            "clear": 19,
+            "uncertainty": 18,
+            "citations": 20
+          },
+          "medianTotalMs": 6301,
+          "maxTotalMs": 14482,
+          "minTotalMs": 3446,
+          "medianModelMs": 6241,
+          "medianNonModelMs": 65,
+          "medianSourceReads": 6,
+          "modelCalls": 10,
+          "callsByKind": {
+            "synthesis": 10
+          },
+          "repairCalls": 0,
+          "lengthStops": 0,
+          "callErrors": 0,
+          "inputTokens": 58693,
+          "outputTokens": 4675,
+          "reasoningTokens": 0,
+          "estUsd": 0.0602,
+          "citationProblems": 0
+        },
+        {
+          "mode": "deep",
+          "questions": 10,
+          "answered": 10,
+          "outcomes": {
+            "supported": 10,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": [],
+          "useful": 9,
+          "scoreSums": {
+            "correct": 18,
+            "useful": 18,
+            "clear": 20,
+            "uncertainty": 19,
+            "citations": 20
+          },
+          "medianTotalMs": 22019,
+          "maxTotalMs": 51052,
+          "minTotalMs": 16894,
+          "medianModelMs": 21803,
+          "medianNonModelMs": 249,
+          "medianSourceReads": 22,
+          "modelCalls": 40,
+          "callsByKind": {
+            "plan": 20,
+            "synthesis": 10,
+            "check": 10
+          },
+          "repairCalls": 0,
+          "lengthStops": 0,
+          "callErrors": 0,
+          "inputTokens": 557589,
+          "outputTokens": 11926,
+          "reasoningTokens": 0,
+          "estUsd": 0.4629,
+          "citationProblems": 0
+        }
+      ]
+    },
+    {
+      "run": "smoke-claude-haiku-5-5",
+      "model": "claude-haiku-5-5",
+      "effort": null,
+      "provider": "OpenCode Go",
+      "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+      "questions": ["q01"],
+      "modes": [
+        {
+          "mode": "fast",
+          "questions": 1,
+          "answered": 0,
+          "outcomes": {
+            "supported": 0,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": ["q01: failed model_output_invalid"],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 7567,
+          "maxTotalMs": 7567,
+          "minTotalMs": 7567,
+          "medianModelMs": 7494,
+          "medianNonModelMs": 73,
+          "medianSourceReads": null,
+          "modelCalls": 1,
+          "callsByKind": {
+            "synthesis": 1
+          },
+          "repairCalls": 0,
+          "lengthStops": 1,
+          "callErrors": 0,
+          "inputTokens": 7118,
+          "outputTokens": 1500,
+          "reasoningTokens": 0,
+          "estUsd": 0.0015,
+          "citationProblems": 0
+        },
+        {
+          "mode": "deep",
+          "questions": 1,
+          "answered": 1,
+          "outcomes": {
+            "supported": 0,
+            "partial": 1,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": [],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 34904,
+          "maxTotalMs": 34904,
+          "minTotalMs": 34904,
+          "medianModelMs": 34747,
+          "medianNonModelMs": 157,
+          "medianSourceReads": 17,
+          "modelCalls": 3,
+          "callsByKind": {
+            "plan": 1,
+            "synthesis": 1,
+            "check": 1
+          },
+          "repairCalls": 0,
+          "lengthStops": 2,
+          "callErrors": 0,
+          "inputTokens": 47975,
+          "outputTokens": 8000,
+          "reasoningTokens": 0,
+          "estUsd": 0.0088,
+          "citationProblems": 0
+        }
+      ]
+    },
+    {
+      "run": "smoke-deepseek-v4.1-flash",
+      "model": "deepseek-v4.1-flash",
+      "effort": null,
+      "provider": "OpenCode Go",
+      "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+      "questions": ["q01"],
+      "modes": [
+        {
+          "mode": "fast",
+          "questions": 1,
+          "answered": 0,
+          "outcomes": {
+            "supported": 0,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": ["q01: failed model_output_invalid"],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 10517,
+          "maxTotalMs": 10517,
+          "minTotalMs": 10517,
+          "medianModelMs": 10455,
+          "medianNonModelMs": 62,
+          "medianSourceReads": null,
+          "modelCalls": 1,
+          "callsByKind": {
+            "synthesis": 1
+          },
+          "repairCalls": 0,
+          "lengthStops": 1,
+          "callErrors": 0,
+          "inputTokens": 4806,
+          "outputTokens": 1500,
+          "reasoningTokens": 1500,
+          "estUsd": 0.0032,
+          "citationProblems": 0
+        },
+        {
+          "mode": "deep",
+          "questions": 1,
+          "answered": 1,
+          "outcomes": {
+            "supported": 1,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": [],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 81692,
+          "maxTotalMs": 81692,
+          "minTotalMs": 81692,
+          "medianModelMs": 81550,
+          "medianNonModelMs": 142,
+          "medianSourceReads": 17,
+          "modelCalls": 4,
+          "callsByKind": {
+            "plan": 1,
+            "synthesis": 1,
+            "repair": 1,
+            "check": 1
+          },
+          "repairCalls": 1,
+          "lengthStops": 3,
+          "callErrors": 0,
+          "inputTokens": 44960,
+          "outputTokens": 8000,
+          "reasoningTokens": 6575,
+          "estUsd": 0.0231,
+          "citationProblems": 0
+        }
+      ]
+    },
+    {
+      "run": "smoke-glm-5.3-flash",
+      "model": "glm-5.3-flash",
+      "effort": null,
+      "provider": "OpenCode Go",
+      "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+      "questions": ["q01"],
+      "modes": [
+        {
+          "mode": "fast",
+          "questions": 1,
+          "answered": 1,
+          "outcomes": {
+            "supported": 1,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": [],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 9461,
+          "maxTotalMs": 9461,
+          "minTotalMs": 9461,
+          "medianModelMs": 9391,
+          "medianNonModelMs": 70,
+          "medianSourceReads": 5,
+          "modelCalls": 1,
+          "callsByKind": {
+            "synthesis": 1
+          },
+          "repairCalls": 0,
+          "lengthStops": 0,
+          "callErrors": 0,
+          "inputTokens": 4609,
+          "outputTokens": 659,
+          "reasoningTokens": 0,
+          "estUsd": 0.001,
+          "citationProblems": 0
+        },
+        {
+          "mode": "deep",
+          "questions": 1,
+          "answered": 1,
+          "outcomes": {
+            "supported": 1,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": [],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 49879,
+          "maxTotalMs": 49879,
+          "minTotalMs": 49879,
+          "medianModelMs": 49722,
+          "medianNonModelMs": 157,
+          "medianSourceReads": 18,
+          "modelCalls": 4,
+          "callsByKind": {
+            "plan": 2,
+            "synthesis": 1,
+            "check": 1
+          },
+          "repairCalls": 0,
+          "lengthStops": 0,
+          "callErrors": 0,
+          "inputTokens": 35720,
+          "outputTokens": 3534,
+          "reasoningTokens": 321,
+          "estUsd": 0.0071,
+          "citationProblems": 0
+        }
+      ]
+    },
+    {
+      "run": "smoke-low-deepseek-v4.1-flash",
+      "model": "deepseek-v4.1-flash",
+      "effort": "low",
+      "provider": "OpenCode Go",
+      "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+      "questions": ["q01"],
+      "modes": [
+        {
+          "mode": "fast",
+          "questions": 1,
+          "answered": 0,
+          "outcomes": {
+            "supported": 0,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": ["q01: failed model_output_invalid"],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 13054,
+          "maxTotalMs": 13054,
+          "minTotalMs": 13054,
+          "medianModelMs": 12967,
+          "medianNonModelMs": 87,
+          "medianSourceReads": null,
+          "modelCalls": 1,
+          "callsByKind": {
+            "synthesis": 1
+          },
+          "repairCalls": 0,
+          "lengthStops": 1,
+          "callErrors": 0,
+          "inputTokens": 4806,
+          "outputTokens": 1500,
+          "reasoningTokens": 733,
+          "estUsd": 0.0032,
+          "citationProblems": 0
+        },
+        {
+          "mode": "deep",
+          "questions": 1,
+          "answered": 1,
+          "outcomes": {
+            "supported": 1,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": [],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 45975,
+          "maxTotalMs": 45975,
+          "minTotalMs": 45975,
+          "medianModelMs": 45693,
+          "medianNonModelMs": 282,
+          "medianSourceReads": 22,
+          "modelCalls": 4,
+          "callsByKind": {
+            "plan": 2,
+            "synthesis": 1,
+            "check": 1
+          },
+          "repairCalls": 0,
+          "lengthStops": 1,
+          "callErrors": 0,
+          "inputTokens": 46301,
+          "outputTokens": 7373,
+          "reasoningTokens": 3871,
+          "estUsd": 0.0227,
+          "citationProblems": 0
+        }
+      ]
+    },
+    {
+      "run": "smoke-low-minimax-m3.1-flash",
+      "model": "minimax-m3.1-flash",
+      "effort": "low",
+      "provider": "OpenCode Go",
+      "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+      "questions": ["q01"],
+      "modes": [
+        {
+          "mode": "fast",
+          "questions": 1,
+          "answered": 1,
+          "outcomes": {
+            "supported": 1,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": [],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 5573,
+          "maxTotalMs": 5573,
+          "minTotalMs": 5573,
+          "medianModelMs": 5476,
+          "medianNonModelMs": 97,
+          "medianSourceReads": 5,
+          "modelCalls": 1,
+          "callsByKind": {
+            "synthesis": 1
+          },
+          "repairCalls": 0,
+          "lengthStops": 0,
+          "callErrors": 0,
+          "inputTokens": 4809,
+          "outputTokens": 444,
+          "reasoningTokens": 92,
+          "estUsd": 0.001,
+          "citationProblems": 0
+        },
+        {
+          "mode": "deep",
+          "questions": 1,
+          "answered": 1,
+          "outcomes": {
+            "supported": 1,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": [],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 27974,
+          "maxTotalMs": 27974,
+          "minTotalMs": 27974,
+          "medianModelMs": 27522,
+          "medianNonModelMs": 452,
+          "medianSourceReads": 23,
+          "modelCalls": 4,
+          "callsByKind": {
+            "plan": 2,
+            "synthesis": 1,
+            "check": 1
+          },
+          "repairCalls": 0,
+          "lengthStops": 0,
+          "callErrors": 0,
+          "inputTokens": 44474,
+          "outputTokens": 2572,
+          "reasoningTokens": 627,
+          "estUsd": 0.0082,
+          "citationProblems": 0
+        }
+      ]
+    },
+    {
+      "run": "smoke-low-qwen3.8-flash",
+      "model": "qwen3.8-flash",
+      "effort": "low",
+      "provider": "OpenCode Go",
+      "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+      "questions": ["q01"],
+      "modes": [
+        {
+          "mode": "fast",
+          "questions": 1,
+          "answered": 1,
+          "outcomes": {
+            "supported": 1,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": [],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 24949,
+          "maxTotalMs": 24949,
+          "minTotalMs": 24949,
+          "medianModelMs": 24832,
+          "medianNonModelMs": 117,
+          "medianSourceReads": 5,
+          "modelCalls": 1,
+          "callsByKind": {
+            "synthesis": 1
+          },
+          "repairCalls": 0,
+          "lengthStops": 0,
+          "callErrors": 0,
+          "inputTokens": 5137,
+          "outputTokens": 1417,
+          "reasoningTokens": 541,
+          "estUsd": 0.0014,
+          "citationProblems": 0
+        },
+        {
+          "mode": "deep",
+          "questions": 1,
+          "answered": 0,
+          "outcomes": {
+            "supported": 0,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": ["q01: unavailable"],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 100894,
+          "maxTotalMs": 100894,
+          "minTotalMs": 100894,
+          "medianModelMs": 100626,
+          "medianNonModelMs": 268,
+          "medianSourceReads": null,
+          "modelCalls": 3,
+          "callsByKind": {
+            "plan": 1,
+            "synthesis": 1,
+            "check": 1
+          },
+          "repairCalls": 0,
+          "lengthStops": 0,
+          "callErrors": 1,
+          "inputTokens": 19656,
+          "outputTokens": 2759,
+          "reasoningTokens": 776,
+          "estUsd": 0.0042,
+          "citationProblems": 0
+        }
+      ]
+    },
+    {
+      "run": "smoke-mimo-v2.6-flash",
+      "model": "mimo-v2.6-flash",
+      "effort": null,
+      "provider": "OpenCode Go",
+      "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+      "questions": ["q01"],
+      "modes": [
+        {
+          "mode": "fast",
+          "questions": 1,
+          "answered": 1,
+          "outcomes": {
+            "supported": 1,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": [],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 19043,
+          "maxTotalMs": 19043,
+          "minTotalMs": 19043,
+          "medianModelMs": 18973,
+          "medianNonModelMs": 70,
+          "medianSourceReads": 5,
+          "modelCalls": 1,
+          "callsByKind": {
+            "synthesis": 1
+          },
+          "repairCalls": 0,
+          "lengthStops": 0,
+          "callErrors": 0,
+          "inputTokens": 4884,
+          "outputTokens": 646,
+          "reasoningTokens": 10,
+          "estUsd": 0.0009,
+          "citationProblems": 0
+        },
+        {
+          "mode": "deep",
+          "questions": 1,
+          "answered": 0,
+          "outcomes": {
+            "supported": 0,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": ["q01: unavailable"],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 97527,
+          "maxTotalMs": 97527,
+          "minTotalMs": 97527,
+          "medianModelMs": 97365,
+          "medianNonModelMs": 162,
+          "medianSourceReads": null,
+          "modelCalls": 3,
+          "callsByKind": {
+            "plan": 2,
+            "synthesis": 1
+          },
+          "repairCalls": 0,
+          "lengthStops": 1,
+          "callErrors": 1,
+          "inputTokens": 9300,
+          "outputTokens": 1065,
+          "reasoningTokens": 616,
+          "estUsd": 0.0016,
+          "citationProblems": 0
+        }
+      ]
+    },
+    {
+      "run": "smoke-minimax-m3.1-flash",
+      "model": "minimax-m3.1-flash",
+      "effort": null,
+      "provider": "OpenCode Go",
+      "questions": ["q01"],
+      "modes": [
+        {
+          "mode": "fast",
+          "questions": 1,
+          "answered": 0,
+          "outcomes": {
+            "supported": 0,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": ["q01: unavailable"],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 22591,
+          "maxTotalMs": 22591,
+          "minTotalMs": 22591,
+          "medianModelMs": 22523,
+          "medianNonModelMs": 68,
+          "medianSourceReads": null,
+          "modelCalls": 1,
+          "callsByKind": {
+            "synthesis": 1
+          },
+          "repairCalls": 0,
+          "lengthStops": 1,
+          "callErrors": 0,
+          "inputTokens": 4809,
+          "outputTokens": 1500,
+          "reasoningTokens": 1499,
+          "estUsd": 0.0016,
+          "citationProblems": 0
+        },
+        {
+          "mode": "deep",
+          "questions": 1,
+          "answered": 0,
+          "outcomes": {
+            "supported": 0,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": ["q01: unavailable"],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 4751,
+          "maxTotalMs": 4751,
+          "minTotalMs": 4751,
+          "medianModelMs": 4605,
+          "medianNonModelMs": 146,
+          "medianSourceReads": null,
+          "modelCalls": 1,
+          "callsByKind": {
+            "plan": 1
+          },
+          "repairCalls": 0,
+          "lengthStops": 1,
+          "callErrors": 0,
+          "inputTokens": 4161,
+          "outputTokens": 600,
+          "reasoningTokens": 599,
+          "estUsd": 0.001,
+          "citationProblems": 0
+        }
+      ]
+    },
+    {
+      "run": "smoke-or-inclusionai_ling-3.1-flash",
+      "model": "inclusionai/ling-3.1-flash",
+      "effort": null,
+      "provider": "OpenRouter",
+      "questions": ["q01"],
+      "modes": [
+        {
+          "mode": "fast",
+          "questions": 1,
+          "answered": 0,
+          "outcomes": {
+            "supported": 0,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": ["q01: timed_out"],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 30006,
+          "maxTotalMs": 30006,
+          "minTotalMs": 30006,
+          "medianModelMs": 29915,
+          "medianNonModelMs": 91,
+          "medianSourceReads": null,
+          "modelCalls": 1,
+          "callsByKind": {
+            "synthesis": 1
+          },
+          "repairCalls": 0,
+          "lengthStops": 0,
+          "callErrors": 1,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "reasoningTokens": 0,
+          "estUsd": 0,
+          "citationProblems": 0
+        },
+        {
+          "mode": "deep",
+          "questions": 1,
+          "answered": 0,
+          "outcomes": {
+            "supported": 0,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": ["q01: unavailable"],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 13912,
+          "maxTotalMs": 13912,
+          "minTotalMs": 13912,
+          "medianModelMs": 13704,
+          "medianNonModelMs": 208,
+          "medianSourceReads": null,
+          "modelCalls": 1,
+          "callsByKind": {
+            "plan": 1
+          },
+          "repairCalls": 0,
+          "lengthStops": 1,
+          "callErrors": 0,
+          "inputTokens": 4626,
+          "outputTokens": 600,
+          "reasoningTokens": 553,
+          "estUsd": 0.0005,
+          "citationProblems": 0
+        }
+      ]
+    },
+    {
+      "run": "smoke-or-low-google_gemini-3.1-flash-lite",
+      "model": "google/gemini-3.1-flash-lite",
+      "effort": "low",
+      "provider": "OpenRouter",
+      "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+      "questions": ["q01"],
+      "modes": [
+        {
+          "mode": "fast",
+          "questions": 1,
+          "answered": 0,
+          "outcomes": {
+            "supported": 0,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": ["q01: failed model_output_invalid"],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 6753,
+          "maxTotalMs": 6753,
+          "minTotalMs": 6753,
+          "medianModelMs": 6664,
+          "medianNonModelMs": 89,
+          "medianSourceReads": null,
+          "modelCalls": 2,
+          "callsByKind": {
+            "synthesis": 1,
+            "repair": 1
+          },
+          "repairCalls": 1,
+          "lengthStops": 1,
+          "callErrors": 0,
+          "inputTokens": 10630,
+          "outputTokens": 1496,
+          "reasoningTokens": 1012,
+          "estUsd": 0.0049,
+          "citationProblems": 0
+        },
+        {
+          "mode": "deep",
+          "questions": 1,
+          "answered": 1,
+          "outcomes": {
+            "supported": 1,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": [],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 14139,
+          "maxTotalMs": 14139,
+          "minTotalMs": 14139,
+          "medianModelMs": 13863,
+          "medianNonModelMs": 276,
+          "medianSourceReads": 17,
+          "modelCalls": 3,
+          "callsByKind": {
+            "plan": 1,
+            "synthesis": 1,
+            "check": 1
+          },
+          "repairCalls": 0,
+          "lengthStops": 0,
+          "callErrors": 0,
+          "inputTokens": 36428,
+          "outputTokens": 3300,
+          "reasoningTokens": 2741,
+          "estUsd": 0.0141,
+          "citationProblems": 0
+        }
+      ]
+    },
+    {
+      "run": "smoke-or-low-google_gemini-3.8-flash",
+      "model": "google/gemini-3.8-flash",
+      "effort": "low",
+      "provider": "OpenRouter",
+      "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+      "questions": ["q01"],
+      "modes": [
+        {
+          "mode": "fast",
+          "questions": 1,
+          "answered": 1,
+          "outcomes": {
+            "supported": 1,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": [],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 9158,
+          "maxTotalMs": 9158,
+          "minTotalMs": 9158,
+          "medianModelMs": 9060,
+          "medianNonModelMs": 98,
+          "medianSourceReads": 5,
+          "modelCalls": 1,
+          "callsByKind": {
+            "synthesis": 1
+          },
+          "repairCalls": 0,
+          "lengthStops": 0,
+          "callErrors": 0,
+          "inputTokens": 5300,
+          "outputTokens": 821,
+          "reasoningTokens": 0,
+          "estUsd": 0.0071,
+          "citationProblems": 0
+        },
+        {
+          "mode": "deep",
+          "questions": 1,
+          "answered": 1,
+          "outcomes": {
+            "supported": 0,
+            "partial": 1,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": [],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 32408,
+          "maxTotalMs": 32408,
+          "minTotalMs": 32408,
+          "medianModelMs": 32091,
+          "medianNonModelMs": 317,
+          "medianSourceReads": 19,
+          "modelCalls": 4,
+          "callsByKind": {
+            "plan": 2,
+            "synthesis": 1,
+            "check": 1
+          },
+          "repairCalls": 0,
+          "lengthStops": 0,
+          "callErrors": 0,
+          "inputTokens": 46663,
+          "outputTokens": 1383,
+          "reasoningTokens": 0,
+          "estUsd": 0.0402,
+          "citationProblems": 0
+        }
+      ]
+    },
+    {
+      "run": "smoke-or-low-minimax_minimax-m3.1-flash",
+      "model": "minimax/minimax-m3.1-flash",
+      "effort": "low",
+      "provider": "OpenRouter",
+      "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+      "questions": ["q01"],
+      "modes": [
+        {
+          "mode": "fast",
+          "questions": 1,
+          "answered": 1,
+          "outcomes": {
+            "supported": 1,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": [],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 5841,
+          "maxTotalMs": 5841,
+          "minTotalMs": 5841,
+          "medianModelMs": 5749,
+          "medianNonModelMs": 92,
+          "medianSourceReads": 5,
+          "modelCalls": 1,
+          "callsByKind": {
+            "synthesis": 1
+          },
+          "repairCalls": 0,
+          "lengthStops": 0,
+          "callErrors": 0,
+          "inputTokens": 4807,
+          "outputTokens": 1050,
+          "reasoningTokens": 269,
+          "estUsd": 0.0013,
+          "citationProblems": 0
+        },
+        {
+          "mode": "deep",
+          "questions": 1,
+          "answered": 1,
+          "outcomes": {
+            "supported": 1,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": [],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 39558,
+          "maxTotalMs": 39558,
+          "minTotalMs": 39558,
+          "medianModelMs": 39281,
+          "medianNonModelMs": 277,
+          "medianSourceReads": 21,
+          "modelCalls": 5,
+          "callsByKind": {
+            "plan": 2,
+            "synthesis": 1,
+            "repair": 1,
+            "check": 1
+          },
+          "repairCalls": 1,
+          "lengthStops": 0,
+          "callErrors": 0,
+          "inputTokens": 57311,
+          "outputTokens": 6711,
+          "reasoningTokens": 1480,
+          "estUsd": 0.0124,
+          "citationProblems": 0
+        }
+      ]
+    },
+    {
+      "run": "smoke-or-low-stepfun_step-3.7-flash",
+      "model": "stepfun/step-3.7-flash",
+      "effort": "low",
+      "provider": "OpenRouter",
+      "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+      "questions": ["q01"],
+      "modes": [
+        {
+          "mode": "fast",
+          "questions": 1,
+          "answered": 0,
+          "outcomes": {
+            "supported": 0,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": ["q01: failed model_output_invalid"],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 16934,
+          "maxTotalMs": 16934,
+          "minTotalMs": 16934,
+          "medianModelMs": 16845,
+          "medianNonModelMs": 89,
+          "medianSourceReads": null,
+          "modelCalls": 1,
+          "callsByKind": {
+            "synthesis": 1
+          },
+          "repairCalls": 0,
+          "lengthStops": 1,
+          "callErrors": 0,
+          "inputTokens": 4798,
+          "outputTokens": 1500,
+          "reasoningTokens": 0,
+          "estUsd": 0.0027,
+          "citationProblems": 0
+        },
+        {
+          "mode": "deep",
+          "questions": 1,
+          "answered": 1,
+          "outcomes": {
+            "supported": 1,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": [],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 89873,
+          "maxTotalMs": 89873,
+          "minTotalMs": 89873,
+          "medianModelMs": 89656,
+          "medianNonModelMs": 217,
+          "medianSourceReads": 17,
+          "modelCalls": 4,
+          "callsByKind": {
+            "plan": 1,
+            "synthesis": 1,
+            "repair": 1,
+            "check": 1
+          },
+          "repairCalls": 1,
+          "lengthStops": 1,
+          "callErrors": 0,
+          "inputTokens": 43850,
+          "outputTokens": 6517,
+          "reasoningTokens": 0,
+          "estUsd": 0.0142,
+          "citationProblems": 0
+        }
+      ]
+    },
+    {
+      "run": "smoke-or-low-z-ai_glm-5.3-flash",
+      "model": "z-ai/glm-5.3-flash",
+      "effort": "low",
+      "provider": "OpenRouter",
+      "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+      "questions": ["q01"],
+      "modes": [
+        {
+          "mode": "fast",
+          "questions": 1,
+          "answered": 1,
+          "outcomes": {
+            "supported": 1,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": [],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 8992,
+          "maxTotalMs": 8992,
+          "minTotalMs": 8992,
+          "medianModelMs": 8889,
+          "medianNonModelMs": 103,
+          "medianSourceReads": 5,
+          "modelCalls": 2,
+          "callsByKind": {
+            "synthesis": 1,
+            "repair": 1
+          },
+          "repairCalls": 1,
+          "lengthStops": 0,
+          "callErrors": 0,
+          "inputTokens": 9247,
+          "outputTokens": 776,
+          "reasoningTokens": 6,
+          "estUsd": 0.001,
+          "citationProblems": 0
+        },
+        {
+          "mode": "deep",
+          "questions": 1,
+          "answered": 1,
+          "outcomes": {
+            "supported": 1,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": [],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 27682,
+          "maxTotalMs": 27682,
+          "minTotalMs": 27682,
+          "medianModelMs": 27424,
+          "medianNonModelMs": 258,
+          "medianSourceReads": 19,
+          "modelCalls": 4,
+          "callsByKind": {
+            "plan": 2,
+            "synthesis": 1,
+            "check": 1
+          },
+          "repairCalls": 0,
+          "lengthStops": 0,
+          "callErrors": 0,
+          "inputTokens": 37785,
+          "outputTokens": 1999,
+          "reasoningTokens": 302,
+          "estUsd": 0.0024,
+          "citationProblems": 0
+        }
+      ]
+    },
+    {
+      "run": "smoke-qwen3.8-flash",
+      "model": "qwen3.8-flash",
+      "effort": null,
+      "provider": "OpenCode Go",
+      "questions": ["q01"],
+      "modes": [
+        {
+          "mode": "fast",
+          "questions": 1,
+          "answered": 0,
+          "outcomes": {
+            "supported": 0,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": ["q01: timed_out"],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 30004,
+          "maxTotalMs": 30004,
+          "minTotalMs": 30004,
+          "medianModelMs": 29939,
+          "medianNonModelMs": 65,
+          "medianSourceReads": null,
+          "modelCalls": 1,
+          "callsByKind": {
+            "synthesis": 1
+          },
+          "repairCalls": 0,
+          "lengthStops": 0,
+          "callErrors": 1,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "reasoningTokens": 0,
+          "estUsd": 0,
+          "citationProblems": 0
+        },
+        {
+          "mode": "deep",
+          "questions": 1,
+          "answered": 0,
+          "outcomes": {
+            "supported": 0,
+            "partial": 0,
+            "conflicting": 0,
+            "unknown": 0
+          },
+          "failures": ["q01: unavailable"],
+          "useful": null,
+          "scoreSums": null,
+          "medianTotalMs": 96003,
+          "maxTotalMs": 96003,
+          "minTotalMs": 96003,
+          "medianModelMs": 95855,
+          "medianNonModelMs": 148,
+          "medianSourceReads": null,
+          "modelCalls": 2,
+          "callsByKind": {
+            "plan": 1,
+            "synthesis": 1
+          },
+          "repairCalls": 0,
+          "lengthStops": 0,
+          "callErrors": 1,
+          "inputTokens": 4599,
+          "outputTokens": 1571,
+          "reasoningTokens": 1216,
+          "estUsd": 0.0014,
+          "citationProblems": 0
+        }
+      ]
+    }
+  ],
+  "spend": {
+    "opencodeGo": {
+      "requests": 162,
+      "estUsd": 0.3145
+    },
+    "openRouter": {
+      "requests": 79,
+      "usd": 0.6239
+    },
+    "allowanceReported": false
+  }
+}

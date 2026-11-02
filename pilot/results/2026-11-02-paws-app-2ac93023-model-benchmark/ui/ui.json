@@ -1,0 +1,195 @@
+{
+  "model": "minimax-m3.1-flash",
+  "effort": "low",
+  "url": "127.0.0.1 (local auth)",
+  "steps": [
+    {
+      "name": "fast-q01",
+      "q": "q01",
+      "mode": "fast",
+      "browserMs": 6366,
+      "status": "answered",
+      "outcome": "supported",
+      "usage": {
+        "retrievalPasses": 2,
+        "sourceReads": 5,
+        "sourceBytes": 13768,
+        "modelCalls": 1,
+        "inputTokens": 4809,
+        "outputTokens": 505,
+        "elapsedMs": 6200
+      },
+      "linksChecked": 3,
+      "linkCount": 10,
+      "linkProblems": [],
+      "sampleLinks": [
+        "https://github.com/pmdroid/paws-app/blob/2ac93023d31bab6f0ef26690a7e6e8e8d2540bff/src/db/recovery.ts#L57-L86",
+        "https://github.com/pmdroid/paws-app/blob/2ac93023d31bab6f0ef26690a7e6e8e8d2540bff/src/core/recovery.ts#L97-L105",
+        "https://github.com/pmdroid/paws-app/blob/2ac93023d31bab6f0ef26690a7e6e8e8d2540bff/README.md#L52-L55"
+      ],
+      "sourceLabels": [
+        "src/db/recovery.ts:57–86",
+        "src/core/recovery.ts:97–105",
+        "README.md:52–55",
+        "src/db/recovery.ts:65–74",
+        "src/core/recovery.ts:75–82",
+        "src/db/remote-merges.ts:78–80",
+        "src/core/recovery.ts:79–82",
+        "src/core/recovery.ts:94–97",
+        "src/db/recovery.ts:58–65",
+        "src/core/recovery.ts:101–105"
+      ],
+      "articleText": "Fast answer\n\nWhat does Paws do with work items that were in flight when the process starts up again?\n\nPaws recovers in-flight work instead of restarting it from scratch. After startup it examines resumable work items and, when a runner still holds the work, resumes it in a fresh Paws session and reattaches to the same command; an in-progress Closeout verification is instead re-verified and attached to the runner’s existing review. (src/db/recovery.ts:57-86) (src/core/recovery.ts:97-105) The documented behavior is that runners keep working while Paws is down and Paws reattaches to the same commands after startup, including in-flight Closeout reviews and answer tasks. (README.md:52-55)\n\nMerging has a special safety path: an item in the merge queue keeps its queue position, and if its GitHub merge call may have been in flight, Paws asks GitHub whether that call succeeded before proceeding. This is detected from the durable merge_call record. (src/db/recovery.ts:65-74) (src/core/recovery.ts:75-82) (src/db/remote-merges.ts:78-80) If a run was still active, Paws re-verifies rather than blindly resuming it. (src/core/recovery.ts:79-82) (src/core/recovery.ts:94-97)\n\nItems with an existing capacity-wait, pending answer, or pending transient retry are left alone because their next attempt is already scheduled; other items may be resumed, re-verified, or asked in Linear whether to start again. (src/db/recovery.ts:58-65) (src/core/recovery.ts:101-105)\n\nThis is based on 5 source ranges in 5 files, not the whole repository. Asking again with mode \"deep\" can follow the remaining leads.\n\nCaveats\nThe inspected evidence does not show the complete list of startup states or the downstream handlers for every startup decision.\nREADME.md:1-75 mentions `blocks`, `checks`, `failedChecks`; Fast did not check these against code at this revision.\nBased on 5 inspected source ranges in 5 files at commit 2ac93023d31b; the rest of the repository was not read for this answer.\nCertainty\n\nSupported. The cited evidence establishes this answer.\n\nDeep may establish more with a larger research budget. It runs only if you ask.\n\nAsk in Deep\nSources at 2ac93023d31b\nsrc/db/recovery.ts:57–86 recoverOnStartup\nmatches the question\nsrc/core/recovery.ts:97–105 decideStartup\nmatches the question\nREADME.md:52–55\nmatches the question\nsrc/db/recovery.ts:65–74 recoverOnStartup\nmatches the question\nsrc/core/recovery.ts:75–82 decideStartup\nmatches the question\nsrc/db/remote-merges.ts:78–80 mergeCallInFlight\ndefinition of mergeCallInFlight, used in src/db/recovery.ts\nsrc/core/recovery.ts:79–82 decideStartup\nmatches the question\nsrc/core/recovery.ts:94–97 decideStartup\nmatches the question\nsrc/db/recovery.ts:58–65 recoverOnStartup\nmatches the question\nsrc/core/recovery.ts:101–105 decideStartup\nmatches the question\nAbout this answer\nRepository\npaws-app\nRevision\nHEAD at 2ac93023d31bab6f0ef26690a7e6e8e8d2540bff\nMode\nFast requested, Fast ran\nSource\nCommitted files at this SHA only. There were no uncommitted changes to leave out.\nIndex\n1,775 files searchable, 18 left out (binary: 9, generated: 3, long lines: 1, secret content: 4, secret path: 1)\nResearch\n6 s, 5 source reads, 1 model call via ocgo\nPinned to 2ac93023d31b, resolved from HEAD when the request started. Later movement of HEAD is not reflected.\nThe index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them.",
+      "proxyCalls": [
+        {
+          "kind": "synthesis",
+          "status": 200,
+          "ms": 6234,
+          "inputTokens": 4809,
+          "outputTokens": 481,
+          "estUsd": 0.00101
+        },
+        {
+          "kind": "synthesis",
+          "status": 200,
+          "ms": 6118,
+          "inputTokens": 4809,
+          "outputTokens": 505,
+          "estUsd": 0.001024
+        }
+      ]
+    },
+    {
+      "name": "deep-q01",
+      "q": "q01",
+      "mode": "deep",
+      "browserMs": 23485,
+      "status": "answered",
+      "outcome": "supported",
+      "usage": {
+        "retrievalPasses": 14,
+        "sourceReads": 20,
+        "sourceBytes": 44610,
+        "modelCalls": 4,
+        "inputTokens": 41084,
+        "outputTokens": 2866,
+        "elapsedMs": 23286
+      },
+      "linksChecked": 3,
+      "linkCount": 19,
+      "linkProblems": [],
+      "sampleLinks": [
+        "https://github.com/pmdroid/paws-app/blob/2ac93023d31bab6f0ef26690a7e6e8e8d2540bff/src/db/recovery.ts#L46-L74",
+        "https://github.com/pmdroid/paws-app/blob/2ac93023d31bab6f0ef26690a7e6e8e8d2540bff/src/db/recovery.ts#L31-L37",
+        "https://github.com/pmdroid/paws-app/blob/2ac93023d31bab6f0ef26690a7e6e8e8d2540bff/src/core/recovery.ts#L75-L105"
+      ],
+      "sourceLabels": [
+        "src/db/recovery.ts:46–74",
+        "src/db/recovery.ts:31–37",
+        "src/core/recovery.ts:75–105",
+        "README.md:52–55",
+        "src/db/recovery.ts:41–44",
+        "src/core/recovery.ts:75–82",
+        "src/db/remote-merges.ts:78–80",
+        "src/core/recovery.ts:94–97",
+        "src/core/recovery.test.ts:122–141",
+        "src/core/recovery.ts:101–105",
+        "src/core/recovery.test.ts:82–109",
+        "test/restart-ask.test.ts:181–207",
+        "test/restart-hold.test.ts:97–131",
+        "src/db/recovery.ts:62–64",
+        "src/db/recovery.ts:103–113",
+        "src/db/recovery.ts:89–98",
+        "src/db/recovery.ts:51–86",
+        "src/db/decisions.ts:17–26",
+        "test/startup-resume-stagger.test.ts:143–177"
+      ],
+      "articleText": "Deep answer\n\nWhat does Paws do with work items that were in flight when the process starts up again?\n\nPaws treats startup as recovery rather than abandoning in-flight work. On startup it examines work items in awaiting_input, running, verifying, recovering, and merge_queue, then chooses a per-item recovery action. (src/db/recovery.ts:46-74) (src/db/recovery.ts:31-37)\n\nNormally, an interrupted running or recovering item is resumed once in a fresh agent session, from its checkpoint when available; without a checkpoint it resumes from its branch. If the remote runner still holds the work, Paws resumes with reattachment to that existing command instead of starting over. A verification whose runner still holds the Closeout review or check run is re-verified and attached to that work. (src/core/recovery.ts:75-105) The README says runners keep working while Paws is down and that Paws reattaches to the same commands after startup, including in-flight Closeout reviews and answer tasks. (README.md:52-55)\n\nMerge-queue items normally keep their queue position. If the GitHub merge call may have been in flight when Paws stopped, the merge job first asks GitHub whether the merge went through before moving the item. (src/db/recovery.ts:41-44) (src/core/recovery.ts:75-82) The in-flight condition is recorded durably in the merge_call table. (src/db/remote-merges.ts:78-80) If the underlying run was still active, however, the item is re-verified rather than merely kept in place. (src/core/recovery.ts:94-97) (src/core/recovery.test.ts:122-141)\n\nThere are safeguards against repeatedly restarting the same work. An item that has already been resumed during the current recovery cycle is generally put on hold and Paws asks in Linear whether to start it again; the item remains in recovering until the question is answered, and repeated startups preserve the hold and the single runnable question. (src/core/recovery.ts:101-105) (src/core/recovery.test.ts:82-109) (test/restart-ask.test.ts:181-207) (test/restart-hold.test.ts:97-131) Startup also skips items whose follow-up is already scheduled: items parked for capacity, items with a pending answer resume, and items awaiting a transient retry. (src/db/recovery.ts:62-64) (src/db/recovery.ts:103-113)\n\nFor items waiting for input, startup releases the associated run capacity and queues a catch-up job for open questions. (src/db/recovery.ts:89-98) The startup recovery and its database transition/job updates are committed together in one transaction, and newly scheduled resumes are staggered five seconds apart. (src/db/recovery.ts:51-86) (src/db/decisions.ts:17-26) The startup-resume test shows that items left in recovering by shutdown are passed to recoverOnStartup, after which resume work is claimed and the implementations are run again. (test/startup-resume-stagger.test.ts:143-177)\n\nThis is based on 20 source ranges in 18 files, and research stopped at the deep limit maxPasses, so other relevant code may not have been inspected.\n\nCaveats\nResearch stopped at the repository's maximum traversal depth, so uninspected code may contain additional edge-case handling beyond the recovery paths described here.\nThe evidence shows the decision logic and dispatch of recovery jobs, but does not include the complete implementations of the resume, re-verify, and keep-place helpers.\nThe repository documentation describes the intended restart behavior; the detailed database transitions are supported by the cited code and tests.\nResearch stopped at the deep limit maxPasses.\nBased on 20 inspected source ranges in 18 files at commit 2ac93023d31b; the rest of the repository was not read for this answer.\nCertainty\n\nSupported. The cited evidence establishes this answer.\n\nSources at 2ac93023d31b\nsrc/db/recovery.ts:46–74 recoverOnStartup\nmatches the question\nsrc/db/recovery.ts:31–37 ShutdownWipCommit\nmatches the question\nsrc/core/recovery.ts:75–105 decideStartup\nmatches the question\nREADME.md:52–55\nmatches the question\nsrc/db/recovery.ts:41–44 recoverOnStartup\nmatches the question\nsrc/core/recovery.ts:75–82 decideStartup\nmatches the question\nsrc/db/remote-merges.ts:78–80 mergeCallInFlight\ndefinition of mergeCallInFlight, used in src/db/recovery.ts\nsrc/core/recovery.ts:94–97 decideStartup\nmatches the question\nsrc/core/recovery.test.ts:122–141\ncall site of decideStartup\nsrc/core/recovery.ts:101–105 decideStartup\nmatches the question\nsrc/core/recovery.test.ts:82–109\ncall site of decideStartup\ntest/restart-ask.test.ts:181–207\nfollow-up: Tests should confirm the observable recovery behavior for running, verifying, merge-queued, and previously resumed items.\ntest/restart-hold.test.ts:97–131 loseDelivery\nfollow-up: Tests should confirm the observable recovery behavior for running, verifying, merge-queued, and previously resumed items.\nsrc/db/recovery.ts:62–64 recoverOnStartup\nmatches the question\nsrc/db/recovery.ts:103–113 recoverOnStartup\nmatches the question\nsrc/db/recovery.ts:89–98 recoverOnStartup\nmatches the question\nsrc/db/recovery.ts:51–86 recoverOnStartup\nmatches the question\nsrc/db/decisions.ts:17–26 applyDecision\nfollow-up: Need the exact database transitions and jobs enqueued for each startup decision to explain what happens to in-flight work.\ntest/startup-resume-stagger.test.ts:143–177\nmatches the question\nAbout this answer\nRepository\npaws-app\nRevision\nHEAD at 2ac93023d31bab6f0ef26690a7e6e8e8d2540bff\nMode\nDeep requested, Deep ran\nSource\nCommitted files at this SHA only. There were no uncommitted changes to leave out.\nIndex\n1,775 files searchable, 18 left out (binary: 9, generated: 3, long lines: 1, secret content: 4, secret path: 1)\nResearch\n23 s, 20 source reads, 4 model calls via ocgo\nPinned to 2ac93023d31b, resolved from HEAD when the request started. Later movement of HEAD is not reflected.\nThe index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them.",
+      "proxyCalls": [
+        {
+          "kind": "plan",
+          "status": 200,
+          "ms": 2685,
+          "inputTokens": 4161,
+          "outputTokens": 366,
+          "estUsd": 0.000844
+        },
+        {
+          "kind": "plan",
+          "status": 200,
+          "ms": 4202,
+          "inputTokens": 4936,
+          "outputTokens": 297,
+          "estUsd": 0.000919
+        },
+        {
+          "kind": "synthesis",
+          "status": 200,
+          "ms": 6593,
+          "inputTokens": 15594,
+          "outputTokens": 844,
+          "estUsd": 0.002845
+        },
+        {
+          "kind": "check",
+          "status": 200,
+          "ms": 9593,
+          "inputTokens": 16393,
+          "outputTokens": 1359,
+          "estUsd": 0.003274
+        }
+      ]
+    },
+    {
+      "name": "fast-q09-rationale",
+      "q": "q09",
+      "mode": "fast",
+      "browserMs": 4348,
+      "status": "answered",
+      "outcome": "partial",
+      "usage": {
+        "retrievalPasses": 2,
+        "sourceReads": 5,
+        "sourceBytes": 20117,
+        "modelCalls": 1,
+        "inputTokens": 5878,
+        "outputTokens": 465,
+        "elapsedMs": 3907
+      },
+      "linksChecked": 3,
+      "linkCount": 3,
+      "linkProblems": [],
+      "sampleLinks": [
+        "https://github.com/pmdroid/paws-app/blob/2ac93023d31bab6f0ef26690a7e6e8e8d2540bff/src/db/recovery.ts#L51-L87",
+        "https://github.com/pmdroid/paws-app/blob/2ac93023d31bab6f0ef26690a7e6e8e8d2540bff/src/db/recovery.ts#L57-L86",
+        "https://github.com/pmdroid/paws-app/blob/2ac93023d31bab6f0ef26690a7e6e8e8d2540bff/src/db/recovery.ts#L116-L147"
+      ],
+      "sourceLabels": [
+        "src/db/recovery.ts:51–87",
+        "src/db/recovery.ts:57–86",
+        "src/db/recovery.ts:116–147"
+      ],
+      "articleText": "Fast answer\n\nWhy does Paws wait five seconds between resuming tasks after a restart instead of resuming them all at once?\n\nPaws staggers restart resumes by assigning each resume job a progressively later runAt time rather than scheduling every eligible task immediately. In recoverOnStartup, nextResumeAt() computes now + STARTUP_RESUME_SPACING_MS * resumes, and each eligible resume decision receives that timestamp when its job is applied (src/db/recovery.ts:51-87). This suggests the spacing is intended to avoid a restart surge by spreading recovered work across time, but the examined code and documentation do not explicitly state that rationale.\n\nNot every startup item is delayed this way: items requiring a restart question are excluded; items already parked for capacity, awaiting an answer, or awaiting a transient retry are skipped; and some re-verification work is attached to existing runner closeout rather than receiving a new resume time (src/db/recovery.ts:57-86). Pending answer-resume and transient-retry jobs are also recognized as existing recovery work (src/db/recovery.ts:116-147).\n\nThis is based on 5 source ranges in 3 files, not the whole repository. Asking again with mode \"deep\" can follow the remaining leads.\n\nCaveats\nThe intent or rationale is not documented in the inspected evidence.\nThe evidence does not show the value of `STARTUP_RESUME_SPACING_MS`, although the question identifies the observed interval as five seconds.\nThe exact operational reason for the five-second spacing is not documented in the inspected evidence.\nOnly the cited source ranges were inspected; this is not a complete repository review.\n.agents/skills/verify-paws/SKILL.md:50-73 mentions `startPaws`, `PAWS_PUBLIC_URL`, `redirect_uri`; Fast did not check these against code at this revision.\nBased on 5 inspected source ranges in 3 files at commit 2ac93023d31b; the rest of the repository was not read for this answer.\nCertainty\n\nPartly answered. Some of the question is established; the answer says what is missing.\n\nThe code does not say why. A question for the team:\n\nIs the five-second startup resume spacing intended to prevent a thundering herd against runners or external services, and are there documented capacity or rate-limit requirements behind the constant?\n\nNeither the code nor the documentation inspected at 2ac93023d31b states the intent or rationale.\n\nDeep may establish more with a larger research budget. It runs only if you ask.\n\nAsk in Deep\nSources at 2ac93023d31b\nsrc/db/recovery.ts:51–87 recoverOnStartup\nmatches the question\nsrc/db/recovery.ts:57–86 recoverOnStartup\nmatches the question\nsrc/db/recovery.ts:116–147 hasPendingAnswerResume\ndefinition of hasPendingResume, used in src/db/recovery.ts\nAbout this answer\nRepository\npaws-app\nRevision\nHEAD at 2ac93023d31bab6f0ef26690a7e6e8e8d2540bff\nMode\nFast requested, Fast ran\nSource\nCommitted files at this SHA only. There were no uncommitted changes to leave out.\nIndex\n1,775 files searchable, 18 left out (binary: 9, generated: 3, long lines: 1, secret content: 4, secret path: 1)\nResearch\n4 s, 5 source reads, 1 model call via ocgo\nPinned to 2ac93023d31b, resolved from HEAD when the request started. Later movement of HEAD is not reflected.\nThe index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them.",
+      "proxyCalls": [
+        {
+          "kind": "synthesis",
+          "status": 200,
+          "ms": 3839,
+          "inputTokens": 5878,
+          "outputTokens": 465,
+          "estUsd": 0.001161
+        }
+      ]
+    }
+  ],
+  "pinned": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+  "pinnedEqualsHead": true,
+  "indexReadyMs": 8,
+  "cancel": {
+    "cancelled": true,
+    "answerShownWithin15s": false,
+    "proxyCalls": 1
+  },
+  "pageErrors": [],
+  "dialogs": []
+}

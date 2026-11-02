@@ -1,0 +1,3675 @@
+{
+  "run": "full-minimax-m3.1-flash-low",
+  "model": "minimax-m3.1-flash",
+  "effort": "low",
+  "proxy": "http://127.0.0.1:7399",
+  "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+  "lookyCommit": "1c806ba41800b53824f01cf2bfd920d14102277c",
+  "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+  "indexWaitMs": 1,
+  "rows": [
+    {
+      "run": "full-minimax-m3.1-flash-low",
+      "q": "q01",
+      "mode": "fast",
+      "model": "minimax-m3.1-flash",
+      "totalMs": 6995,
+      "modelMs": 6871,
+      "nonModelMs": 124,
+      "calls": [
+        {
+          "at": "2026-11-02T03:20:19.172Z",
+          "kind": "synthesis",
+          "maxTokens": 1500,
+          "status": 200,
+          "ms": 6871,
+          "inputTokens": 4809,
+          "outputTokens": 506,
+          "cachedTokens": 4808,
+          "reasoningTokens": 172,
+          "finishReason": "stop",
+          "contentChars": 1447,
+          "reasoningChars": 889,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a45-aa6d-7fb8-b8a5-f321c6697c90"
+          },
+          "estUsd": 0.001025,
+          "spentUsd": 0.200877
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "answered",
+        "requestId": "c9c7e65f-ab8e-43ae-b81c-51acafc01fe4",
+        "mode": {
+          "requested": "fast",
+          "executed": "fast"
+        },
+        "limitations": [
+          "Pinned to 2ac93023d31b, resolved from bench when the request started. Later movement of bench is not reflected.",
+          "The index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them."
+        ],
+        "answer": {
+          "text": "Paws recovers interrupted work items during startup rather than restarting everything from scratch. Running or verifying work is resumed in a fresh session from its checkpoint—or from its branch if no checkpoint exists—and, when the runner still holds the work, Paws reattaches to the existing command; a verifying item is instead re-verified. (`src/core/recovery.ts:75-105`)\n\nItems in the merge queue keep their place. If a GitHub merge call may have been in flight when the process stopped, Paws asks GitHub whether that call completed before moving the item forward, avoiding a duplicate merge. (`src/core/recovery.ts:76-82`) (`src/db/remote-merges.ts:78-80`) Work that already has a pending capacity wait, answer resume, or transient retry is left alone, while an item that was already resumed once may trigger a Linear question asking whether it should be started again. (`src/db/recovery.ts:57-74`) (`src/db/recovery.ts:103-113`)\n\nIn broad terms, the deployment documentation says runners continue working while Paws is down and Paws reattaches to the same commands after startup, including in-flight Closeout reviews and answer tasks. (`README.md:52-55`)\n\nThis is based on 5 source ranges in 5 files, not the whole repository. Asking again with mode \"deep\" can follow the remaining leads.",
+          "outcome": "supported",
+          "caveats": [
+            "The inspected evidence does not include the implementations of `applyDecision`, the individual queue handlers, or the exact GitHub reconciliation path.",
+            "The README references to `blocks`, `checks`, and `failedChecks` were not checked against implementation code.",
+            "README.md:1-75 mentions `blocks`, `checks`, `failedChecks`; Fast did not check these against code at this revision.",
+            "Based on 5 inspected source ranges in 5 files at commit 2ac93023d31b; the rest of the repository was not read for this answer."
+          ]
+        },
+        "evidence": [
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 75,
+            "endLine": 105,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 76,
+            "endLine": 82,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/remote-merges.ts",
+            "startLine": 78,
+            "endLine": 80,
+            "symbol": "mergeCallInFlight",
+            "note": "definition of mergeCallInFlight, used in src/db/recovery.ts"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 57,
+            "endLine": 74,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 103,
+            "endLine": 113,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "README.md",
+            "startLine": 52,
+            "endLine": 55,
+            "note": "matches the question"
+          }
+        ],
+        "revision": {
+          "repositoryId": "paws-app",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "ref": "bench"
+        },
+        "index": {
+          "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+        },
+        "coverage": {
+          "indexedFiles": 1775,
+          "excludedFiles": 18,
+          "excludedByReason": {
+            "binary": 9,
+            "generated": 3,
+            "long_lines": 1,
+            "secret_content": 4,
+            "secret_path": 1
+          }
+        },
+        "scope": {
+          "source": "committed",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "uncommittedChanges": "none"
+        },
+        "usage": {
+          "retrievalPasses": 2,
+          "sourceReads": 5,
+          "sourceBytes": 13768,
+          "modelCalls": 1,
+          "inputTokens": 4809,
+          "outputTokens": 506,
+          "elapsedMs": 6989
+        },
+        "providers": ["ocgo"],
+        "suggestedMode": "deep"
+      }
+    },
+    {
+      "run": "full-minimax-m3.1-flash-low",
+      "q": "q01",
+      "mode": "deep",
+      "model": "minimax-m3.1-flash",
+      "totalMs": 24490,
+      "modelMs": 24161,
+      "nonModelMs": 329,
+      "calls": [
+        {
+          "at": "2026-11-02T03:20:26.287Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 2503,
+          "inputTokens": 4161,
+          "outputTokens": 327,
+          "cachedTokens": 0,
+          "reasoningTokens": 22,
+          "finishReason": "stop",
+          "contentChars": 1300,
+          "reasoningChars": 121,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a45-c5e7-7446-9df5-2eb4875fdaa3"
+          },
+          "estUsd": 0.00082,
+          "spentUsd": 0.201698
+        },
+        {
+          "at": "2026-11-02T03:20:28.893Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 4647,
+          "inputTokens": 4932,
+          "outputTokens": 408,
+          "cachedTokens": 187,
+          "reasoningTokens": 53,
+          "finishReason": "stop",
+          "contentChars": 1491,
+          "reasoningChars": 270,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a45-d012-7f35-bab9-e7df8ba0e58e"
+          },
+          "estUsd": 0.000985,
+          "spentUsd": 0.202682
+        },
+        {
+          "at": "2026-11-02T03:20:33.546Z",
+          "kind": "synthesis",
+          "maxTokens": 3632,
+          "status": 200,
+          "ms": 10291,
+          "inputTokens": 14707,
+          "outputTokens": 736,
+          "cachedTokens": 128,
+          "reasoningTokens": 42,
+          "finishReason": "stop",
+          "contentChars": 2969,
+          "reasoningChars": 205,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a45-e24c-776d-83d4-bd4b263eb80f"
+          },
+          "estUsd": 0.002648,
+          "spentUsd": 0.20533
+        },
+        {
+          "at": "2026-11-02T03:20:43.840Z",
+          "kind": "check",
+          "maxTokens": 6529,
+          "status": 200,
+          "ms": 6720,
+          "inputTokens": 15521,
+          "outputTokens": 1361,
+          "cachedTokens": 0,
+          "reasoningTokens": 473,
+          "finishReason": "stop",
+          "contentChars": 3997,
+          "reasoningChars": 2289,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a46-0a81-7535-a1e9-7c687b43148d"
+          },
+          "estUsd": 0.003145,
+          "spentUsd": 0.208475
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "answered",
+        "requestId": "b87c75be-4609-4cb5-b994-0e8007e5e1f4",
+        "mode": {
+          "requested": "deep",
+          "executed": "deep"
+        },
+        "limitations": [
+          "Pinned to 2ac93023d31b, resolved from bench when the request started. Later movement of bench is not reflected.",
+          "The index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them."
+        ],
+        "answer": {
+          "text": "Paws does not blindly restart everything that was in flight. On startup, `recoverOnStartup` examines items in `awaiting_input`, `running`, `verifying`, `recovering`, and `merge_queue`, then chooses a recovery action for each. (`src/db/recovery.ts:31-39`) (`src/db/recovery.ts:51-74`)\n\n- **Running or verifying work:** If a runner still holds the item’s work, Paws resumes it in a fresh session, using the saved checkpoint when available, and reattaches to the existing runner command. A verifying item whose Closeout review or check run is still held by a runner instead re-verifies. (`src/core/recovery.ts:94-105`) This is consistent with the README’s statement that runners keep working while Paws is down and that Paws reattaches to the same commands after startup. (`README.md:52-55`)\n- **Merge-queue work:** Paws keeps the item’s queue position. If a GitHub merge call may have been in flight, the merge job first checks GitHub before taking further action; a still-active run causes the item to re-verify instead. (`src/core/recovery.ts:75-83`) (`src/core/recovery.ts:95-97`) The durable `merge_call` row is what marks a merge call as potentially in flight. (`src/db/remote-merges.ts:78-80`)\n- **Interrupted verification or merge progress:** If the checkpoint shows that merging had already begun, Paws re-verifies rather than treating the work as an ordinary implementation resume. (`src/core/recovery.ts:97-98`)\n- **Work already resumed recently:** After a prior recovery attempt, a later restart within the configured interval asks in Linear whether to start the item again rather than automatically resuming it. A sufficiently old prior resume is automatically resumed again. (`src/core/recovery.ts:101-105`) (`src/core/recovery.test.ts:82-108`)\n- **Open questions:** An item awaiting input remains parked; startup does not create a resume job. The answer later resumes the original run, and the test confirms the item stays `awaiting_input` with no new resume job during recovery. (`test/loop.question-resume.test.ts:156-180`)\n- **Already-scheduled follow-up work:** Capacity waits and pending answer resumes or transient retries are left alone because their next attempt is already queued. (`src/db/recovery.ts:62-64`) (`src/db/recovery.ts:103-113`)\n\nThe recovery pass runs inside one transaction, and `applyDecision` dispatches each decision to its corresponding persistence and follow-up operation. Resume work is scheduled with five-second spacing rather than all being started simultaneously. (`src/db/recovery.ts:75-87`) (`src/db/decisions.ts:17-26`) The README summarizes the intended operational behavior as: a restart is safe during running work, runners retain their results, and Paws reattaches after startup, including in-flight Closeout reviews and answer tasks. (`README.md:52-55`)\n\nThis is based on 20 source ranges in 17 files, and research stopped at the deep limit maxPasses, so other relevant code may not have been inspected.",
+          "outcome": "partial",
+          "caveats": [
+            "1 source reference in the draft did not match inspected evidence and was removed; the statements it was attached to are unverified.",
+            "The research stopped at its pass limit, so relevant code outside the inspected ranges may exist.",
+            "The shown `applyDecision` range establishes the decision types and dispatch, but does not include the implementations of each individual decision.",
+            "The exact configured duration used to decide whether a previous resume is sufficiently old is not present in the inspected evidence.",
+            "The inspected code establishes that capacity waits, pending answer resumes, and pending transient retries are skipped during startup, but it does not show the complete implementations of those pending-job paths.",
+            "Research stopped at the deep limit maxPasses.",
+            "Based on 20 inspected source ranges in 17 files at commit 2ac93023d31b; the rest of the repository was not read for this answer."
+          ]
+        },
+        "evidence": [
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 31,
+            "endLine": 39,
+            "symbol": "ShutdownWipCommit",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 51,
+            "endLine": 74,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 94,
+            "endLine": 105,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "README.md",
+            "startLine": 52,
+            "endLine": 55,
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 75,
+            "endLine": 83,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 95,
+            "endLine": 97,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/remote-merges.ts",
+            "startLine": 78,
+            "endLine": 80,
+            "symbol": "mergeCallInFlight",
+            "note": "definition of mergeCallInFlight, used in src/db/recovery.ts"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 97,
+            "endLine": 98,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 101,
+            "endLine": 105,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.test.ts",
+            "startLine": 82,
+            "endLine": 108,
+            "note": "call site of decideStartup"
+          },
+          {
+            "path": "test/loop.question-resume.test.ts",
+            "startLine": 156,
+            "endLine": 180,
+            "note": "follow-up: Startup-focused tests can confirm observed behavior across running, verifying, resumed, and merge-queued work items."
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 62,
+            "endLine": 64,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 103,
+            "endLine": 113,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 75,
+            "endLine": 87,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/decisions.ts",
+            "startLine": 17,
+            "endLine": 26,
+            "symbol": "applyDecision",
+            "note": "follow-up: This shows how each startup decision changes persisted item state and enqueues follow-up work."
+          }
+        ],
+        "revision": {
+          "repositoryId": "paws-app",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "ref": "bench"
+        },
+        "index": {
+          "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+        },
+        "coverage": {
+          "indexedFiles": 1775,
+          "excludedFiles": 18,
+          "excludedByReason": {
+            "binary": 9,
+            "generated": 3,
+            "long_lines": 1,
+            "secret_content": 4,
+            "secret_path": 1
+          }
+        },
+        "scope": {
+          "source": "committed",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "uncommittedChanges": "none"
+        },
+        "usage": {
+          "retrievalPasses": 14,
+          "sourceReads": 20,
+          "sourceBytes": 42138,
+          "modelCalls": 4,
+          "inputTokens": 39321,
+          "outputTokens": 2832,
+          "elapsedMs": 24488
+        },
+        "providers": ["ocgo"]
+      }
+    },
+    {
+      "run": "full-minimax-m3.1-flash-low",
+      "q": "q02",
+      "mode": "fast",
+      "model": "minimax-m3.1-flash",
+      "totalMs": 6566,
+      "modelMs": 6492,
+      "nonModelMs": 74,
+      "calls": [
+        {
+          "at": "2026-11-02T03:20:50.691Z",
+          "kind": "synthesis",
+          "maxTokens": 1500,
+          "status": 200,
+          "ms": 6492,
+          "inputTokens": 4936,
+          "outputTokens": 418,
+          "cachedTokens": 128,
+          "reasoningTokens": 112,
+          "finishReason": "stop",
+          "contentChars": 1255,
+          "reasoningChars": 508,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a46-2543-779d-8535-736f2b0b68e9"
+          },
+          "estUsd": 0.000991,
+          "spentUsd": 0.209466
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "answered",
+        "requestId": "049c37c5-9acf-4131-b5d3-49e1f72da6cb",
+        "mode": {
+          "requested": "fast",
+          "executed": "fast"
+        },
+        "limitations": [
+          "Pinned to 2ac93023d31b, resolved from bench when the request started. Later movement of bench is not reflected.",
+          "The index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them."
+        ],
+        "answer": {
+          "text": "Paws does not automatically resume that task a second time. On the next startup, if its recovery attempt count is already at least one and less than `RESUME_AGAIN_AFTER_MS` has elapsed since the previous resume, Paws returns an `ask_restart` decision and asks in Linear whether to start it again. The task therefore remains unfinished pending that answer. (`src/core/recovery.ts:101-105`) (`src/db/recovery.ts:57-60`)\n\nThere are higher-priority exceptions. A task in the merge queue keeps its place, a merge that may have been in flight is checked against GitHub, work still held by a runner is reattached or re-verified, and a merge-related checkpoint or a still-active run triggers re-verification rather than the restart question. (`src/core/recovery.ts:94-100`) (`src/db/recovery.ts:65-86`) A verifying task with a recorded candidate also re-verifies when it has not already used a recovery attempt. (`src/core/recovery.ts:103-104`)",
+          "outcome": "supported",
+          "caveats": [
+            "The exact duration represented by `RESUME_AGAIN_AFTER_MS` is not included in the inspected evidence.",
+            "The visible test evidence confirms the `ask_restart` result for a verifying item with one recovery attempt and only one second since resume; it does not show every task-state variant.",
+            "Based on 6 inspected source ranges in 4 files at commit 2ac93023d31b; the rest of the repository was not read for this answer."
+          ]
+        },
+        "evidence": [
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 101,
+            "endLine": 105,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 57,
+            "endLine": 60,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 94,
+            "endLine": 100,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 65,
+            "endLine": 86,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 103,
+            "endLine": 104,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          }
+        ],
+        "revision": {
+          "repositoryId": "paws-app",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "ref": "bench"
+        },
+        "index": {
+          "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+        },
+        "coverage": {
+          "indexedFiles": 1775,
+          "excludedFiles": 18,
+          "excludedByReason": {
+            "binary": 9,
+            "generated": 3,
+            "long_lines": 1,
+            "secret_content": 4,
+            "secret_path": 1
+          }
+        },
+        "scope": {
+          "source": "committed",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "uncommittedChanges": "none"
+        },
+        "usage": {
+          "retrievalPasses": 2,
+          "sourceReads": 6,
+          "sourceBytes": 12234,
+          "modelCalls": 1,
+          "inputTokens": 4936,
+          "outputTokens": 418,
+          "elapsedMs": 6565
+        },
+        "providers": ["ocgo"]
+      }
+    },
+    {
+      "run": "full-minimax-m3.1-flash-low",
+      "q": "q02",
+      "mode": "deep",
+      "model": "minimax-m3.1-flash",
+      "totalMs": 41350,
+      "modelMs": 41034,
+      "nonModelMs": 316,
+      "calls": [
+        {
+          "at": "2026-11-02T03:20:57.382Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 3231,
+          "inputTokens": 8231,
+          "outputTokens": 378,
+          "cachedTokens": 256,
+          "reasoningTokens": 52,
+          "finishReason": "stop",
+          "contentChars": 1448,
+          "reasoningChars": 271,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a46-3f5e-7391-aea8-b7205c2644a7"
+          },
+          "estUsd": 0.001461,
+          "spentUsd": 0.210927
+        },
+        {
+          "at": "2026-11-02T03:21:00.734Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 3002,
+          "inputTokens": 10295,
+          "outputTokens": 396,
+          "cachedTokens": 128,
+          "reasoningTokens": 40,
+          "finishReason": "stop",
+          "contentChars": 1551,
+          "reasoningChars": 217,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a46-4c77-73b0-bd90-d926704cebc2"
+          },
+          "estUsd": 0.001782,
+          "spentUsd": 0.212709
+        },
+        {
+          "at": "2026-11-02T03:21:03.742Z",
+          "kind": "synthesis",
+          "maxTokens": 3613,
+          "status": 200,
+          "ms": 7430,
+          "inputTokens": 20996,
+          "outputTokens": 646,
+          "cachedTokens": 128,
+          "reasoningTokens": 154,
+          "finishReason": "stop",
+          "contentChars": 2042,
+          "reasoningChars": 846,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a46-583b-77a2-a49c-c5aa05883a84"
+          },
+          "estUsd": 0.003537,
+          "spentUsd": 0.216246
+        },
+        {
+          "at": "2026-11-02T03:21:11.175Z",
+          "kind": "repair",
+          "maxTokens": 6580,
+          "status": 200,
+          "ms": 12580,
+          "inputTokens": 21025,
+          "outputTokens": 603,
+          "cachedTokens": 128,
+          "reasoningTokens": 118,
+          "finishReason": "stop",
+          "contentChars": 2066,
+          "reasoningChars": 586,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a46-7541-7b71-bf16-69187ea6dc72"
+          },
+          "estUsd": 0.003516,
+          "spentUsd": 0.219762
+        },
+        {
+          "at": "2026-11-02T03:21:23.758Z",
+          "kind": "check",
+          "maxTokens": 5977,
+          "status": 200,
+          "ms": 14791,
+          "inputTokens": 21615,
+          "outputTokens": 877,
+          "cachedTokens": 128,
+          "reasoningTokens": 309,
+          "finishReason": "stop",
+          "contentChars": 2299,
+          "reasoningChars": 1562,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a46-a66c-74cf-b49f-368b415cb77d"
+          },
+          "estUsd": 0.003768,
+          "spentUsd": 0.22353
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "answered",
+        "requestId": "baf8c6e0-7b7e-4e0b-ae0b-ffad39a612a5",
+        "mode": {
+          "requested": "deep",
+          "executed": "deep"
+        },
+        "limitations": [
+          "Pinned to 2ac93023d31b, resolved from bench when the request started. Later movement of bench is not reflected.",
+          "The index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them."
+        ],
+        "answer": {
+          "text": "Normally, when Paws restarts again while a task that was already resumed once is still unfinished, it does not automatically resume the task another time. Instead, it asks in Linear whether to start it again from the branch in a fresh session.(`src/core/recovery.ts:75-82`) The startup decision is `ask_restart` when `recoveryAttempts` is at least 1 and the previous resume was less than `RESUME_AGAIN_AFTER_MS` ago.(`src/core/recovery.ts:101-105`)\n\nDuring startup, `recoverOnStartup` first checks whether a restart question already exists; if so, it preserves that question and does not create another one.(`src/db/recovery.ts:53-60`) When no question exists, `applyAskRestart` creates a restart hold, cancels open jobs, releases run capacity if the item has a current run, and queues the Linear question.(`src/db/decisions.ts:103-110`) The question asks whether to start the task again from its branch in a fresh session and offers the `Start again` option.(`src/db/restart-hold.ts:5-6`)(`src/db/restart-hold.ts:55-71`)\n\nThere are exceptions to this normal `ask_restart` result. If a runner still holds the work, Paws can reattach to the existing work or re-verify it instead of asking; an item whose merge was in progress is re-verified, and an item in the merge queue keeps its place.(`src/core/recovery.ts:94-100`) If enough time has passed since the prior resume—`sinceResumeMs` is at least `RESUME_AGAIN_AFTER_MS`—the task may be resumed again rather than immediately asking.(`src/core/recovery.ts:101-105`) If the item has no session key, Paws fails it with `resume_already_attempted` instead of asking.(`src/db/decisions.ts:91-101`)\n\nThis is based on 22 source ranges in 14 files, and research stopped at the deep limit maxPasses, so other relevant code may not have been inspected.",
+          "outcome": "supported",
+          "caveats": [
+            "The answer described a reason that no cited documentation states, so the rationale is treated as unknown.",
+            "The intent or rationale is not documented in the inspected evidence.",
+            "The evidence was limited to the inspected source ranges; research stopped at the deep-limit `maxPasses`, so other relevant code may exist.",
+            "The exact value of `RESUME_AGAIN_AFTER_MS` is not shown in the supplied evidence.",
+            "Research stopped at the deep limit maxPasses.",
+            "Based on 22 inspected source ranges in 14 files at commit 2ac93023d31b; the rest of the repository was not read for this answer."
+          ]
+        },
+        "evidence": [
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 75,
+            "endLine": 82,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 101,
+            "endLine": 105,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 53,
+            "endLine": 60,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/decisions.ts",
+            "startLine": 103,
+            "endLine": 110,
+            "symbol": "applyResume",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/restart-hold.ts",
+            "startLine": 5,
+            "endLine": 6,
+            "symbol": "RESTART_QUESTION",
+            "note": "definition of ensureRestartQuestion, used in src/db/recovery.ts"
+          },
+          {
+            "path": "src/db/restart-hold.ts",
+            "startLine": 55,
+            "endLine": 71,
+            "symbol": "RESTART_QUESTION",
+            "note": "definition of ensureRestartQuestion, used in src/db/recovery.ts"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 94,
+            "endLine": 100,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/decisions.ts",
+            "startLine": 91,
+            "endLine": 101,
+            "symbol": "applyResume",
+            "note": "matches the question"
+          }
+        ],
+        "revision": {
+          "repositoryId": "paws-app",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "ref": "bench"
+        },
+        "index": {
+          "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+        },
+        "coverage": {
+          "indexedFiles": 1775,
+          "excludedFiles": 18,
+          "excludedByReason": {
+            "binary": 9,
+            "generated": 3,
+            "long_lines": 1,
+            "secret_content": 4,
+            "secret_path": 1
+          }
+        },
+        "scope": {
+          "source": "committed",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "uncommittedChanges": "none"
+        },
+        "usage": {
+          "retrievalPasses": 14,
+          "sourceReads": 22,
+          "sourceBytes": 66006,
+          "modelCalls": 5,
+          "inputTokens": 82162,
+          "outputTokens": 2900,
+          "elapsedMs": 41349
+        },
+        "providers": ["ocgo"],
+        "suggestedHumanQuestion": {
+          "question": "What is the intended reason behind this behavior: What happens when Paws restarts again while a task it already resumed once after a restart is still unfinished?",
+          "reason": "Neither the code nor the documentation inspected at 2ac93023d31b states the intent or rationale."
+        }
+      }
+    },
+    {
+      "run": "full-minimax-m3.1-flash-low",
+      "q": "q03",
+      "mode": "fast",
+      "model": "minimax-m3.1-flash",
+      "totalMs": 4542,
+      "modelMs": 4470,
+      "nonModelMs": 72,
+      "calls": [
+        {
+          "at": "2026-11-02T03:21:38.649Z",
+          "kind": "synthesis",
+          "maxTokens": 1500,
+          "status": 200,
+          "ms": 4470,
+          "inputTokens": 3290,
+          "outputTokens": 554,
+          "cachedTokens": 256,
+          "reasoningTokens": 215,
+          "finishReason": "stop",
+          "contentChars": 1395,
+          "reasoningChars": 1112,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a46-e08a-7fca-b522-33d5ca36c82e"
+          },
+          "estUsd": 0.000826,
+          "spentUsd": 0.224356
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "answered",
+        "requestId": "733fd4c3-46eb-40a6-9487-ae00c093f9f5",
+        "mode": {
+          "requested": "fast",
+          "executed": "fast"
+        },
+        "limitations": [
+          "Pinned to 2ac93023d31b, resolved from bench when the request started. Later movement of bench is not reflected.",
+          "The index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them."
+        ],
+        "answer": {
+          "text": "On `SIGTERM`, Paws starts its normal shutdown path with exit code 0; the signal handler calls `shutdownPaws`, while the recovery shutdown routine first commits a WIP snapshot for each in-flight item. For items in the `running` state that are not still held by a runner, it marks the current run `lost` and applies `lease_expired`, moving the work item into `recovering` rather than allowing it to resume normally. A shutdown test confirms that a SIGTERM leaves the running item in `recovering` and its worktree has a `wip: shutdown` commit. (`src/index.ts:2050-2062`) (`src/db/recovery.ts:173-195`) (`test/shutdown-wip.test.ts:249-262`)\n\nThere are exceptions: items parked waiting for capacity, and items whose work is still held by a runner—such as an active agent turn—retain their current state and work details. Verification items may also retain state through `keepsVerification`. The WIP commit is attempted for every in-flight item, but if committing fails, the error is journaled and shutdown continues with the lease transition. (`src/db/recovery.ts:165-195`) (`src/db/recovery.ts:208-213`)\n\nThis is based on 4 source ranges in 3 files, not the whole repository. Asking again with mode \"deep\" can follow the remaining leads.",
+          "outcome": "supported",
+          "caveats": [
+            "The answer described a reason that no cited documentation states, so the rationale is treated as unknown.",
+            "The intent or rationale is not documented in the inspected evidence.",
+            "The provided evidence does not include the implementation of `shutdownPaws`, so the exact call from that function into `prepareShutdown` is not directly visible.",
+            "The evidence only covers the shutdown behavior shown in `prepareShutdown` and the cited test.",
+            "No definition of `SIGTERM` was found in the index at this revision.",
+            "Based on 4 inspected source ranges in 3 files at commit 2ac93023d31b; the rest of the repository was not read for this answer."
+          ]
+        },
+        "evidence": [
+          {
+            "path": "src/index.ts",
+            "startLine": 2050,
+            "endLine": 2062,
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 173,
+            "endLine": 195,
+            "symbol": "prepareShutdown",
+            "note": "matches the question"
+          },
+          {
+            "path": "test/shutdown-wip.test.ts",
+            "startLine": 249,
+            "endLine": 262,
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 165,
+            "endLine": 195,
+            "symbol": "prepareShutdown",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 208,
+            "endLine": 213,
+            "symbol": "prepareShutdown",
+            "note": "matches the question"
+          }
+        ],
+        "revision": {
+          "repositoryId": "paws-app",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "ref": "bench"
+        },
+        "index": {
+          "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+        },
+        "coverage": {
+          "indexedFiles": 1775,
+          "excludedFiles": 18,
+          "excludedByReason": {
+            "binary": 9,
+            "generated": 3,
+            "long_lines": 1,
+            "secret_content": 4,
+            "secret_path": 1
+          }
+        },
+        "scope": {
+          "source": "committed",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "uncommittedChanges": "none"
+        },
+        "usage": {
+          "retrievalPasses": 2,
+          "sourceReads": 4,
+          "sourceBytes": 6609,
+          "modelCalls": 1,
+          "inputTokens": 3290,
+          "outputTokens": 554,
+          "elapsedMs": 4541
+        },
+        "providers": ["ocgo"],
+        "suggestedMode": "deep",
+        "suggestedHumanQuestion": {
+          "question": "What is the intended reason behind this behavior: What does Paws do to running work items when it shuts down on SIGTERM?",
+          "reason": "Neither the code nor the documentation inspected at 2ac93023d31b states the intent or rationale."
+        }
+      }
+    },
+    {
+      "run": "full-minimax-m3.1-flash-low",
+      "q": "q03",
+      "mode": "deep",
+      "model": "minimax-m3.1-flash",
+      "totalMs": 60973,
+      "modelMs": 60657,
+      "nonModelMs": 316,
+      "calls": [
+        {
+          "at": "2026-11-02T03:21:43.363Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 16677,
+          "inputTokens": 4855,
+          "outputTokens": 393,
+          "cachedTokens": 128,
+          "reasoningTokens": 51,
+          "finishReason": "stop",
+          "contentChars": 1562,
+          "reasoningChars": 276,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a46-f2ff-7f07-92a8-e383a356951f"
+          },
+          "estUsd": 0.000964,
+          "spentUsd": 0.22532
+        },
+        {
+          "at": "2026-11-02T03:22:00.121Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 13826,
+          "inputTokens": 5540,
+          "outputTokens": 417,
+          "cachedTokens": 128,
+          "reasoningTokens": 84,
+          "finishReason": "stop",
+          "contentChars": 1391,
+          "reasoningChars": 429,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a47-347f-7d6b-bd56-3dccacd6de6a"
+          },
+          "estUsd": 0.001081,
+          "spentUsd": 0.226401
+        },
+        {
+          "at": "2026-11-02T03:22:13.956Z",
+          "kind": "synthesis",
+          "maxTokens": 3595,
+          "status": 200,
+          "ms": 22148,
+          "inputTokens": 15448,
+          "outputTokens": 816,
+          "cachedTokens": 128,
+          "reasoningTokens": 167,
+          "finishReason": "stop",
+          "contentChars": 2739,
+          "reasoningChars": 852,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a47-6a80-78ba-8710-c6f125760a45"
+          },
+          "estUsd": 0.002807,
+          "spentUsd": 0.229208
+        },
+        {
+          "at": "2026-11-02T03:22:36.105Z",
+          "kind": "check",
+          "maxTokens": 6374,
+          "status": 200,
+          "ms": 8006,
+          "inputTokens": 16213,
+          "outputTokens": 1082,
+          "cachedTokens": 768,
+          "reasoningTokens": 346,
+          "finishReason": "stop",
+          "contentChars": 3197,
+          "reasoningChars": 1810,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a47-c105-7103-9172-d86f34cbb20a"
+          },
+          "estUsd": 0.003081,
+          "spentUsd": 0.232289
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "answered",
+        "requestId": "60ee91ac-fd97-47a3-b7d2-127d21807b4f",
+        "mode": {
+          "requested": "deep",
+          "executed": "deep"
+        },
+        "limitations": [
+          "Pinned to 2ac93023d31b, resolved from bench when the request started. Later movement of bench is not reflected.",
+          "The index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them."
+        ],
+        "answer": {
+          "text": "On SIGTERM, Paws invokes the normal shutdown path: the signal handler calls `shutdownPaws`, which awaits `paws.stop()` and then exits. The stop routine first stops the running components, then performs a durable state flush through `prepareShutdown`, and finally closes the database. Shutdown failures are journaled; a failure in the state flush or database close can result in exit code 1. (`src/index.ts:2054-2062`) (`src/shutdown.ts:60-77`) (`src/index.ts:1544-1583`)\n\nDuring the flush, Paws attempts to commit a WIP checkpoint for each in-flight item. The callback performs a synchronous commit in the item's worktree with the message `wip: shutdown` when the item has a stored commit policy. If one commit fails, Paws journals the error and continues; the work-item lease/state transition still proceeds, so a missing worktree does not prevent shutdown. (`src/index.ts:1567-1577`) (`src/db/recovery.ts:178-187`) (`src/db/recovery.ts:28-29`)\n\n`prepareShutdown` then marks Paws alive and examines items in the `running` and `verifying` states. An item is left unchanged if it is parked waiting for capacity or if a runner still holds its work. The latter can include an active agent turn or a verification closeout/check run. Otherwise, Paws marks the item's current run as `lost` and, except for verification items whose verification state is preserved, applies a `lease_expired` event. The implementation comment describes this as moving running work to `recovering` without using the one resume attempt, while retaining state for work still held by a runner. (`src/db/recovery.ts:165-171`) (`src/db/recovery.ts:188-195`) (`src/db/recovery.ts:208-214`)\n\nMerge-queue items are handled separately. If the associated run is still active, Paws marks that run `lost` and applies `lease_expired`; merge-queue items without an active run are left in place. The implementation comment states that waiting merge-queue items retain their state and their place in the queue for the next startup, while an item whose run is still active is left for re-verification. (`src/db/recovery.ts:196-200`) (`src/db/recovery.ts:204-205`)\n\nThe shutdown test verifies that SIGTERM exits with code 0, creates the `wip: shutdown` commit, and leaves the affected item in `recovering`. The same test separately confirms that an unrelated queued item remains queued. (`test/shutdown-wip.test.ts:249-262`) (`test/shutdown-wip.test.ts:196-215`)\n\nThis is based on 19 source ranges in 14 files, and research stopped at the deep limit maxPasses, so other relevant code may not have been inspected.",
+          "outcome": "supported",
+          "caveats": [
+            "The inspected evidence does not include the implementation of `keepsVerification`, so the exact state transition for every verification subtype cannot be established beyond the documented distinction.",
+            "The evidence describes the recovery behavior in implementation comments and tests, but does not include a definition of SIGTERM itself.",
+            "Research stopped at the deep inspection limit, so other relevant code outside the inspected ranges may exist.",
+            "No definition of `SIGTERM` was found in the index at this revision.",
+            "Research stopped at the deep limit maxPasses.",
+            "Based on 19 inspected source ranges in 14 files at commit 2ac93023d31b; the rest of the repository was not read for this answer."
+          ]
+        },
+        "evidence": [
+          {
+            "path": "src/index.ts",
+            "startLine": 2054,
+            "endLine": 2062,
+            "note": "matches the question"
+          },
+          {
+            "path": "src/shutdown.ts",
+            "startLine": 60,
+            "endLine": 77,
+            "symbol": "STOP_WAIT_MS",
+            "note": "definition of shutdownPaws, used in src/index.ts"
+          },
+          {
+            "path": "src/index.ts",
+            "startLine": 1544,
+            "endLine": 1583,
+            "note": "call site of prepareShutdown"
+          },
+          {
+            "path": "src/index.ts",
+            "startLine": 1567,
+            "endLine": 1577,
+            "note": "call site of prepareShutdown"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 178,
+            "endLine": 187,
+            "symbol": "prepareShutdown",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 28,
+            "endLine": 29,
+            "symbol": "ShutdownWipCommit",
+            "note": "follow-up: Need the full type and implementation of the WIP commit path to determine exactly which agent, verification, and merge-queue state is persisted during SIGTERM s"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 165,
+            "endLine": 171,
+            "symbol": "prepareShutdown",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 188,
+            "endLine": 195,
+            "symbol": "prepareShutdown",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 208,
+            "endLine": 214,
+            "symbol": "prepareShutdown",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 196,
+            "endLine": 200,
+            "symbol": "prepareShutdown",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 204,
+            "endLine": 205,
+            "symbol": "prepareShutdown",
+            "note": "matches the question"
+          },
+          {
+            "path": "test/shutdown-wip.test.ts",
+            "startLine": 249,
+            "endLine": 262,
+            "note": "matches the question"
+          },
+          {
+            "path": "test/shutdown-wip.test.ts",
+            "startLine": 196,
+            "endLine": 215,
+            "note": "follow-up: Focused shutdown tests are needed to confirm the intended observable behavior and edge cases that the implementation comments alone do not establish."
+          }
+        ],
+        "revision": {
+          "repositoryId": "paws-app",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "ref": "bench"
+        },
+        "index": {
+          "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+        },
+        "coverage": {
+          "indexedFiles": 1775,
+          "excludedFiles": 18,
+          "excludedByReason": {
+            "binary": 9,
+            "generated": 3,
+            "long_lines": 1,
+            "secret_content": 4,
+            "secret_path": 1
+          }
+        },
+        "scope": {
+          "source": "committed",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "uncommittedChanges": "none"
+        },
+        "usage": {
+          "retrievalPasses": 14,
+          "sourceReads": 19,
+          "sourceBytes": 44027,
+          "modelCalls": 4,
+          "inputTokens": 42056,
+          "outputTokens": 2708,
+          "elapsedMs": 60969
+        },
+        "providers": ["ocgo"]
+      }
+    },
+    {
+      "run": "full-minimax-m3.1-flash-low",
+      "q": "q04",
+      "mode": "fast",
+      "model": "minimax-m3.1-flash",
+      "totalMs": 5051,
+      "modelMs": 4987,
+      "nonModelMs": 64,
+      "calls": [
+        {
+          "at": "2026-11-02T03:22:44.215Z",
+          "kind": "synthesis",
+          "maxTokens": 1500,
+          "status": 200,
+          "ms": 4987,
+          "inputTokens": 4960,
+          "outputTokens": 709,
+          "cachedTokens": 768,
+          "reasoningTokens": 85,
+          "finishReason": "stop",
+          "contentChars": 2729,
+          "reasoningChars": 408,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a47-e0a9-76fe-b8a8-8c348bbfb38f"
+          },
+          "estUsd": 0.001169,
+          "spentUsd": 0.233459
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "answered",
+        "requestId": "3a1ce560-7f73-49c6-bccd-b505556f368d",
+        "mode": {
+          "requested": "fast",
+          "executed": "fast"
+        },
+        "limitations": [
+          "Pinned to 2ac93023d31b, resolved from bench when the request started. Later movement of bench is not reflected.",
+          "The index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them."
+        ],
+        "answer": {
+          "text": "A Linear webhook becomes orchestrator work through `handleLinearWebhook`: the handler authenticates and validates the delivery, durably commits it to the `InboxStore`, then dispatches it through either the `IntakeQueue` or the `onEvent` callback. The intent is to acknowledge Linear quickly: the HTTP 200 is returned after commit, while follow-up work is handed to a queue worker or scheduled asynchronously. (`src/linear/webhook.ts:102-106`) (`src/linear/webhook.ts:145-152`)\n\nThe conversion begins by requiring a Linear signature and secret, checking that the signature is hexadecimal, reading at most 1 MiB of raw request data, verifying its HMAC-SHA256, checking that the timestamp is within 60 seconds, requiring a delivery ID, and parsing the body into an `AcceptedLinearEvent`. Invalid signatures, stale timestamps, malformed payloads, or missing delivery IDs are rejected; a missing persisted store produces a 500 because the event cannot be safely accepted. (`src/linear/webhook.ts:63-72`) (`src/linear/webhook.ts:107-144`) (`src/linear/webhook.ts:177-180`) Parsing extracts the agent-session and activity fields, maps the Linear type/action to an internal action such as `created`, `prompted`, or another accepted action, determines stop signals, and computes a deduplication key. (`src/linear/webhook.ts:198-254`)\n\nAfter successful validation, the handler records the verified-delivery cursor, clears verification-failure tracking, and commits the event to the inbox for deduplication and persistence. For events accepted by `IntakeQueue`—documented as `created` and `prompted`—a newly inserted event is sent with `intake.arrive`, while a previously seen but unhandled event only wakes the queue. The queue’s worker then performs the first activity and intake work. Otherwise, `schedule` invokes `deps.onEvent(event)`, which is the webhook-to-orchestrator callback path; after it resolves, the event is marked handled. The callback is deliberately not awaited before the webhook response. (`src/linear/webhook.ts:39-45`) (`src/linear/webhook.ts:103-105`) (`src/linear/webhook.ts:145-152`) (`src/linear/webhook.ts:155-170`)\n\nDelivery IDs and deduplication prevent the same webhook from becoming repeated work. `schedule` also maintains an in-flight deduplication set so concurrent callbacks for the same `dedupeKey` are not launched simultaneously, and callback failures are journaled rather than being propagated into the already-successful HTTP acknowledgement. (`src/linear/webhook.ts:147-152`) (`src/linear/webhook.ts:155-170`)\n\nThis is based on 6 source ranges in 4 files, not the whole repository. Asking again with mode \"deep\" can follow the remaining leads.",
+          "outcome": "supported",
+          "caveats": [
+            "The inspected evidence does not show where `handleLinearWebhook` is registered with the HTTP server, nor the concrete implementation supplied as `onEvent` or the `IntakeQueue` worker.",
+            "The evidence establishes dispatch into those integration points, but not the downstream orchestration steps they perform.",
+            "Based on 6 inspected source ranges in 4 files at commit 2ac93023d31b; the rest of the repository was not read for this answer."
+          ]
+        },
+        "evidence": [
+          {
+            "path": "src/linear/webhook.ts",
+            "startLine": 102,
+            "endLine": 106,
+            "symbol": "handleLinearWebhook",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/webhook.ts",
+            "startLine": 145,
+            "endLine": 152,
+            "symbol": "handleLinearWebhook",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/webhook.ts",
+            "startLine": 63,
+            "endLine": 72,
+            "symbol": "TIMESTAMP_WINDOW_MS",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/webhook.ts",
+            "startLine": 107,
+            "endLine": 144,
+            "symbol": "handleLinearWebhook",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/webhook.ts",
+            "startLine": 177,
+            "endLine": 180,
+            "symbol": "handleLinearWebhook",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/webhook.ts",
+            "startLine": 198,
+            "endLine": 254,
+            "symbol": "readTimestamp",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/webhook.ts",
+            "startLine": 39,
+            "endLine": 45,
+            "symbol": "TIMESTAMP_WINDOW_MS",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/webhook.ts",
+            "startLine": 103,
+            "endLine": 105,
+            "symbol": "handleLinearWebhook",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/webhook.ts",
+            "startLine": 155,
+            "endLine": 170,
+            "symbol": "handleLinearWebhook",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/webhook.ts",
+            "startLine": 147,
+            "endLine": 152,
+            "symbol": "handleLinearWebhook",
+            "note": "matches the question"
+          }
+        ],
+        "revision": {
+          "repositoryId": "paws-app",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "ref": "bench"
+        },
+        "index": {
+          "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+        },
+        "coverage": {
+          "indexedFiles": 1775,
+          "excludedFiles": 18,
+          "excludedByReason": {
+            "binary": 9,
+            "generated": 3,
+            "long_lines": 1,
+            "secret_content": 4,
+            "secret_path": 1
+          }
+        },
+        "scope": {
+          "source": "committed",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "uncommittedChanges": "none"
+        },
+        "usage": {
+          "retrievalPasses": 2,
+          "sourceReads": 6,
+          "sourceBytes": 11767,
+          "modelCalls": 1,
+          "inputTokens": 4960,
+          "outputTokens": 709,
+          "elapsedMs": 5050
+        },
+        "providers": ["ocgo"],
+        "suggestedMode": "deep"
+      }
+    },
+    {
+      "run": "full-minimax-m3.1-flash-low",
+      "q": "q04",
+      "mode": "deep",
+      "model": "minimax-m3.1-flash",
+      "totalMs": 46816,
+      "modelMs": 46619,
+      "nonModelMs": 197,
+      "calls": [
+        {
+          "at": "2026-11-02T03:22:49.392Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 3823,
+          "inputTokens": 4419,
+          "outputTokens": 352,
+          "cachedTokens": 0,
+          "reasoningTokens": 32,
+          "finishReason": "stop",
+          "contentChars": 1313,
+          "reasoningChars": 169,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a47-f4e4-737b-8921-5d3c6adcc976"
+          },
+          "estUsd": 0.000874,
+          "spentUsd": 0.234333
+        },
+        {
+          "at": "2026-11-02T03:22:53.243Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 7732,
+          "inputTokens": 5630,
+          "outputTokens": 437,
+          "cachedTokens": 128,
+          "reasoningTokens": 43,
+          "finishReason": "stop",
+          "contentChars": 1699,
+          "reasoningChars": 223,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a48-03f1-7cc3-98c3-128d01cbf2de"
+          },
+          "estUsd": 0.001107,
+          "spentUsd": 0.235439
+        },
+        {
+          "at": "2026-11-02T03:23:00.982Z",
+          "kind": "synthesis",
+          "maxTokens": 3605,
+          "status": 200,
+          "ms": 19774,
+          "inputTokens": 15551,
+          "outputTokens": 1211,
+          "cachedTokens": 128,
+          "reasoningTokens": 51,
+          "finishReason": "stop",
+          "contentChars": 5107,
+          "reasoningChars": 260,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a48-2239-7486-ba24-eba375bb9b1d"
+          },
+          "estUsd": 0.003059,
+          "spentUsd": 0.238499
+        },
+        {
+          "at": "2026-11-02T03:23:20.758Z",
+          "kind": "check",
+          "maxTokens": 6000,
+          "status": 200,
+          "ms": 15290,
+          "inputTokens": 16827,
+          "outputTokens": 1908,
+          "cachedTokens": 128,
+          "reasoningTokens": 651,
+          "finishReason": "stop",
+          "contentChars": 5466,
+          "reasoningChars": 3292,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a48-6f72-711c-a9db-7db5c8fbd86f"
+          },
+          "estUsd": 0.003669,
+          "spentUsd": 0.242168
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "answered",
+        "requestId": "e24f9345-eb63-4e1d-9e62-856552195ddd",
+        "mode": {
+          "requested": "deep",
+          "executed": "deep"
+        },
+        "limitations": [
+          "Pinned to 2ac93023d31b, resolved from bench when the request started. Later movement of bench is not reflected.",
+          "The index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them."
+        ],
+        "answer": {
+          "text": "A Linear webhook becomes orchestrator work through a two-stage path: the HTTP delivery is authenticated, normalized, and committed to the Linear inbox, then the event is offered to either the intake queue or an asynchronous `onEvent` callback. The inspected evidence establishes that dispatch boundary, but it does not show the callback, intake worker, or the code that finally creates an orchestrator work item, so that last transition cannot be traced fully. (`src/linear/webhook.ts:102-170`) (`src/linear/intake-queue.ts:21-34`)\n\nThe server exposes `POST /webhooks/linear` and routes it to `handleLinearWebhook(request, secrets.linearWebhookSecret, secrets.linearWebhook)` when webhook support is enabled. The configured Linear runtime’s webhook dependency is preferred, with an inbox-only fallback. (`src/server/serve.ts:664-673`) (`src/index.ts:964-974`)\n\n`handleLinearWebhook` performs this sequence:\n\n1. It requires a `linear-signature` header and configured secret, checks that the signature is a 64-character hexadecimal value, and reads the raw body with a 1 MiB limit. `readWebhookBody` also limits concurrent readers, enforces a timeout, and can return 400, 408, 413, or 503 for invalid, timed-out, oversized, or overloaded intake. (`src/linear/webhook.ts:112-130`) (`src/webhook-body/index.ts:4-45`)\n\n2. It verifies an HMAC-SHA256 signature over the raw body and then checks the timestamp against the 60-second window. The timestamp comes from the JSON body’s `webhookTimestamp`, falling back to the `linear-timestamp` header. It also requires a nonempty `linear-delivery` ID. (`src/linear/webhook.ts:17-36`) (`src/linear/webhook.ts:126-140`) (`src/linear/webhook.ts:182-196`)\n\n3. `parseAgentEvent` parses and normalizes the payload into an `AcceptedLinearEvent`, extracting the action, session and issue IDs, activity ID, prompt body and signal, calculating a deduplication key, and retaining the raw payload. A closed Linear session is represented as a `prompted` event with a `stop` signal, as is a prompt body beginning with `/paws stop`. (`src/linear/webhook.ts:198-254`) (`src/linear/event-dispatch.ts:14-16`)\n\n4. A persistent inbox store is required. After accepting the event, the handler updates the `linear:webhook` verification cursor, clears the in-memory verification-failure count, and calls `store.commit(event)`. The commit result tells the handler whether the event was newly inserted and whether it had already been handled. (`src/linear/webhook.ts:142-152`) (`src/linear/inbox.ts:5-32`)\n\n5. `created` and `prompted` events, except stops, go through the `IntakeQueue`. A newly inserted event is passed to `intake.arrive(event)`; an already-recorded but unhandled event causes `intake.wake()`. The queue’s documented behavior is to post the first Linear activity immediately and then let its worker take the event. Intake supports two concurrent operations, and its documented retry schedule is 30 seconds, 60 seconds, 2 minutes, 5 minutes, and then 10 minutes. (`src/linear/webhook.ts:147-151`) (`src/linear/intake-queue.ts:9-34`)\n\n6. Other events, including immediate stops, use `schedule`. If `onEvent` is configured, the handler records the deduplication key in an in-memory pending set and invokes the callback asynchronously. On success it marks the event handled in the inbox; on failure it journals the error. The handler does not await that follow-up, allowing the acknowledgement to remain within Linear’s five-second budget. The acknowledgement test exercises this with both the Linear follow-up and Linear HTTP client deliberately stalled. (`src/linear/webhook.ts:102-105`) (`src/linear/webhook.ts:151-170`) (`test/linear-webhook-ack.test.ts:63-98`)\n\nAfter a successful verification, parse, and commit, the handler returns a JSON acknowledgement indicating whether the delivery was a duplicate. A duplicate that is already handled is acknowledged without being dispatched again. Missing or bad signatures, a missing secret, a bad HMAC, a stale or missing timestamp, and a missing delivery ID are rejected; `bad_payload` is rejected with 400, while the other reasons handled by `reject` use 401. If no inbox store is configured, the handler returns 500 with reason `not_persisted`. (`src/linear/webhook.ts:139-152`) (`src/linear/webhook.ts:177-180`)\n\nThe inspected evidence therefore supports the transition from a verified webhook to a committed, normalized inbox event and then to either queue intake or callback dispatch. It does not expose the body of `onEvent`, the `IntakeQueue` worker, or the code that converts an accepted event into an orchestrator work item, so the exact final orchestrator call and work-item creation mechanism remain unestablished. (`src/linear/runtime.ts:34-50`)\n\nThis is based on 24 source ranges in 18 files, and research stopped at the deep limit maxPasses, so other relevant code may not have been inspected.",
+          "outcome": "partial",
+          "caveats": [
+            "Research stopped at the maxPasses limit, and the inspected ranges do not include the `onEvent` implementation, intake worker, or orchestrator work-item creation code.",
+            "The evidence shows the inbox commit and dispatch interfaces, but it does not show the concrete database implementation of `commit` or the exact database transition from a queued Linear event to an orchestrator work item.",
+            "Catch-up polling can also provide Linear events, but the inspected evidence does not include enough of that path to compare it fully with webhook delivery.",
+            "Research stopped at the deep limit maxPasses.",
+            "Based on 24 inspected source ranges in 18 files at commit 2ac93023d31b; the rest of the repository was not read for this answer."
+          ]
+        },
+        "evidence": [
+          {
+            "path": "src/linear/webhook.ts",
+            "startLine": 102,
+            "endLine": 170,
+            "symbol": "handleLinearWebhook",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/intake-queue.ts",
+            "startLine": 21,
+            "endLine": 34,
+            "symbol": "INTAKE_CONCURRENCY",
+            "note": "follow-up: Determine how accepted Linear events become queue entries and eventually orchestrator work items."
+          },
+          {
+            "path": "src/server/serve.ts",
+            "startLine": 664,
+            "endLine": 673,
+            "note": "follow-up: Identify the HTTP endpoint and how the webhook handler is wired into the running server."
+          },
+          {
+            "path": "src/index.ts",
+            "startLine": 964,
+            "endLine": 974,
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/webhook.ts",
+            "startLine": 112,
+            "endLine": 130,
+            "symbol": "handleLinearWebhook",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/webhook-body/index.ts",
+            "startLine": 4,
+            "endLine": 45,
+            "symbol": "MAX_READERS",
+            "note": "definition of readWebhookBody, used in src/linear/webhook.ts"
+          },
+          {
+            "path": "src/linear/webhook.ts",
+            "startLine": 17,
+            "endLine": 36,
+            "symbol": "TIMESTAMP_WINDOW_MS",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/webhook.ts",
+            "startLine": 126,
+            "endLine": 140,
+            "symbol": "handleLinearWebhook",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/webhook.ts",
+            "startLine": 182,
+            "endLine": 196,
+            "symbol": "readTimestamp",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/webhook.ts",
+            "startLine": 198,
+            "endLine": 254,
+            "symbol": "readTimestamp",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/event-dispatch.ts",
+            "startLine": 14,
+            "endLine": 16,
+            "symbol": "flights",
+            "note": "follow-up: Clarify the dispatch path from webhook events to sessions, activities, and intake, including the relevant tests and error paths."
+          },
+          {
+            "path": "src/linear/webhook.ts",
+            "startLine": 142,
+            "endLine": 152,
+            "symbol": "handleLinearWebhook",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/inbox.ts",
+            "startLine": 5,
+            "endLine": 32,
+            "symbol": "CommitResult",
+            "note": "follow-up: Need the definitions and call sites showing how accepted webhook events are durably recorded and later claimed or acknowledged."
+          },
+          {
+            "path": "src/linear/webhook.ts",
+            "startLine": 147,
+            "endLine": 151,
+            "symbol": "handleLinearWebhook",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/intake-queue.ts",
+            "startLine": 9,
+            "endLine": 34,
+            "symbol": "INTAKE_CONCURRENCY",
+            "note": "follow-up: Determine how accepted Linear events become queue entries and eventually orchestrator work items."
+          },
+          {
+            "path": "src/linear/webhook.ts",
+            "startLine": 102,
+            "endLine": 105,
+            "symbol": "handleLinearWebhook",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/webhook.ts",
+            "startLine": 151,
+            "endLine": 170,
+            "symbol": "handleLinearWebhook",
+            "note": "matches the question"
+          },
+          {
+            "path": "test/linear-webhook-ack.test.ts",
+            "startLine": 63,
+            "endLine": 98,
+            "symbol": "bodies",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/webhook.ts",
+            "startLine": 139,
+            "endLine": 152,
+            "symbol": "handleLinearWebhook",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/webhook.ts",
+            "startLine": 177,
+            "endLine": 180,
+            "symbol": "handleLinearWebhook",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/runtime.ts",
+            "startLine": 34,
+            "endLine": 50,
+            "symbol": "LinearRunning",
+            "note": "call site of LinearWebhookDeps"
+          }
+        ],
+        "revision": {
+          "repositoryId": "paws-app",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "ref": "bench"
+        },
+        "index": {
+          "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+        },
+        "coverage": {
+          "indexedFiles": 1775,
+          "excludedFiles": 18,
+          "excludedByReason": {
+            "binary": 9,
+            "generated": 3,
+            "long_lines": 1,
+            "secret_content": 4,
+            "secret_path": 1
+          }
+        },
+        "scope": {
+          "source": "committed",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "uncommittedChanges": "none"
+        },
+        "usage": {
+          "retrievalPasses": 14,
+          "sourceReads": 24,
+          "sourceBytes": 43033,
+          "modelCalls": 4,
+          "inputTokens": 42427,
+          "outputTokens": 3908,
+          "elapsedMs": 46815
+        },
+        "providers": ["ocgo"]
+      }
+    },
+    {
+      "run": "full-minimax-m3.1-flash-low",
+      "q": "q05",
+      "mode": "fast",
+      "model": "minimax-m3.1-flash",
+      "totalMs": 8950,
+      "modelMs": 8895,
+      "nonModelMs": 55,
+      "calls": [
+        {
+          "at": "2026-11-02T03:23:36.162Z",
+          "kind": "synthesis",
+          "maxTokens": 1500,
+          "status": 200,
+          "ms": 8895,
+          "inputTokens": 4623,
+          "outputTokens": 662,
+          "cachedTokens": 768,
+          "reasoningTokens": 227,
+          "finishReason": "stop",
+          "contentChars": 1778,
+          "reasoningChars": 1116,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a48-abf2-7960-aa5b-30c65ca6c49b"
+          },
+          "estUsd": 0.001091,
+          "spentUsd": 0.243258
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "answered",
+        "requestId": "ca5ece0d-179b-483a-99f3-9ef0b5080df7",
+        "mode": {
+          "requested": "fast",
+          "executed": "fast"
+        },
+        "limitations": [
+          "Pinned to 2ac93023d31b, resolved from bench when the request started. Later movement of bench is not reflected.",
+          "The index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them."
+        ],
+        "answer": {
+          "text": "A person’s bypass is applied during evaluation by `applyBypasses`. It accepts an approval only when it matches the decision’s task, base commit, head commit, and policy digest; it must also have a nonempty actor and reason and identify one or more check IDs present in the decision. Each referenced check may be `failed`, `exhausted`, `independence`, `passed`, or `skipped` (`src/closeout/bypass.ts:21-43`). The closeout gate accepts bypass approvals through its `bypasses` option and uses `decide` to decide from the evidence already recorded for a head, without rerunning commands or review (`src/closeout/gate.ts:30-37`) (`src/closeout/gate.ts:40-60`).\n\nFor a matching approval, `applyBypasses` removes the bypassed check IDs from the items that still require a successful outcome. It then recomputes the Closeout outcome: if nothing remains, the decision is `accepted`; if any remaining item is `exhausted`, it is `exhausted`; if every remaining item is `failed`, it is `rejected`; otherwise it is `blocked`. The applied approvals are returned with the evaluation (`src/closeout/bypass.ts:44-60`). A skipped item whose message is `setup failed` is not removed by the bypass filter, so it remains relevant unless its check ID is explicitly bypassed (`src/closeout/bypass.ts:45-50`).\n\nThe database layer preserves the offered failed check, the person’s reason and name, and the approving Linear user ID and timestamp. These records are read back with the original check state and message when the item page is loaded (`src/db/closeout-bypass.ts:3-20`) (`src/db/closeout-bypass.ts:57-74`).\n\nThis is based on 5 source ranges in 5 files, not the whole repository. Asking again with mode \"deep\" can follow the remaining leads.",
+          "outcome": "supported",
+          "caveats": [
+            "The inspected evidence does not show the exact adapter code that converts persisted database bypass records into the `bypasses` input passed to the gate, although the gate option and bypass application logic are shown.",
+            "Based on 5 inspected source ranges in 5 files at commit 2ac93023d31b; the rest of the repository was not read for this answer."
+          ]
+        },
+        "evidence": [
+          {
+            "path": "src/closeout/bypass.ts",
+            "startLine": 21,
+            "endLine": 43,
+            "symbol": "CloseoutBypass",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/closeout/gate.ts",
+            "startLine": 30,
+            "endLine": 37,
+            "symbol": "CloseoutDecision",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/closeout/gate.ts",
+            "startLine": 40,
+            "endLine": 60,
+            "symbol": "CloseoutDecision",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/closeout/bypass.ts",
+            "startLine": 44,
+            "endLine": 60,
+            "symbol": "CloseoutBypass",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/closeout/bypass.ts",
+            "startLine": 45,
+            "endLine": 50,
+            "symbol": "CloseoutBypass",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/closeout-bypass.ts",
+            "startLine": 3,
+            "endLine": 20,
+            "symbol": "CloseoutBypassCheck",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/closeout-bypass.ts",
+            "startLine": 57,
+            "endLine": 74,
+            "symbol": "CloseoutBypassCheck",
+            "note": "matches the question"
+          }
+        ],
+        "revision": {
+          "repositoryId": "paws-app",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "ref": "bench"
+        },
+        "index": {
+          "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+        },
+        "coverage": {
+          "indexedFiles": 1775,
+          "excludedFiles": 18,
+          "excludedByReason": {
+            "binary": 9,
+            "generated": 3,
+            "long_lines": 1,
+            "secret_content": 4,
+            "secret_path": 1
+          }
+        },
+        "scope": {
+          "source": "committed",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "uncommittedChanges": "none"
+        },
+        "usage": {
+          "retrievalPasses": 2,
+          "sourceReads": 5,
+          "sourceBytes": 10783,
+          "modelCalls": 1,
+          "inputTokens": 4623,
+          "outputTokens": 662,
+          "elapsedMs": 8948
+        },
+        "providers": ["ocgo"],
+        "suggestedMode": "deep"
+      }
+    },
+    {
+      "run": "full-minimax-m3.1-flash-low",
+      "q": "q05",
+      "mode": "deep",
+      "model": "minimax-m3.1-flash",
+      "totalMs": 38860,
+      "modelMs": 38629,
+      "nonModelMs": 231,
+      "calls": [
+        {
+          "at": "2026-11-02T03:23:45.230Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 4559,
+          "inputTokens": 4249,
+          "outputTokens": 292,
+          "cachedTokens": 128,
+          "reasoningTokens": 47,
+          "finishReason": "stop",
+          "contentChars": 1089,
+          "reasoningChars": 221,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a48-cf07-7cde-a324-c52b81c1b7a7"
+          },
+          "estUsd": 0.000813,
+          "spentUsd": 0.244071
+        },
+        {
+          "at": "2026-11-02T03:23:49.849Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 3911,
+          "inputTokens": 5755,
+          "outputTokens": 394,
+          "cachedTokens": 128,
+          "reasoningTokens": 81,
+          "finishReason": "stop",
+          "contentChars": 1293,
+          "reasoningChars": 375,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a48-e1bf-706f-83cf-5bc3f35e5b7f"
+          },
+          "estUsd": 0.0011,
+          "spentUsd": 0.24517
+        },
+        {
+          "at": "2026-11-02T03:23:53.774Z",
+          "kind": "synthesis",
+          "maxTokens": 3657,
+          "status": 200,
+          "ms": 10914,
+          "inputTokens": 19357,
+          "outputTokens": 966,
+          "cachedTokens": 128,
+          "reasoningTokens": 130,
+          "finishReason": "stop",
+          "contentChars": 3487,
+          "reasoningChars": 709,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a48-f06b-783c-bc08-ea7782d8d8b1"
+          },
+          "estUsd": 0.003483,
+          "spentUsd": 0.248654
+        },
+        {
+          "at": "2026-11-02T03:24:04.690Z",
+          "kind": "check",
+          "maxTokens": 6348,
+          "status": 200,
+          "ms": 19245,
+          "inputTokens": 20307,
+          "outputTokens": 1409,
+          "cachedTokens": 128,
+          "reasoningTokens": 363,
+          "finishReason": "stop",
+          "contentChars": 4278,
+          "reasoningChars": 1950,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a49-1b0e-70f8-8064-677cdee01d7e"
+          },
+          "estUsd": 0.003891,
+          "spentUsd": 0.252545
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "answered",
+        "requestId": "fcede686-49ac-4efe-8c28-57209e867d57",
+        "mode": {
+          "requested": "deep",
+          "executed": "deep"
+        },
+        "limitations": [
+          "Pinned to 2ac93023d31b, resolved from bench when the request started. Later movement of bench is not reflected.",
+          "The index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them."
+        ],
+        "answer": {
+          "text": "A person’s bypass reaches the Closeout decision as a `CloseoutBypass` approval: it is loaded from the persisted bypass-check rows, supplied through `GateInput.bypasses`, and applied by `applyBypasses` after Closeout has formed an evaluation. The approved check is removed from the unsatisfied items; if nothing unsatisfied remains, the evaluation outcome becomes `accepted`.(`src/closeout/bypass.ts:21-60`)(`src/loop/closeout-recovery.ts:14-53`)(`src/closeout/run.ts:497-532`)\n\nThe flow is:\n\n1. When Closeout stops with failed checks, `askCloseoutHelp` creates a link ask, records the recovery against that question, and saves the offered checks with `saveCloseoutBypassChecks`.(`src/loop/closeout-help.ts:38-98`) The saved check rows include fields for the reason, approver ID, approver name, and approval time.(`src/db/closeout-bypass.ts:8-20`)\n\n2. When recovery options are prepared, `recoveryOptions` reads the closeout recoveries and their associated link asks. Only a link ask whose decision is `approve` contributes bypasses. For each saved check having both `approvedBy` and `reason`, it constructs a `CloseoutBypass` containing the recovery’s task, base, head, and policy digest, plus the check ID, actor, optional actor name, and reason.(`src/loop/closeout-recovery.ts:14-53`) The inspected code does not include the database write that populates the approval fields, although the read path clearly expects them to have been stored there.(`src/db/closeout-bypass.ts:57-74`)(`src/loop/closeout-recovery.ts:38-51`)\n\n3. `GateInput` carries these approvals in its `bypasses` field, and the public `CloseoutGateOptions` exposes the same field to the gate implementation.(`src/closeout/run.ts:89-116`)(`src/closeout/gate.ts:40-60`)\n\n4. In the recorded-decision path, `decideCloseoutGate` calls `decideRecorded`. After Closeout produces and normalizes the decision, `decideRecorded` passes `input.bypasses?? []` to `applyBypasses`.(`src/closeout/run.ts:474-495`)(`src/closeout/run.ts:497-532`) This path decides from recorded evidence and does not run commands or the review again.(`src/closeout/run.ts:469-484`)\n\n5. `applyBypasses` accepts an approval only when it matches the decision’s candidate task, base, head, and policy digest; its actor and reason are nonblank; and every named check exists in the decision. A named check may be in `failed`, `exhausted`, or `independence` state, or may already be `passed` or `skipped`.(`src/closeout/bypass.ts:17-43`) It then excludes the approved check IDs from the remaining unsatisfied items.(`src/closeout/bypass.ts:44-51`)\n\n6. The resulting outcome is derived from those remaining items: none means `accepted`; any remaining `exhausted` item means `exhausted`; if all remaining items are `failed`, it means `rejected`; otherwise it means `blocked`.(`src/closeout/bypass.ts:52-60`) At the gate level, `decideCloseoutGate` converts a recorded `rejected` evaluation into `exhausted` before returning the final `GateResult`.(`src/closeout/run.ts:493-495`)\n\nThe documentation describes the intended binding in the same terms: a bypass is tied to the task, base, head, and policy digest, and the same head is verified again with the approval; a new commit causes checks to run again.(`docs/closeout.md:162-168`) A Linear reply such as `/paws bypass...` is only guidance and does not itself create an effective bypass; authorization must come from the item-page decision.(`src/loop/closeout-recovery.ts:20-27`)(`docs/closeout.md:162-168`)\n\nThis is based on 23 source ranges in 18 files, and research stopped at the deep limit maxPasses, so other relevant code may not have been inspected.",
+          "outcome": "supported",
+          "caveats": [
+            "The inspected evidence does not include the database update that writes the person’s reason, approver ID/name, and approval timestamp onto the bypass-check row.",
+            "The exact caller that takes `recoveryOptions(...).bypasses` and supplies them to `GateInput.bypasses` was not included in the inspected ranges.",
+            "Research stopped at the stated `maxPasses` limit, so other callers or related validation outside the inspected ranges may exist.",
+            "Research stopped at the deep limit maxPasses.",
+            "Based on 23 inspected source ranges in 18 files at commit 2ac93023d31b; the rest of the repository was not read for this answer."
+          ]
+        },
+        "evidence": [
+          {
+            "path": "src/closeout/bypass.ts",
+            "startLine": 21,
+            "endLine": 60,
+            "symbol": "CloseoutBypass",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/loop/closeout-recovery.ts",
+            "startLine": 14,
+            "endLine": 53,
+            "symbol": "BYPASS_REPLY",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/closeout/run.ts",
+            "startLine": 497,
+            "endLine": 532,
+            "symbol": "decideCloseoutGate",
+            "note": "definition of decideCloseoutGate, used in src/closeout/gate.ts"
+          },
+          {
+            "path": "src/loop/closeout-help.ts",
+            "startLine": 38,
+            "endLine": 98,
+            "symbol": "askCloseoutHelp",
+            "note": "follow-up: Need to trace how the person's bypass is persisted and subsequently loaded into the Closeout decision path."
+          },
+          {
+            "path": "src/db/closeout-bypass.ts",
+            "startLine": 8,
+            "endLine": 20,
+            "symbol": "CloseoutBypassCheck",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/closeout-bypass.ts",
+            "startLine": 57,
+            "endLine": 74,
+            "symbol": "CloseoutBypassCheck",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/loop/closeout-recovery.ts",
+            "startLine": 38,
+            "endLine": 51,
+            "symbol": "BYPASS_REPLY",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/closeout/run.ts",
+            "startLine": 89,
+            "endLine": 116,
+            "symbol": "Evaluation",
+            "note": "follow-up: Inspect the full bypass application logic and determine exactly how accepted bypasses alter failed check evaluations before the gate decision."
+          },
+          {
+            "path": "src/closeout/gate.ts",
+            "startLine": 40,
+            "endLine": 60,
+            "symbol": "CloseoutDecision",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/closeout/run.ts",
+            "startLine": 474,
+            "endLine": 495,
+            "symbol": "decideCloseoutGate",
+            "note": "definition of decideCloseoutGate, used in src/closeout/gate.ts"
+          },
+          {
+            "path": "src/closeout/run.ts",
+            "startLine": 469,
+            "endLine": 484,
+            "symbol": "decideCloseoutGate",
+            "note": "definition of decideCloseoutGate, used in src/closeout/gate.ts"
+          },
+          {
+            "path": "src/closeout/bypass.ts",
+            "startLine": 17,
+            "endLine": 43,
+            "symbol": "CloseoutBypass",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/closeout/bypass.ts",
+            "startLine": 44,
+            "endLine": 51,
+            "symbol": "CloseoutBypass",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/closeout/bypass.ts",
+            "startLine": 52,
+            "endLine": 60,
+            "symbol": "CloseoutBypass",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/closeout/run.ts",
+            "startLine": 493,
+            "endLine": 495,
+            "symbol": "decideCloseoutGate",
+            "note": "definition of decideCloseoutGate, used in src/closeout/gate.ts"
+          },
+          {
+            "path": "docs/closeout.md",
+            "startLine": 162,
+            "endLine": 168,
+            "note": "follow-up: Need tests or documented claims to verify the intended end-to-end behavior and edge/error cases of bypassed failed checks."
+          },
+          {
+            "path": "src/loop/closeout-recovery.ts",
+            "startLine": 20,
+            "endLine": 27,
+            "symbol": "BYPASS_REPLY",
+            "note": "matches the question"
+          }
+        ],
+        "revision": {
+          "repositoryId": "paws-app",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "ref": "bench"
+        },
+        "index": {
+          "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+        },
+        "coverage": {
+          "indexedFiles": 1775,
+          "excludedFiles": 18,
+          "excludedByReason": {
+            "binary": 9,
+            "generated": 3,
+            "long_lines": 1,
+            "secret_content": 4,
+            "secret_path": 1
+          }
+        },
+        "scope": {
+          "source": "committed",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "uncommittedChanges": "none"
+        },
+        "usage": {
+          "retrievalPasses": 14,
+          "sourceReads": 23,
+          "sourceBytes": 57060,
+          "modelCalls": 4,
+          "inputTokens": 49668,
+          "outputTokens": 3061,
+          "elapsedMs": 38858
+        },
+        "providers": ["ocgo"]
+      }
+    },
+    {
+      "run": "full-minimax-m3.1-flash-low",
+      "q": "q06",
+      "mode": "fast",
+      "model": "minimax-m3.1-flash",
+      "totalMs": 4287,
+      "modelMs": 4167,
+      "nonModelMs": 120,
+      "calls": [
+        {
+          "at": "2026-11-02T03:24:24.110Z",
+          "kind": "synthesis",
+          "maxTokens": 1500,
+          "status": 200,
+          "ms": 4167,
+          "inputTokens": 7613,
+          "outputTokens": 371,
+          "cachedTokens": 128,
+          "reasoningTokens": 92,
+          "finishReason": "stop",
+          "contentChars": 1108,
+          "reasoningChars": 460,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a49-66f0-770c-b291-8a3a895d35e3"
+          },
+          "estUsd": 0.001365,
+          "spentUsd": 0.25391
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "answered",
+        "requestId": "0540ef29-6745-48e3-8676-ce69b1bcbb86",
+        "mode": {
+          "requested": "fast",
+          "executed": "fast"
+        },
+        "limitations": [
+          "Pinned to 2ac93023d31b, resolved from bench when the request started. Later movement of bench is not reflected.",
+          "The index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them."
+        ],
+        "answer": {
+          "text": "The queue start timeout is configured under the `[queue]` section of `~/.paws/config.toml` as `start_timeout_hours`. Its default is **24 hours**, and the documented accepted range is **1 to 720 hours** (`docs/configuration.md:36`) (`docs/configuration.md:79-82`). The Settings page exposes the same setting as the `queue-start-timeout` field and converts its input into `queue.startTimeoutHours` when building the update request (`src/web/src/client/agent-settings.ts:234-240`). Validation requires a whole number from 1 through 720; invalid values—including 0, 721, 1.5, and `NaN`—produce the error “Queue start timeout: enter a whole number of hours from 1 to 720.” (`src/web/src/client/agent-settings.test.ts:92-97`). The configuration reference also states that an unknown key or a value Paws no longer accepts prevents startup and reports the relevant configuration line (`docs/configuration.md:3-6`).",
+          "outcome": "supported",
+          "caveats": [
+            "The inspected evidence does not include the implementation of `settingsProblems` or the server-side TOML parser, so the exact validation call path and whether server-side validation is identical cannot be established.",
+            "docs/configuration.md:1-39 mentions `retry`, `PAWS_HOME`, `PAWS_HOST`; Fast did not check these against code at this revision.",
+            "docs/configuration.md:40-99 mentions `order`, `queue`, `project`; Fast did not check these against code at this revision.",
+            "Based on 6 inspected source ranges in 4 files at commit 2ac93023d31b; the rest of the repository was not read for this answer."
+          ]
+        },
+        "evidence": [
+          {
+            "path": "docs/configuration.md",
+            "startLine": 36,
+            "endLine": 36,
+            "note": "matches the question"
+          },
+          {
+            "path": "docs/configuration.md",
+            "startLine": 79,
+            "endLine": 82,
+            "note": "matches the question"
+          },
+          {
+            "path": "src/web/src/client/agent-settings.ts",
+            "startLine": 234,
+            "endLine": 240,
+            "symbol": "createAgentSettings",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/web/src/client/agent-settings.test.ts",
+            "startLine": 92,
+            "endLine": 97,
+            "note": "test covering createAgentSettings"
+          },
+          {
+            "path": "docs/configuration.md",
+            "startLine": 3,
+            "endLine": 6,
+            "note": "matches the question"
+          }
+        ],
+        "revision": {
+          "repositoryId": "paws-app",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "ref": "bench"
+        },
+        "index": {
+          "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+        },
+        "coverage": {
+          "indexedFiles": 1775,
+          "excludedFiles": 18,
+          "excludedByReason": {
+            "binary": 9,
+            "generated": 3,
+            "long_lines": 1,
+            "secret_content": 4,
+            "secret_path": 1
+          }
+        },
+        "scope": {
+          "source": "committed",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "uncommittedChanges": "none"
+        },
+        "usage": {
+          "retrievalPasses": 2,
+          "sourceReads": 6,
+          "sourceBytes": 24973,
+          "modelCalls": 1,
+          "inputTokens": 7613,
+          "outputTokens": 371,
+          "elapsedMs": 4285
+        },
+        "providers": ["ocgo"]
+      }
+    },
+    {
+      "run": "full-minimax-m3.1-flash-low",
+      "q": "q06",
+      "mode": "deep",
+      "model": "minimax-m3.1-flash",
+      "totalMs": 32837,
+      "modelMs": 32549,
+      "nonModelMs": 288,
+      "calls": [
+        {
+          "at": "2026-11-02T03:24:28.442Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 9421,
+          "inputTokens": 4629,
+          "outputTokens": 340,
+          "cachedTokens": 187,
+          "reasoningTokens": 46,
+          "finishReason": "stop",
+          "contentChars": 1288,
+          "reasoningChars": 244,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a49-7d1f-70c2-9e8f-32e28c3d7efa"
+          },
+          "estUsd": 0.000898,
+          "spentUsd": 0.254808
+        },
+        {
+          "at": "2026-11-02T03:24:37.972Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 2808,
+          "inputTokens": 6069,
+          "outputTokens": 336,
+          "cachedTokens": 128,
+          "reasoningTokens": 45,
+          "finishReason": "stop",
+          "contentChars": 1287,
+          "reasoningChars": 201,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a49-9d11-70f9-91cc-e093ee4d10a5"
+          },
+          "estUsd": 0.001112,
+          "spentUsd": 0.25592
+        },
+        {
+          "at": "2026-11-02T03:24:40.805Z",
+          "kind": "synthesis",
+          "maxTokens": 3662,
+          "status": 200,
+          "ms": 10889,
+          "inputTokens": 23252,
+          "outputTokens": 922,
+          "cachedTokens": 128,
+          "reasoningTokens": 182,
+          "finishReason": "stop",
+          "contentChars": 2764,
+          "reasoningChars": 908,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a49-a81f-7803-b69f-75425ca4cf4a"
+          },
+          "estUsd": 0.004041,
+          "spentUsd": 0.259961
+        },
+        {
+          "at": "2026-11-02T03:24:51.697Z",
+          "kind": "check",
+          "maxTokens": 6402,
+          "status": 200,
+          "ms": 9431,
+          "inputTokens": 24106,
+          "outputTokens": 1309,
+          "cachedTokens": 0,
+          "reasoningTokens": 351,
+          "finishReason": "stop",
+          "contentChars": 3860,
+          "reasoningChars": 1819,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a49-d2bd-77b7-9def-ec9aaf368cb9"
+          },
+          "estUsd": 0.004401,
+          "spentUsd": 0.264362
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "answered",
+        "requestId": "f23b4add-cb45-4f81-97bb-a0f9d72dff46",
+        "mode": {
+          "requested": "deep",
+          "executed": "deep"
+        },
+        "limitations": [
+          "Pinned to 2ac93023d31b, resolved from bench when the request started. Later movement of bench is not reflected.",
+          "The index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them."
+        ],
+        "answer": {
+          "text": "The queue start timeout is configured as `start_timeout_hours` in the `[queue]` section of `~/.paws/config.toml`, for example:\n\n`[queue]`\n`start_timeout_hours = 24`\n\nThe configuration reference identifies the `[queue]` section and `start_timeout_hours` key, and the TOML loader stores it as `PawsConfigFile.queueStartTimeoutHours`. (`docs/configuration.md:22-36`) (`src/config/file.ts:109-116`) (`src/config/file.ts:550-553`) It can also be changed through the Settings UI: the browser reads the `queue-start-timeout` field into `queue.startTimeoutHours`, and the settings handler passes the submitted queue settings through `parseQueueSettings` before writing the configuration. (`src/web/src/client/agent-settings.ts:229-240`) (`src/settings/handler.ts:104-127`)\n\nThe default is **24 hours**. It is the documented default, the value of `DEFAULT_QUEUE_START_TIMEOUT_HOURS`, the fallback used when the key is absent, the fallback used when the configuration cannot be read at dispatch time, and the value displayed by the UI when no timeout is configured. (`docs/configuration.md:79-82`) (`src/config/queue.ts:3-4`) (`src/config/queue.ts:10-13`) (`src/web/src/client/agent-settings.test.ts:82-98`) (`src/loop/orchestrator.ts:4690-4704`)\n\nFor Settings updates, validation accepts only a **whole number of hours from 1 through 720 inclusive**. `parseQueueSettings` rejects non-numbers, fractions, values below 1, and values above 720 with an error such as `queue.startTimeoutHours must be a whole number of hours from 1 to 720`; the Settings endpoint returns that validation error as HTTP 400. (`src/config/queue.ts:43-53`) (`src/settings/handler.ts:104-117`) The browser validation applies the same range and integer requirement, displaying `Queue start timeout: enter a whole number of hours from 1 to 720.` for values such as `0`, `721`, `1.5`, or `NaN`. (`src/web/src/client/agent-settings.test.ts:82-98`)\n\nA separately loaded TOML value follows a different path. The TOML assignment shown here parses `start_timeout_hours` as an integer, but this range is not checked in `assignConfig`. (`src/config/file.ts:550-553`) Later, `readQueueSettings` applies `Math.min(Math.max(hours, 1), 720)`, so it supplies the 24-hour default when the value is missing and clamps the loaded number to the 1–720 range; it does not reject an out-of-range number there. (`src/config/queue.ts:10-18`) The orchestrator reads this setting on each dispatch. When the queued wait reaches `hours * 3_600_000` milliseconds, it fails the item with reason `start_timeout`; if loading the configuration throws, it journals the error and uses the 24-hour default for that read. (`src/loop/orchestrator.ts:5775-5797`) (`src/loop/orchestrator.ts:4690-4704`)\n\nThe queue-wait test covers the default behavior by showing that an item remains queued before one day and has failed with a message containing `within 24 hours` afterward. A second test configures `start_timeout_hours = 2`; the inspected portion establishes that the orchestrator receives that configuration, although the excerpt does not include the later assertion that proves the two-hour failure. (`test/queue-wait.test.ts:51-85`) (`test/queue-wait.test.ts:92-104`)\n\nThis is based on 24 source ranges in 17 files, and research stopped at the deep limit maxPasses, so other relevant code may not have been inspected.",
+          "outcome": "supported",
+          "caveats": [
+            "The inspected evidence shows the TOML loader parsing the value as an integer, while the explicit 1–720 validation is enforced by `parseQueueSettings` for Settings updates and by clamping in `readQueueSettings` at runtime. The broader startup-validation path was not fully inspected.",
+            "Research stopped at its traversal limit, so other related tests or validation paths may exist outside the inspected ranges.",
+            "Research stopped at the deep limit maxPasses.",
+            "Based on 24 inspected source ranges in 17 files at commit 2ac93023d31b; the rest of the repository was not read for this answer."
+          ]
+        },
+        "evidence": [
+          {
+            "path": "docs/configuration.md",
+            "startLine": 22,
+            "endLine": 36,
+            "note": "matches the question"
+          },
+          {
+            "path": "src/config/file.ts",
+            "startLine": 109,
+            "endLine": 116,
+            "symbol": "PawsConfigFile",
+            "note": "definition of PawsConfigFile, used in src/config/queue.ts"
+          },
+          {
+            "path": "src/config/file.ts",
+            "startLine": 550,
+            "endLine": 553,
+            "symbol": "assignConfig",
+            "note": "follow-up: Search for alternate TOML key spellings is necessary to report the actual user-facing configuration key and any documentation mismatch."
+          },
+          {
+            "path": "src/web/src/client/agent-settings.ts",
+            "startLine": 229,
+            "endLine": 240,
+            "symbol": "createAgentSettings",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/settings/handler.ts",
+            "startLine": 104,
+            "endLine": 127,
+            "note": "matches the question refined with symbols found so far"
+          },
+          {
+            "path": "docs/configuration.md",
+            "startLine": 79,
+            "endLine": 82,
+            "note": "matches the question"
+          },
+          {
+            "path": "src/config/queue.ts",
+            "startLine": 3,
+            "endLine": 4,
+            "symbol": "DEFAULT_QUEUE_START_TIMEOUT_HOURS",
+            "note": "definition of DEFAULT_QUEUE_START_TIMEOUT_HOURS, used in src/loop/orchestrator.ts"
+          },
+          {
+            "path": "src/config/queue.ts",
+            "startLine": 10,
+            "endLine": 13,
+            "symbol": "DEFAULT_QUEUE_START_TIMEOUT_HOURS",
+            "note": "definition of DEFAULT_QUEUE_START_TIMEOUT_HOURS, used in src/loop/orchestrator.ts"
+          },
+          {
+            "path": "src/web/src/client/agent-settings.test.ts",
+            "startLine": 82,
+            "endLine": 98,
+            "symbol": "view",
+            "note": "follow-up: Tests are needed to confirm the exact validation behavior and distinguish file-load validation from the later runtime clamp."
+          },
+          {
+            "path": "src/loop/orchestrator.ts",
+            "startLine": 4690,
+            "endLine": 4704,
+            "note": "follow-up: Search for alternate TOML key spellings is necessary to report the actual user-facing configuration key and any documentation mismatch."
+          },
+          {
+            "path": "src/config/queue.ts",
+            "startLine": 43,
+            "endLine": 53,
+            "symbol": "DEFAULT_QUEUE_START_TIMEOUT_HOURS",
+            "note": "definition of DEFAULT_QUEUE_START_TIMEOUT_HOURS, used in src/loop/orchestrator.ts"
+          },
+          {
+            "path": "src/settings/handler.ts",
+            "startLine": 104,
+            "endLine": 117,
+            "note": "matches the question refined with symbols found so far"
+          },
+          {
+            "path": "src/config/queue.ts",
+            "startLine": 10,
+            "endLine": 18,
+            "symbol": "DEFAULT_QUEUE_START_TIMEOUT_HOURS",
+            "note": "definition of DEFAULT_QUEUE_START_TIMEOUT_HOURS, used in src/loop/orchestrator.ts"
+          },
+          {
+            "path": "src/loop/orchestrator.ts",
+            "startLine": 5775,
+            "endLine": 5797,
+            "note": "follow-up: This identifier should reveal where the setting is persisted in ~/.paws/config.toml and how it is parsed, exposed, and covered by tests."
+          },
+          {
+            "path": "test/queue-wait.test.ts",
+            "startLine": 51,
+            "endLine": 85,
+            "symbol": "oneBusyRunnerSlot",
+            "note": "follow-up: Tests are needed to confirm the exact validation behavior and distinguish file-load validation from the later runtime clamp."
+          },
+          {
+            "path": "test/queue-wait.test.ts",
+            "startLine": 92,
+            "endLine": 104,
+            "symbol": "oneBusyRunnerSlot",
+            "note": "follow-up: Tests are needed to confirm the exact validation behavior and distinguish file-load validation from the later runtime clamp."
+          }
+        ],
+        "revision": {
+          "repositoryId": "paws-app",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "ref": "bench"
+        },
+        "index": {
+          "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+        },
+        "coverage": {
+          "indexedFiles": 1775,
+          "excludedFiles": 18,
+          "excludedByReason": {
+            "binary": 9,
+            "generated": 3,
+            "long_lines": 1,
+            "secret_content": 4,
+            "secret_path": 1
+          }
+        },
+        "scope": {
+          "source": "committed",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "uncommittedChanges": "none"
+        },
+        "usage": {
+          "retrievalPasses": 14,
+          "sourceReads": 24,
+          "sourceBytes": 74948,
+          "modelCalls": 4,
+          "inputTokens": 58056,
+          "outputTokens": 2907,
+          "elapsedMs": 32836
+        },
+        "providers": ["ocgo"]
+      }
+    },
+    {
+      "run": "full-minimax-m3.1-flash-low",
+      "q": "q07",
+      "mode": "fast",
+      "model": "minimax-m3.1-flash",
+      "totalMs": 14482,
+      "modelMs": 14422,
+      "nonModelMs": 60,
+      "calls": [
+        {
+          "at": "2026-11-02T03:25:01.238Z",
+          "kind": "synthesis",
+          "maxTokens": 1500,
+          "status": 200,
+          "ms": 14422,
+          "inputTokens": 5280,
+          "outputTokens": 500,
+          "cachedTokens": 128,
+          "reasoningTokens": 66,
+          "finishReason": "stop",
+          "contentChars": 1907,
+          "reasoningChars": 356,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a49-f805-7876-b215-ba8d3983b73c"
+          },
+          "estUsd": 0.001092,
+          "spentUsd": 0.265454
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "answered",
+        "requestId": "e4d9322f-0cc2-4407-a7ee-258a51916a6c",
+        "mode": {
+          "requested": "fast",
+          "executed": "fast"
+        },
+        "limitations": [
+          "Pinned to 2ac93023d31b, resolved from bench when the request started. Later movement of bench is not reflected.",
+          "The index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them."
+        ],
+        "answer": {
+          "text": "When a queued Linear intake fails, the queue catches the error, records it with `store.markFailed`, and leaves the event in the durable inbox for another attempt. The failure does not block unrelated queued events: each failed event waits on its own retry schedule, while the worker continues processing eligible events, subject to the configured concurrency of two. (`src/linear/intake-queue.ts:108-180`)(`src/linear/intake-queue.ts:36-107`)\n\nFor ordinary failures, the queue increments the event's attempt count and schedules the next attempt using `intakeRetryMs`. The waits are 30 seconds, 60 seconds, 2 minutes, 5 minutes, and then 10 minutes for subsequent failures. `pump` skips events whose `nextAttemptAt` is still in the future and arms a timer for the earliest eligible retry; after delivery succeeds, the event is marked handled. (`src/linear/intake-queue.ts:1-35`)(`src/linear/intake-queue.ts:108-180`)(`src/linear/intake-queue.ts:36-107`)\n\nThere are two special cases. If the Linear session no longer exists, the event is logged and marked handled instead of being retried. If the failure is a `LinearRateLimitError`, the whole queue is paused until the rate limit expires, and the event is scheduled no earlier than the server's `retryAfterMs` (with a minimum of 30 seconds); this retry is not counted as a normal attempt. (`src/linear/intake-queue.ts:108-180`)\n\nThe initial `arrive` activity is separate from the queued delivery. If that first activity fails, the error is journaled and logged, but the evidence shown does not mark the event handled or explicitly schedule a retry for it; the durable intake worker can still pick the event up through the inbox queue. (`src/linear/intake-queue.ts:108-180`)(`src/linear/intake-queue.ts:36-107`)\n\nThis is based on 6 source ranges in 4 files, not the whole repository. Asking again with mode \"deep\" can follow the remaining leads.",
+          "outcome": "supported",
+          "caveats": [
+            "The evidence shows the queue and store interactions, but does not show the complete inbox-store implementation or the remainder of the retry test.",
+            "The exact behavior of a failure during the initial `arrive` phase after its logged error is not fully established by the shown code.",
+            "Based on 6 inspected source ranges in 4 files at commit 2ac93023d31b; the rest of the repository was not read for this answer."
+          ]
+        },
+        "evidence": [
+          {
+            "path": "src/linear/intake-queue.ts",
+            "startLine": 108,
+            "endLine": 180,
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/intake-queue.ts",
+            "startLine": 36,
+            "endLine": 107,
+            "symbol": "createIntakeQueue",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/intake-queue.ts",
+            "startLine": 1,
+            "endLine": 35,
+            "symbol": "INTAKE_CONCURRENCY",
+            "note": "matches the question"
+          }
+        ],
+        "revision": {
+          "repositoryId": "paws-app",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "ref": "bench"
+        },
+        "index": {
+          "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+        },
+        "coverage": {
+          "indexedFiles": 1775,
+          "excludedFiles": 18,
+          "excludedByReason": {
+            "binary": 9,
+            "generated": 3,
+            "long_lines": 1,
+            "secret_content": 4,
+            "secret_path": 1
+          }
+        },
+        "scope": {
+          "source": "committed",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "uncommittedChanges": "none"
+        },
+        "usage": {
+          "retrievalPasses": 2,
+          "sourceReads": 6,
+          "sourceBytes": 13276,
+          "modelCalls": 1,
+          "inputTokens": 5280,
+          "outputTokens": 500,
+          "elapsedMs": 14481
+        },
+        "providers": ["ocgo"],
+        "suggestedMode": "deep"
+      }
+    },
+    {
+      "run": "full-minimax-m3.1-flash-low",
+      "q": "q07",
+      "mode": "deep",
+      "model": "minimax-m3.1-flash",
+      "totalMs": 27114,
+      "modelMs": 26921,
+      "nonModelMs": 193,
+      "calls": [
+        {
+          "at": "2026-11-02T03:25:15.824Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 4146,
+          "inputTokens": 4538,
+          "outputTokens": 310,
+          "cachedTokens": 187,
+          "reasoningTokens": 46,
+          "finishReason": "stop",
+          "contentChars": 1090,
+          "reasoningChars": 249,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a4a-30f0-7613-b1e5-1014a33545d4"
+          },
+          "estUsd": 0.000867,
+          "spentUsd": 0.266321
+        },
+        {
+          "at": "2026-11-02T03:25:19.997Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 3158,
+          "inputTokens": 4752,
+          "outputTokens": 400,
+          "cachedTokens": 128,
+          "reasoningTokens": 26,
+          "finishReason": "stop",
+          "contentChars": 1578,
+          "reasoningChars": 121,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a4a-412e-7993-ab5c-b0fff223a26a"
+          },
+          "estUsd": 0.000953,
+          "spentUsd": 0.267274
+        },
+        {
+          "at": "2026-11-02T03:25:23.164Z",
+          "kind": "synthesis",
+          "maxTokens": 3645,
+          "status": 200,
+          "ms": 10176,
+          "inputTokens": 16239,
+          "outputTokens": 940,
+          "cachedTokens": 128,
+          "reasoningTokens": 135,
+          "finishReason": "stop",
+          "contentChars": 3435,
+          "reasoningChars": 781,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a4a-4d9c-7ab8-9477-c923ed3be663"
+          },
+          "estUsd": 0.003,
+          "spentUsd": 0.270274
+        },
+        {
+          "at": "2026-11-02T03:25:33.343Z",
+          "kind": "check",
+          "maxTokens": 6350,
+          "status": 200,
+          "ms": 9441,
+          "inputTokens": 17158,
+          "outputTokens": 1335,
+          "cachedTokens": 128,
+          "reasoningTokens": 421,
+          "finishReason": "stop",
+          "contentChars": 3938,
+          "reasoningChars": 2163,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a4a-7554-7534-b569-3991ce902bfe"
+          },
+          "estUsd": 0.003375,
+          "spentUsd": 0.273648
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "answered",
+        "requestId": "d246735f-cbaf-42fa-989f-5fc94941d06c",
+        "mode": {
+          "requested": "deep",
+          "executed": "deep"
+        },
+        "limitations": [
+          "Pinned to 2ac93023d31b, resolved from bench when the request started. Later movement of bench is not reflected.",
+          "The index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them."
+        ],
+        "answer": {
+          "text": "When queued Linear intake fails, the event remains in the durable inbox as unhandled. The queue records the error and schedules a later retry rather than immediately rerunning it; once delivery succeeds, the event is marked handled. A retry test confirms that failed intake remains unhandled with no `work_item` created, and that after closing and reopening SQLite the event is delivered again and disappears from the unhandled list after success. (`src/linear/intake-queue.ts:108-141`) (`src/linear/intake-queue.ts:102-107`) \n\nFor an ordinary failure, the queue increments the failed-attempt count, calculates a backoff, and calls `store.markFailed` with the error, `nextAttemptAt`, and `counted: true`. It then logs the attempt number and retry delay. The backoff sequence is 30 seconds, 1 minute, 2 minutes, 5 minutes, and 10 minutes; subsequent failures continue to use 10 minutes. A failed event has its own retry schedule and does not block other events, although events in the same session remain ordered. (`src/linear/intake-queue.ts:127-136`) (`src/linear/intake-queue.ts:12-19`) (`src/linear/intake-queue.ts:36-40`)\n\nThe retry is driven by the queue’s `pump` function: queued events whose `nextAttemptAt` is still in the future are skipped, and the queue arms a timer for the earliest due retry. When that time arrives, the worker attempts the event again. The test observes exactly the six successive waits `30_000`, `60_000`, `120_000`, `300_000`, `600_000`, and `600_000` milliseconds, while unrelated sessions continue to be delivered. (`src/linear/intake-queue.ts:73-100`) (`test/linear-intake-queue.test.ts:204-247`)\n\nRate-limit failures use a different path. The queue pauses the entire queue until the maximum of the current hold and the error’s `retryAfterMs`, records the event as failed with `counted: false`, and schedules that event no earlier than the rate-limit delay. Because the attempt is not counted, it does not advance the ordinary backoff schedule. Even a zero-millisecond rate-limit response uses the minimum normal retry delay, preventing an immediate restart loop. A ledger-level hold also prevents any intake from starting and resumes the queue after the hold. (`src/linear/intake-queue.ts:118-125`) (`test/linear-intake-queue.test.ts:324-334`) \n\nThere are two notable exceptions. If delivery reports that the Linear `AgentSession` no longer exists, the event is marked handled and skipped rather than retried. If the queue is stopped while handling an error, it exits without recording a retry. (`src/linear/intake-queue.ts:108-115`)\n\nThe event’s initial “first activity” is separate from queued delivery. A failure in that arrival-phase activity is journaled and logged, after which the worker can handle the queued intake. For intake with no tracker configured, production delivery throws `Linear is not connected`, which is then handled by the queue’s ordinary failure-and-retry path. The production path passes the prior attempt count into delivery; failure reporting is enabled only for attempt zero, while the `sessionBusy` callback is passed separately to `acknowledgeNewSession`. (`src/linear/intake-queue.ts:152-167`) (`src/linear/intake-queue.ts:214-264`)\n\nThe web status view exposes this state by showing the number of failed attempts, the time until the next retry, and the last error for each waiting intake. (`src/web/src/client/intake.ts:37-46`)\n\nThis is based on 20 source ranges in 11 files, and research stopped at the deep limit maxPasses, so other relevant code may not have been inspected.",
+          "outcome": "partial",
+          "caveats": [
+            "2 source references in the draft did not match inspected evidence and were removed; the statements they were attached to are unverified.",
+            "The definition of `InboxStore.markFailed` was not found, so the precise database update performed by that method cannot be described from the inspected evidence.",
+            "Research stopped at the configured exploration limit, so related code outside the inspected ranges may contain additional failure handling.",
+            "Research stopped at the deep limit maxPasses.",
+            "No definition of `InboxStore.markFailed` was found in the index at this revision.",
+            "Based on 20 inspected source ranges in 11 files at commit 2ac93023d31b; the rest of the repository was not read for this answer."
+          ]
+        },
+        "evidence": [
+          {
+            "path": "src/linear/intake-queue.ts",
+            "startLine": 108,
+            "endLine": 141,
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/intake-queue.ts",
+            "startLine": 102,
+            "endLine": 107,
+            "symbol": "createIntakeQueue",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/intake-queue.ts",
+            "startLine": 127,
+            "endLine": 136,
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/intake-queue.ts",
+            "startLine": 12,
+            "endLine": 19,
+            "symbol": "INTAKE_CONCURRENCY",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/intake-queue.ts",
+            "startLine": 36,
+            "endLine": 40,
+            "symbol": "createIntakeQueue",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/intake-queue.ts",
+            "startLine": 73,
+            "endLine": 100,
+            "symbol": "createIntakeQueue",
+            "note": "matches the question"
+          },
+          {
+            "path": "test/linear-intake-queue.test.ts",
+            "startLine": 204,
+            "endLine": 247,
+            "note": "call site of INTAKE_RETRY_MS"
+          },
+          {
+            "path": "src/linear/intake-queue.ts",
+            "startLine": 118,
+            "endLine": 125,
+            "note": "matches the question"
+          },
+          {
+            "path": "test/linear-intake-queue.test.ts",
+            "startLine": 324,
+            "endLine": 334,
+            "note": "call site of INTAKE_RETRY_MS"
+          },
+          {
+            "path": "src/linear/intake-queue.ts",
+            "startLine": 108,
+            "endLine": 115,
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/intake-queue.ts",
+            "startLine": 152,
+            "endLine": 167,
+            "note": "matches the question"
+          },
+          {
+            "path": "src/linear/intake-queue.ts",
+            "startLine": 214,
+            "endLine": 264,
+            "symbol": "createLinearIntake",
+            "note": "follow-up: To explain the actual intake outcome and what the attempts argument means, we need the queue's production caller and delivery implementation."
+          },
+          {
+            "path": "src/web/src/client/intake.ts",
+            "startLine": 37,
+            "endLine": 46,
+            "symbol": "renderIntake",
+            "note": "matches the question"
+          }
+        ],
+        "revision": {
+          "repositoryId": "paws-app",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "ref": "bench"
+        },
+        "index": {
+          "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+        },
+        "coverage": {
+          "indexedFiles": 1775,
+          "excludedFiles": 18,
+          "excludedByReason": {
+            "binary": 9,
+            "generated": 3,
+            "long_lines": 1,
+            "secret_content": 4,
+            "secret_path": 1
+          }
+        },
+        "scope": {
+          "source": "committed",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "uncommittedChanges": "none"
+        },
+        "usage": {
+          "retrievalPasses": 14,
+          "sourceReads": 20,
+          "sourceBytes": 46103,
+          "modelCalls": 4,
+          "inputTokens": 42687,
+          "outputTokens": 2985,
+          "elapsedMs": 27113
+        },
+        "providers": ["ocgo"]
+      }
+    },
+    {
+      "run": "full-minimax-m3.1-flash-low",
+      "q": "q08",
+      "mode": "fast",
+      "model": "minimax-m3.1-flash",
+      "totalMs": 5195,
+      "modelMs": 5122,
+      "nonModelMs": 73,
+      "calls": [
+        {
+          "at": "2026-11-02T03:25:42.899Z",
+          "kind": "synthesis",
+          "maxTokens": 1500,
+          "status": 200,
+          "ms": 5122,
+          "inputTokens": 5311,
+          "outputTokens": 454,
+          "cachedTokens": 128,
+          "reasoningTokens": 223,
+          "finishReason": "stop",
+          "contentChars": 984,
+          "reasoningChars": 1210,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a4a-9aab-75ef-8760-bc8a3c644b5c"
+          },
+          "estUsd": 0.001069,
+          "spentUsd": 0.274717
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "answered",
+        "requestId": "5a7f328c-a04a-46cc-bc19-871e86db3b50",
+        "mode": {
+          "requested": "fast",
+          "executed": "fast"
+        },
+        "limitations": [
+          "Pinned to 2ac93023d31b, resolved from bench when the request started. Later movement of bench is not reflected.",
+          "The index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them."
+        ],
+        "answer": {
+          "text": "Yes. The configuration documentation states that an unknown section or key in `config.toml` stops Paws at startup, with an error identifying the line and what to change (`docs/configuration.md:3-6`). The inspected parser independently confirms rejection of unknown sections with a `config.toml line N has an unknown section` error (`src/config/file.ts:177-196`). For keys, it parses each key and delegates to `assignConfig`; however, that function’s implementation was not included in the inspected evidence, so the exact runtime error path for an unknown key cannot be verified here (`src/config/file.ts:198-207`).\n\nThis is based on 4 source ranges in 4 files, not the whole repository. Asking again with mode \"deep\" can follow the remaining leads.",
+          "outcome": "partial",
+          "caveats": [
+            "Only the parser range in `src/config/file.ts` was inspected; the implementation of `assignConfig` and the server startup error handling were not available.",
+            "The repository-wide behavior of the documented `retry`, `PAWS_HOME`, and `PAWS_HOST` settings was not checked, as noted in the research notes.",
+            "docs/configuration.md:1-39 mentions `retry`, `PAWS_HOME`, `PAWS_HOST`; Fast did not check these against code at this revision.",
+            "Based on 4 inspected source ranges in 4 files at commit 2ac93023d31b; the rest of the repository was not read for this answer."
+          ]
+        },
+        "evidence": [
+          {
+            "path": "docs/configuration.md",
+            "startLine": 3,
+            "endLine": 6,
+            "note": "matches the question"
+          },
+          {
+            "path": "src/config/file.ts",
+            "startLine": 177,
+            "endLine": 196,
+            "symbol": "emptyConfigFile",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/config/file.ts",
+            "startLine": 198,
+            "endLine": 207,
+            "symbol": "emptyConfigFile",
+            "note": "matches the question"
+          }
+        ],
+        "revision": {
+          "repositoryId": "paws-app",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "ref": "bench"
+        },
+        "index": {
+          "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+        },
+        "coverage": {
+          "indexedFiles": 1775,
+          "excludedFiles": 18,
+          "excludedByReason": {
+            "binary": 9,
+            "generated": 3,
+            "long_lines": 1,
+            "secret_content": 4,
+            "secret_path": 1
+          }
+        },
+        "scope": {
+          "source": "committed",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "uncommittedChanges": "none"
+        },
+        "usage": {
+          "retrievalPasses": 2,
+          "sourceReads": 4,
+          "sourceBytes": 15981,
+          "modelCalls": 1,
+          "inputTokens": 5311,
+          "outputTokens": 454,
+          "elapsedMs": 5194
+        },
+        "providers": ["ocgo"],
+        "suggestedMode": "deep"
+      }
+    },
+    {
+      "run": "full-minimax-m3.1-flash-low",
+      "q": "q08",
+      "mode": "deep",
+      "model": "minimax-m3.1-flash",
+      "totalMs": 21033,
+      "modelMs": 20708,
+      "nonModelMs": 325,
+      "calls": [
+        {
+          "at": "2026-11-02T03:25:48.226Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 2469,
+          "inputTokens": 5014,
+          "outputTokens": 267,
+          "cachedTokens": 256,
+          "reasoningTokens": 46,
+          "finishReason": "stop",
+          "contentChars": 953,
+          "reasoningChars": 232,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a4a-af81-701a-862a-7e5c277c8081"
+          },
+          "estUsd": 0.000912,
+          "spentUsd": 0.27563
+        },
+        {
+          "at": "2026-11-02T03:25:50.770Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 2233,
+          "inputTokens": 5897,
+          "outputTokens": 324,
+          "cachedTokens": 512,
+          "reasoningTokens": 26,
+          "finishReason": "stop",
+          "contentChars": 1241,
+          "reasoningChars": 127,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a4a-b977-7005-8fbd-aef01bedb353"
+          },
+          "estUsd": 0.001079,
+          "spentUsd": 0.276709
+        },
+        {
+          "at": "2026-11-02T03:25:53.053Z",
+          "kind": "synthesis",
+          "maxTokens": 3704,
+          "status": 200,
+          "ms": 6447,
+          "inputTokens": 19772,
+          "outputTokens": 518,
+          "cachedTokens": 188,
+          "reasoningTokens": 165,
+          "finishReason": "stop",
+          "contentChars": 1487,
+          "reasoningChars": 883,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a4a-c259-7f4d-93b7-08b0e5ae70b5"
+          },
+          "estUsd": 0.003277,
+          "spentUsd": 0.279985
+        },
+        {
+          "at": "2026-11-02T03:25:59.503Z",
+          "kind": "check",
+          "maxTokens": 6891,
+          "status": 200,
+          "ms": 9559,
+          "inputTokens": 20239,
+          "outputTokens": 796,
+          "cachedTokens": 128,
+          "reasoningTokens": 326,
+          "finishReason": "stop",
+          "contentChars": 2121,
+          "reasoningChars": 1727,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a4a-db8e-7d7a-8235-089b4eab1f35"
+          },
+          "estUsd": 0.003513,
+          "spentUsd": 0.283499
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "answered",
+        "requestId": "2841f277-1aea-4036-857c-41d7868f09dc",
+        "mode": {
+          "requested": "deep",
+          "executed": "deep"
+        },
+        "limitations": [
+          "Pinned to 2ac93023d31b, resolved from bench when the request started. Later movement of bench is not reflected.",
+          "The index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them."
+        ],
+        "answer": {
+          "text": "According to the documentation, an unknown key in `config.toml` is supposed to stop Paws at startup, with an error identifying the offending line and what to change. (`docs/configuration.md:3-6`) The parser is strict about this case: the test suite expects an unknown key under `[linear]`, `[merge]`, or `[tracker]` to throw `config.toml line 2 has an unknown key: <section>.unknown`, and expects an unknown section to throw as well. (`test/config.test.ts:194-209`)\n\nHowever, the inspected startup configuration path does not itself demonstrate that Paws exits. `loadRuntime` catches the parser exception, records its message in `runtime.configError`, and continues with an empty/default configuration. (`src/config/runtime.ts:62-83`) The supplied evidence does not include the later startup code that consumes `configError` and terminates the process, so the final “refuse to start” behavior cannot be confirmed from code alone. This is a conflict between the documented behavior and the partially inspected implementation, rather than proof that Paws currently starts successfully. (`docs/configuration.md:3-6`) (`src/config/runtime.ts:65-72`)\n\nThere is at least one explicit compatibility exception: the retired `[update]` section is ignored rather than treated as fatal. (`src/config/file.ts:174-201`) (`test/config.test.ts:211-217`)\n\nThis is based on 22 source ranges in 19 files, and research stopped at the deep limit maxPasses, so other relevant code may not have been inspected.",
+          "outcome": "partial",
+          "caveats": [
+            "The startup call site that consumes `runtime.configError` was not included in the supplied evidence.",
+            "Research stopped before the relevant startup path could be fully traced.",
+            "Research stopped at the deep limit maxPasses.",
+            "Based on 22 inspected source ranges in 19 files at commit 2ac93023d31b; the rest of the repository was not read for this answer."
+          ]
+        },
+        "evidence": [
+          {
+            "path": "docs/configuration.md",
+            "startLine": 3,
+            "endLine": 6,
+            "note": "matches the question"
+          },
+          {
+            "path": "test/config.test.ts",
+            "startLine": 194,
+            "endLine": 209,
+            "note": "follow-up: Need tests that explicitly assert strict rejection of unknown configuration keys, including the expected error behavior."
+          },
+          {
+            "path": "src/config/runtime.ts",
+            "startLine": 62,
+            "endLine": 83,
+            "symbol": "loadRuntime",
+            "note": "follow-up: Need startup call sites to establish whether a parser failure prevents Paws from starting rather than being caught or degraded."
+          },
+          {
+            "path": "src/config/runtime.ts",
+            "startLine": 65,
+            "endLine": 72,
+            "symbol": "loadRuntime",
+            "note": "follow-up: Need startup call sites to establish whether a parser failure prevents Paws from starting rather than being caught or degraded."
+          },
+          {
+            "path": "src/config/file.ts",
+            "startLine": 174,
+            "endLine": 201,
+            "symbol": "emptyConfigFile",
+            "note": "matches the question"
+          },
+          {
+            "path": "test/config.test.ts",
+            "startLine": 211,
+            "endLine": 217,
+            "note": "follow-up: Need tests that explicitly assert strict rejection of unknown configuration keys, including the expected error behavior."
+          }
+        ],
+        "revision": {
+          "repositoryId": "paws-app",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "ref": "bench"
+        },
+        "index": {
+          "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+        },
+        "coverage": {
+          "indexedFiles": 1775,
+          "excludedFiles": 18,
+          "excludedByReason": {
+            "binary": 9,
+            "generated": 3,
+            "long_lines": 1,
+            "secret_content": 4,
+            "secret_path": 1
+          }
+        },
+        "scope": {
+          "source": "committed",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "uncommittedChanges": "none"
+        },
+        "usage": {
+          "retrievalPasses": 14,
+          "sourceReads": 22,
+          "sourceBytes": 62387,
+          "modelCalls": 4,
+          "inputTokens": 50922,
+          "outputTokens": 1905,
+          "elapsedMs": 21032
+        },
+        "providers": ["ocgo"]
+      }
+    },
+    {
+      "run": "full-minimax-m3.1-flash-low",
+      "q": "q09",
+      "mode": "fast",
+      "model": "minimax-m3.1-flash",
+      "totalMs": 3747,
+      "modelMs": 3690,
+      "nonModelMs": 57,
+      "calls": [
+        {
+          "at": "2026-11-02T03:26:09.139Z",
+          "kind": "synthesis",
+          "maxTokens": 1500,
+          "status": 200,
+          "ms": 3690,
+          "inputTokens": 5878,
+          "outputTokens": 347,
+          "cachedTokens": 768,
+          "reasoningTokens": 75,
+          "finishReason": "stop",
+          "contentChars": 1272,
+          "reasoningChars": 408,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a4b-0128-7041-b88b-2e1fc7c0fae3"
+          },
+          "estUsd": 0.00109,
+          "spentUsd": 0.284588
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "answered",
+        "requestId": "fbd77bec-5509-4c12-935b-48da732aa2d9",
+        "mode": {
+          "requested": "fast",
+          "executed": "fast"
+        },
+        "limitations": [
+          "Pinned to 2ac93023d31b, resolved from bench when the request started. Later movement of bench is not reflected.",
+          "The index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them."
+        ],
+        "answer": {
+          "text": "Paws intentionally staggers restart resumes rather than enqueueing them simultaneously: `recoverOnStartup` computes each resume job’s `runAt` using `STARTUP_RESUME_SPACING_MS` and increments the offset once per resume, so successive tasks are scheduled five seconds apart at this revision. (`src/db/recovery.ts:53-87`) Items with an existing parked-capacity wait, pending answer resume, or pending transient retry are skipped rather than receiving another resume, while items requiring a restart question are also not resumed automatically. (`src/db/recovery.ts:57-64`)\n\nThe evidence establishes the spacing behavior, but it does not document why the five-second spacing is necessary. A likely concern is reducing an immediate burst of concurrent work, but that rationale is an inference and is not established by the inspected code.\n\nThis is based on 5 source ranges in 3 files, not the whole repository. Asking again with mode \"deep\" can follow the remaining leads.",
+          "outcome": "partial",
+          "caveats": [
+            "The intent or rationale is not documented in the inspected evidence.",
+            "The definition and value of `STARTUP_RESUME_SPACING_MS` were not included in the inspected ranges.",
+            "The inspected evidence does not document the operational or business reason for the five-second delay.",
+            ".agents/skills/verify-paws/SKILL.md:50-73 mentions `startPaws`, `PAWS_PUBLIC_URL`, `redirect_uri`; Fast did not check these against code at this revision.",
+            "Based on 5 inspected source ranges in 3 files at commit 2ac93023d31b; the rest of the repository was not read for this answer."
+          ]
+        },
+        "evidence": [
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 53,
+            "endLine": 87,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 57,
+            "endLine": 64,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          }
+        ],
+        "revision": {
+          "repositoryId": "paws-app",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "ref": "bench"
+        },
+        "index": {
+          "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+        },
+        "coverage": {
+          "indexedFiles": 1775,
+          "excludedFiles": 18,
+          "excludedByReason": {
+            "binary": 9,
+            "generated": 3,
+            "long_lines": 1,
+            "secret_content": 4,
+            "secret_path": 1
+          }
+        },
+        "scope": {
+          "source": "committed",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "uncommittedChanges": "none"
+        },
+        "usage": {
+          "retrievalPasses": 2,
+          "sourceReads": 5,
+          "sourceBytes": 20117,
+          "modelCalls": 1,
+          "inputTokens": 5878,
+          "outputTokens": 347,
+          "elapsedMs": 3745
+        },
+        "providers": ["ocgo"],
+        "suggestedMode": "deep",
+        "suggestedHumanQuestion": {
+          "question": "Why did Paws choose a five-second spacing between startup resumes—specifically, what failure mode or capacity concern was this intended to prevent?",
+          "reason": "Neither the code nor the documentation inspected at 2ac93023d31b states the intent or rationale."
+        }
+      }
+    },
+    {
+      "run": "full-minimax-m3.1-flash-low",
+      "q": "q09",
+      "mode": "deep",
+      "model": "minimax-m3.1-flash",
+      "totalMs": 26480,
+      "modelMs": 26182,
+      "nonModelMs": 298,
+      "calls": [
+        {
+          "at": "2026-11-02T03:26:13.004Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 2888,
+          "inputTokens": 6534,
+          "outputTokens": 290,
+          "cachedTokens": 128,
+          "reasoningTokens": 51,
+          "finishReason": "stop",
+          "contentChars": 986,
+          "reasoningChars": 210,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a4b-104b-777e-a268-aed3e7602262"
+          },
+          "estUsd": 0.001154,
+          "spentUsd": 0.285743
+        },
+        {
+          "at": "2026-11-02T03:26:16.009Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 5926,
+          "inputTokens": 8021,
+          "outputTokens": 329,
+          "cachedTokens": 128,
+          "reasoningTokens": 48,
+          "finishReason": "stop",
+          "contentChars": 1198,
+          "reasoningChars": 231,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a4b-1c03-7ddd-853c-5c42c3dc481a"
+          },
+          "estUsd": 0.001401,
+          "spentUsd": 0.287143
+        },
+        {
+          "at": "2026-11-02T03:26:21.945Z",
+          "kind": "synthesis",
+          "maxTokens": 3690,
+          "status": 200,
+          "ms": 6802,
+          "inputTokens": 19481,
+          "outputTokens": 501,
+          "cachedTokens": 188,
+          "reasoningTokens": 102,
+          "finishReason": "stop",
+          "contentChars": 1669,
+          "reasoningChars": 520,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a4b-333e-7259-a961-1c89da44da17"
+          },
+          "estUsd": 0.003223,
+          "spentUsd": 0.290366
+        },
+        {
+          "at": "2026-11-02T03:26:28.750Z",
+          "kind": "check",
+          "maxTokens": 6880,
+          "status": 200,
+          "ms": 10566,
+          "inputTokens": 20000,
+          "outputTokens": 961,
+          "cachedTokens": 188,
+          "reasoningTokens": 351,
+          "finishReason": "stop",
+          "contentChars": 2740,
+          "reasoningChars": 1785,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a4b-4dcb-7c95-9bea-fe79e05066ff"
+          },
+          "estUsd": 0.003577,
+          "spentUsd": 0.293942
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "answered",
+        "requestId": "79ea4bfa-7795-4f52-80d1-01f2c8087af5",
+        "mode": {
+          "requested": "deep",
+          "executed": "deep"
+        },
+        "limitations": [
+          "Pinned to 2ac93023d31b, resolved from bench when the request started. Later movement of bench is not reflected.",
+          "The index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them."
+        ],
+        "answer": {
+          "text": "The inspected startup-recovery path does not sleep for five seconds between tasks; it schedules the resume jobs with staggered eligibility times. `STARTUP_RESUME_SPACING_MS` is set to `5_000`, and `recoverOnStartup` assigns each applicable resume decision a `runAt` of `now + STARTUP_RESUME_SPACING_MS * resumes++`. Thus, the first scheduled resume is eligible at `now`, the next one five seconds later, and so on. (`src/db/recovery.ts:31-40`) (`src/db/recovery.ts:53-57`) (`src/db/recovery.ts:83-86`)\n\nThe decision and its follow-up work are persisted within the surrounding startup transaction. `applyDecision` receives the calculated `runAt`, and its `resume` branch passes that time into the resume path. (`src/db/recovery.ts:51-57`) (`src/db/decisions.ts:17-32`)\n\nThis spacing applies specifically to newly created resume work. Items that already have a parked capacity wait, pending answer resume, or pending transient retry are skipped, and a resume decision that can attach to an existing pending `process_restart` job does not create a replacement job. (`src/db/recovery.ts:57-85`) (`src/db/recovery.ts:116-162`) Other recovery outcomes also follow different paths: merge-queue work may keep its place, while verification-related work may re-verify rather than receive a resume with the five-second offset. (`src/core/recovery.ts:56-61`) (`src/core/recovery.ts:75-105`)\n\nThe inspected evidence does not state why this five-second spacing was introduced. It therefore does not establish whether the intent was to reduce a startup load spike, avoid contention, protect external services, or address some other concern. The code clearly establishes the scheduling behavior, but not its design rationale.\n\nThis is based on 23 source ranges in 18 files, and research stopped at the deep limit maxPasses, so other relevant code may not have been inspected.",
+          "outcome": "partial",
+          "caveats": [
+            "The intent or rationale is not documented in the inspected evidence.",
+            "The inspected evidence establishes the five-second scheduling mechanism but does not state why it was chosen.",
+            "Research stopped at the deep `maxPasses` limit, so another relevant explanation may exist elsewhere in the repository.",
+            "The evidence shows how startup decisions are scheduled and persisted, but it does not independently trace the later job loop that claims and executes those jobs.",
+            "Research stopped at the deep limit maxPasses.",
+            "Based on 23 inspected source ranges in 18 files at commit 2ac93023d31b; the rest of the repository was not read for this answer."
+          ]
+        },
+        "evidence": [
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 31,
+            "endLine": 40,
+            "symbol": "ShutdownWipCommit",
+            "note": "follow-up: Trace how startup decisions are consumed and whether a capacity wait or per-item scheduling policy controls the delay."
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 53,
+            "endLine": 57,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 83,
+            "endLine": 86,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 51,
+            "endLine": 57,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/decisions.ts",
+            "startLine": 17,
+            "endLine": 32,
+            "symbol": "applyDecision",
+            "note": "follow-up: The startup decision records are shown, but not how they are consumed after recovery. This is needed to determine whether tasks are delayed during database reco"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 57,
+            "endLine": 85,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 116,
+            "endLine": 162,
+            "symbol": "hasPendingAnswerResume",
+            "note": "definition of hasPendingResume, used in src/db/recovery.ts"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 56,
+            "endLine": 61,
+            "symbol": "AWAKE_ITEM_STATES",
+            "note": "matches the question refined with symbols found so far"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 75,
+            "endLine": 105,
+            "symbol": "decideStartup",
+            "note": "matches the question refined with symbols found so far"
+          }
+        ],
+        "revision": {
+          "repositoryId": "paws-app",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "ref": "bench"
+        },
+        "index": {
+          "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+        },
+        "coverage": {
+          "indexedFiles": 1775,
+          "excludedFiles": 18,
+          "excludedByReason": {
+            "binary": 9,
+            "generated": 3,
+            "long_lines": 1,
+            "secret_content": 4,
+            "secret_path": 1
+          }
+        },
+        "scope": {
+          "source": "committed",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "uncommittedChanges": "none"
+        },
+        "usage": {
+          "retrievalPasses": 14,
+          "sourceReads": 23,
+          "sourceBytes": 62378,
+          "modelCalls": 4,
+          "inputTokens": 54036,
+          "outputTokens": 2081,
+          "elapsedMs": 26479
+        },
+        "providers": ["ocgo"],
+        "suggestedHumanQuestion": {
+          "question": "Why was the five-second startup resume spacing introduced—specifically, what failure or load condition was it intended to prevent?",
+          "reason": "Neither the code nor the documentation inspected at 2ac93023d31b states the intent or rationale."
+        }
+      }
+    },
+    {
+      "run": "full-minimax-m3.1-flash-low",
+      "q": "q10",
+      "mode": "fast",
+      "model": "minimax-m3.1-flash",
+      "totalMs": 3311,
+      "modelMs": 3237,
+      "nonModelMs": 74,
+      "calls": [
+        {
+          "at": "2026-11-02T03:26:39.419Z",
+          "kind": "synthesis",
+          "maxTokens": 1500,
+          "status": 200,
+          "ms": 3237,
+          "inputTokens": 4372,
+          "outputTokens": 321,
+          "cachedTokens": 128,
+          "reasoningTokens": 80,
+          "finishReason": "stop",
+          "contentChars": 900,
+          "reasoningChars": 382,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a4b-776e-7470-b359-3e345e2982bc"
+          },
+          "estUsd": 0.000848,
+          "spentUsd": 0.294791
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "answered",
+        "requestId": "d5113f9c-0768-428f-80e2-939bf74ae638",
+        "mode": {
+          "requested": "fast",
+          "executed": "fast"
+        },
+        "limitations": [
+          "Pinned to 2ac93023d31b, resolved from bench when the request started. Later movement of bench is not reflected.",
+          "The index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them."
+        ],
+        "answer": {
+          "text": "Closeout derives a finding’s bug class from the beginning of its `explanation`. `bugClass` matches leading text up to the first `:`, em dash, ` - `, period, semicolon, or newline, trims it, lowercases it, and returns that value. For example, `\"unchecked null: the handler reads …\"` becomes `\"unchecked null\"` (`src/closeout/rounds.ts:21-28`).\n\nA finding is unclassified when that leading text is empty or when it is longer than the 60-character `CLASS_LIMIT`. In either case, `bugClass` returns the constant `\"unclassified\"` (`src/closeout/rounds.ts:16-19`) (`src/closeout/rounds.ts:25-28`). The resulting class is persisted with the finding as `bug_class` (`src/db/review-findings.ts:164-180`).\n\nThis is based on 6 source ranges in 5 files, not the whole repository. Asking again with mode \"deep\" can follow the remaining leads.",
+          "outcome": "supported",
+          "caveats": [
+            "The evidence shows how the class is parsed and stored, but does not show additional review-pipeline rules that might affect a finding before it reaches this function.",
+            "Based on 6 inspected source ranges in 5 files at commit 2ac93023d31b; the rest of the repository was not read for this answer."
+          ]
+        },
+        "evidence": [
+          {
+            "path": "src/closeout/rounds.ts",
+            "startLine": 21,
+            "endLine": 28,
+            "symbol": "ReviewRoundSummary",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/closeout/rounds.ts",
+            "startLine": 16,
+            "endLine": 19,
+            "symbol": "ReviewRoundSummary",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/closeout/rounds.ts",
+            "startLine": 25,
+            "endLine": 28,
+            "symbol": "ReviewRoundSummary",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/review-findings.ts",
+            "startLine": 164,
+            "endLine": 180,
+            "symbol": "upsert",
+            "note": "matches the question"
+          }
+        ],
+        "revision": {
+          "repositoryId": "paws-app",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "ref": "bench"
+        },
+        "index": {
+          "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+        },
+        "coverage": {
+          "indexedFiles": 1775,
+          "excludedFiles": 18,
+          "excludedByReason": {
+            "binary": 9,
+            "generated": 3,
+            "long_lines": 1,
+            "secret_content": 4,
+            "secret_path": 1
+          }
+        },
+        "scope": {
+          "source": "committed",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "uncommittedChanges": "none"
+        },
+        "usage": {
+          "retrievalPasses": 2,
+          "sourceReads": 6,
+          "sourceBytes": 10022,
+          "modelCalls": 1,
+          "inputTokens": 4372,
+          "outputTokens": 321,
+          "elapsedMs": 3310
+        },
+        "providers": ["ocgo"],
+        "suggestedMode": "deep"
+      }
+    },
+    {
+      "run": "full-minimax-m3.1-flash-low",
+      "q": "q10",
+      "mode": "deep",
+      "model": "minimax-m3.1-flash",
+      "totalMs": 44263,
+      "modelMs": 43992,
+      "nonModelMs": 271,
+      "calls": [
+        {
+          "at": "2026-11-02T03:26:42.829Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 2954,
+          "inputTokens": 4501,
+          "outputTokens": 346,
+          "cachedTokens": 256,
+          "reasoningTokens": 34,
+          "finishReason": "stop",
+          "contentChars": 1386,
+          "reasoningChars": 171,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a4b-84ca-7e1f-ae41-81a64f0ac861"
+          },
+          "estUsd": 0.000883,
+          "spentUsd": 0.295674
+        },
+        {
+          "at": "2026-11-02T03:26:45.886Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 3566,
+          "inputTokens": 5436,
+          "outputTokens": 241,
+          "cachedTokens": 512,
+          "reasoningTokens": 59,
+          "finishReason": "stop",
+          "contentChars": 856,
+          "reasoningChars": 286,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a4b-90b7-7756-91e4-5189a72743ee"
+          },
+          "estUsd": 0.00096,
+          "spentUsd": 0.296634
+        },
+        {
+          "at": "2026-11-02T03:26:49.458Z",
+          "kind": "synthesis",
+          "maxTokens": 3706,
+          "status": 200,
+          "ms": 23642,
+          "inputTokens": 19264,
+          "outputTokens": 561,
+          "cachedTokens": 768,
+          "reasoningTokens": 115,
+          "finishReason": "stop",
+          "contentChars": 1880,
+          "reasoningChars": 548,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a4b-9eaa-713f-85a9-f9b533c5df71"
+          },
+          "estUsd": 0.003226,
+          "spentUsd": 0.29986
+        },
+        {
+          "at": "2026-11-02T03:27:13.102Z",
+          "kind": "check",
+          "maxTokens": 6852,
+          "status": 200,
+          "ms": 13830,
+          "inputTokens": 19824,
+          "outputTokens": 985,
+          "cachedTokens": 128,
+          "reasoningTokens": 466,
+          "finishReason": "stop",
+          "contentChars": 2212,
+          "reasoningChars": 2467,
+          "extraKeys": [],
+          "meterHeaders": {
+            "x-opencode-log-id": "01a19a4b-fb03-7c64-bc8a-f88d9b7e037a"
+          },
+          "estUsd": 0.003565,
+          "spentUsd": 0.303424
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "answered",
+        "requestId": "a80678a6-947f-4b37-bbad-af99c5466242",
+        "mode": {
+          "requested": "deep",
+          "executed": "deep"
+        },
+        "limitations": [
+          "Pinned to 2ac93023d31b, resolved from bench when the request started. Later movement of bench is not reflected.",
+          "The index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them."
+        ],
+        "answer": {
+          "text": "Closeout derives a finding’s bug class solely from the start of its explanation, not from its severity or location. `bugClass(explanation)` extracts the leading text up to the first supported delimiter—a colon, em dash, `\" - \"`, period, semicolon, or newline—then trims and lowercases it. For example, `\"unchecked null: the handler reads …\"` becomes `\"unchecked null\"`. (`src/closeout/rounds.ts:21-29`)\n\nA finding is **unclassified** when the regex cannot extract a leading segment, when the extracted segment is empty, or when the trimmed segment is longer than 60 characters. In each case, `bugClass` returns the literal `\"unclassified\"`. (`src/closeout/rounds.ts:16-19`) (`src/closeout/rounds.ts:25-28`) An unclassified finding remains labeled `\"unclassified\"` when it appears among the open findings in the review-round summary. (`src/closeout/rounds.ts:69-80`)\n\nThe classification is used in two related flows. When accepted review findings are recorded, each non-blocking finding’s explanation is passed through `bugClass`, and the result is stored in the database’s `bug_class` column. (`src/loop/review-findings.ts:109-117`) (`src/db/review-findings.ts:162-179`) Separately, `summarizeReviewRounds` classifies findings across review rounds. It excludes unclassified findings when determining the most frequent class, but still includes them in the displayed open findings with the `\"unclassified\"` label. If there are no classified findings, the summary’s overall `bugClass` is `null`; when class counts tie, the class from the later round wins. (`src/closeout/rounds.ts:56-80`)\n\nThis is based on 20 source ranges in 13 files, and research stopped at the deep limit maxPasses, so other relevant code may not have been inspected.",
+          "outcome": "supported",
+          "caveats": [
+            "The evidence was limited to the inspected source ranges and files; research stopped at the max-pass limit, so other relevant code may exist that was not inspected.",
+            "The inspected tests verify ordinary persisted classes such as `\"naming\"` and `\"unchecked null\"`, but they do not comprehensively cover malformed, empty, overly long, or unusual explanation formats. [E18:121-150]",
+            "Research stopped at the deep limit maxPasses.",
+            "No definition of `summarizeReviewRounds` was found in the index at this revision.",
+            "Based on 20 inspected source ranges in 13 files at commit 2ac93023d31b; the rest of the repository was not read for this answer."
+          ]
+        },
+        "evidence": [
+          {
+            "path": "src/closeout/rounds.ts",
+            "startLine": 21,
+            "endLine": 29,
+            "symbol": "ReviewRoundSummary",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/closeout/rounds.ts",
+            "startLine": 16,
+            "endLine": 19,
+            "symbol": "ReviewRoundSummary",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/closeout/rounds.ts",
+            "startLine": 25,
+            "endLine": 28,
+            "symbol": "ReviewRoundSummary",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/closeout/rounds.ts",
+            "startLine": 69,
+            "endLine": 80,
+            "symbol": "summarizeReviewRounds",
+            "note": "call site of bugClass"
+          },
+          {
+            "path": "src/loop/review-findings.ts",
+            "startLine": 109,
+            "endLine": 117,
+            "symbol": "recordRun",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/review-findings.ts",
+            "startLine": 162,
+            "endLine": 179,
+            "symbol": "upsert",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/closeout/rounds.ts",
+            "startLine": 56,
+            "endLine": 80,
+            "symbol": "summarizeReviewRounds",
+            "note": "call site of bugClass"
+          }
+        ],
+        "revision": {
+          "repositoryId": "paws-app",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "ref": "bench"
+        },
+        "index": {
+          "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+        },
+        "coverage": {
+          "indexedFiles": 1775,
+          "excludedFiles": 18,
+          "excludedByReason": {
+            "binary": 9,
+            "generated": 3,
+            "long_lines": 1,
+            "secret_content": 4,
+            "secret_path": 1
+          }
+        },
+        "scope": {
+          "source": "committed",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "uncommittedChanges": "none"
+        },
+        "usage": {
+          "retrievalPasses": 14,
+          "sourceReads": 20,
+          "sourceBytes": 57402,
+          "modelCalls": 4,
+          "inputTokens": 49025,
+          "outputTokens": 2133,
+          "elapsedMs": 44262
+        },
+        "providers": ["ocgo"]
+      }
+    }
+  ]
+}

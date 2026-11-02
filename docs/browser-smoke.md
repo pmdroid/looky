@@ -73,12 +73,21 @@ For each question, record the following:
 
 ## Record
 
-| Date       | Looky commit | Codebase and SHA | Mode | Provider and model | Ran | Answer and citation quality | Result                 |
-| ---------- | ------------ | ---------------- | ---- | ------------------ | --- | --------------------------- | ---------------------- |
-| 2026-11-01 | PAS-983      | none             | none | none               | No  | Not observed                | Blocked, see the note. |
+| Date       | Looky commit  | Codebase and SHA  | Mode | Provider and model                           | Ran | Answer and citation quality                                                                                                                     | Result                 |
+| ---------- | ------------- | ----------------- | ---- | -------------------------------------------- | --- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| 2026-11-01 | PAS-983       | none              | none | none                                         | No  | Not observed                                                                                                                                    | Blocked, see the note. |
+| 2026-11-02 | 1c806ba + #13 | paws-app 2ac93023 | Fast | OpenCode Go `minimax-m3.1-flash`, effort low | Yes | q01 supported in 6.4 s, 10 links; q09 partial in 4.3 s with "the code does not say why" and a question for the team; 3 links per answer checked | Passed                 |
+| 2026-11-02 | 1c806ba + #13 | paws-app 2ac93023 | Deep | OpenCode Go `minimax-m3.1-flash`, effort low | Yes | q01 supported in 23.5 s, 19 links, 3 checked; cancelled Deep q04 showed Cancelled and no answer in 15 s                                         | Passed                 |
 
 **Note for 2026-11-01.** The PAS-983 agent environment had no provider credentials and no
 `paws-app` clone. The smoke therefore did not run, and no real answer or citation was
 observed. Only the deterministic browser tests ran, with all 26 passing against scripted
 replies. They do not validate answer quality. Pascal, or anyone with credentials, should run
 the procedure above and add a row.
+
+**Note for 2026-11-02.** Run in headless Chromium on 127.0.0.1 with local auth by
+`scripts/ui.ts` in [the model benchmark](../pilot/results/2026-11-02-paws-app-2ac93023-model-benchmark/summary.md).
+The page pinned `2ac93023d31bab6f0ef26690a7e6e8e8d2540bff`, equal to the clone's HEAD, and
+showed the index ready after 3.3 s. Each checked link named the pinned SHA and lines that
+exist in the file. No page errors or dialogs. The revision switch in step 8 was not exercised,
+because the clone had a single commit.

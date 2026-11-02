@@ -1,0 +1,227 @@
+{
+  "run": "full-minimax-m3.1-flash-low",
+  "scale": "0 wrong/missing, 1 partly, 2 good; useful = usable by an engineer without rewriting",
+  "scores": [
+    {
+      "q": "q01",
+      "mode": "fast",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Resume/reattach/reverify, merge queue with GitHub check, skips, ask-restart. Misses the 5 s stagger."
+    },
+    {
+      "q": "q01",
+      "mode": "deep",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "All branches plus 5 s spacing; awaiting_input described as parked (also releases capacity and enqueues a catch-up job). One citation removed by Looky."
+    },
+    {
+      "q": "q02",
+      "mode": "fast",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Rule and precedence correct; window value marked unseen."
+    },
+    {
+      "q": "q02",
+      "mode": "deep",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 1,
+      "citations": 2,
+      "isUseful": true,
+      "note": "applyAskRestart, question text, no-session failure, resume-again after the window. Spurious rationale caveat and human question."
+    },
+    {
+      "q": "q03",
+      "mode": "fast",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "WIP commit, lost run, recovering, exceptions. No merge-queue detail."
+    },
+    {
+      "q": "q03",
+      "mode": "deep",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Complete incl. commit policy, merge queue and exit codes."
+    },
+    {
+      "q": "q04",
+      "mode": "fast",
+      "correct": 2,
+      "useful": 1,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Handler pipeline right; says route and downstream not shown."
+    },
+    {
+      "q": "q04",
+      "mode": "deep",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Route, verification, intake (2, retry ladder), schedule; does not reach onLinearEvent and says so."
+    },
+    {
+      "q": "q05",
+      "mode": "fast",
+      "correct": 2,
+      "useful": 1,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "applyBypasses rules and outcome; says the adapter from DB rows to gate input is not shown."
+    },
+    {
+      "q": "q05",
+      "mode": "deep",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Full path incl. recoveryOptions, item-page approval, Linear reply is only guidance, docs binding."
+    },
+    {
+      "q": "q06",
+      "mode": "fast",
+      "correct": 1,
+      "useful": 1,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": false,
+      "note": "Docs and client validation; caveat says server-side path not shown. Does not answer file validation."
+    },
+    {
+      "q": "q06",
+      "mode": "deep",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Best q06: parse vs clamp vs Settings validation, orchestrator fallback, start_timeout failure."
+    },
+    {
+      "q": "q07",
+      "mode": "fast",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "All paths and ladder; citations are coarse (whole 70-line ranges)."
+    },
+    {
+      "q": "q07",
+      "mode": "deep",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Matches the key incl. 'nothing retried after stop'. Two citations removed by Looky."
+    },
+    {
+      "q": "q08",
+      "mode": "fast",
+      "correct": 0,
+      "useful": 0,
+      "clear": 2,
+      "uncertainty": 1,
+      "citations": 2,
+      "isUseful": false,
+      "note": "Opens with 'Yes' from the docs, then says keys cannot be verified."
+    },
+    {
+      "q": "q08",
+      "mode": "deep",
+      "correct": 1,
+      "useful": 1,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": false,
+      "note": "Shows [linear]/[merge]/[tracker] reject unknown keys and flags a docs-vs-code conflict, but misses the sections that ignore keys and doubts the startup exit (src/index.ts:299 throws)."
+    },
+    {
+      "q": "q09",
+      "mode": "fast",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Mechanism; a possible reason is offered and labelled as inference, not as fact."
+    },
+    {
+      "q": "q09",
+      "mode": "deep",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Constant 5_000, scheduling not sleeping, rationale explicitly not established."
+    },
+    {
+      "q": "q10",
+      "mode": "fast",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Both unclassified cases incl. 60 char limit."
+    },
+    {
+      "q": "q10",
+      "mode": "deep",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Matches the key fully incl. tie-break."
+    }
+  ],
+  "fabricatedOrCrossRevision": 0
+}

@@ -1,0 +1,302 @@
+{
+  "run": "smoke-or-low-google_gemini-3.1-flash-lite",
+  "model": "google/gemini-3.1-flash-lite",
+  "effort": "low",
+  "proxy": "http://127.0.0.1:7400",
+  "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+  "lookyCommit": "1c806ba41800b53824f01cf2bfd920d14102277c",
+  "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+  "indexWaitMs": 1,
+  "rows": [
+    {
+      "run": "smoke-or-low-google_gemini-3.1-flash-lite",
+      "q": "q01",
+      "mode": "fast",
+      "model": "google/gemini-3.1-flash-lite",
+      "totalMs": 6753,
+      "modelMs": 6664,
+      "nonModelMs": 89,
+      "calls": [
+        {
+          "at": "2026-11-02T03:16:16.418Z",
+          "kind": "synthesis",
+          "maxTokens": 1500,
+          "status": 200,
+          "ms": 5020,
+          "inputTokens": 5300,
+          "outputTokens": 1281,
+          "cachedTokens": 0,
+          "reasoningTokens": 899,
+          "finishReason": "stop",
+          "contentChars": 1607,
+          "reasoningChars": 902,
+          "extraKeys": ["provider", "service_tier"],
+          "meterHeaders": {},
+          "estUsd": 0.003246,
+          "spentUsd": 0.050966
+        },
+        {
+          "at": "2026-11-02T03:16:21.441Z",
+          "kind": "repair",
+          "maxTokens": 219,
+          "status": 200,
+          "ms": 1644,
+          "inputTokens": 5330,
+          "outputTokens": 215,
+          "cachedTokens": 0,
+          "reasoningTokens": 113,
+          "finishReason": "length",
+          "contentChars": 419,
+          "reasoningChars": null,
+          "extraKeys": ["provider", "service_tier"],
+          "meterHeaders": {},
+          "estUsd": 0.001655,
+          "spentUsd": 0.052621
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "failed",
+        "requestId": "7549813b-f29b-43d0-9903-56e59abc543d",
+        "mode": {
+          "requested": "fast",
+          "executed": "fast"
+        },
+        "limitations": [],
+        "stage": "answer",
+        "code": "model_output_invalid",
+        "message": "The model reply has no JSON object",
+        "retryable": true,
+        "usage": {
+          "retrievalPasses": 2,
+          "sourceReads": 5,
+          "sourceBytes": 13768,
+          "modelCalls": 2,
+          "inputTokens": 10630,
+          "outputTokens": 1496,
+          "elapsedMs": 6748
+        }
+      }
+    },
+    {
+      "run": "smoke-or-low-google_gemini-3.1-flash-lite",
+      "q": "q01",
+      "mode": "deep",
+      "model": "google/gemini-3.1-flash-lite",
+      "totalMs": 14139,
+      "modelMs": 13863,
+      "nonModelMs": 276,
+      "calls": [
+        {
+          "at": "2026-11-02T03:16:23.355Z",
+          "kind": "plan",
+          "maxTokens": 600,
+          "status": 200,
+          "ms": 2775,
+          "inputTokens": 4665,
+          "outputTokens": 438,
+          "cachedTokens": 0,
+          "reasoningTokens": 422,
+          "finishReason": "stop",
+          "contentChars": 37,
+          "reasoningChars": 250,
+          "extraKeys": ["provider", "service_tier"],
+          "meterHeaders": {},
+          "estUsd": 0.001823,
+          "spentUsd": 0.054444
+        },
+        {
+          "at": "2026-11-02T03:16:26.132Z",
+          "kind": "synthesis",
+          "maxTokens": 3781,
+          "status": 200,
+          "ms": 6910,
+          "inputTokens": 15553,
+          "outputTokens": 1584,
+          "cachedTokens": 0,
+          "reasoningTokens": 1053,
+          "finishReason": "stop",
+          "contentChars": 1906,
+          "reasoningChars": 1206,
+          "extraKeys": ["provider", "service_tier"],
+          "meterHeaders": {},
+          "estUsd": 0.006264,
+          "spentUsd": 0.060708
+        },
+        {
+          "at": "2026-11-02T03:16:33.046Z",
+          "kind": "check",
+          "maxTokens": 5978,
+          "status": 200,
+          "ms": 4178,
+          "inputTokens": 16210,
+          "outputTokens": 1278,
+          "cachedTokens": 0,
+          "reasoningTokens": 1266,
+          "finishReason": "stop",
+          "contentChars": 21,
+          "reasoningChars": 1220,
+          "extraKeys": ["provider", "service_tier"],
+          "meterHeaders": {},
+          "estUsd": 0.005969,
+          "spentUsd": 0.066678
+        }
+      ],
+      "citationProblems": [],
+      "response": {
+        "status": "answered",
+        "requestId": "c0e346ea-8c0d-4e83-91b5-597f2ba08a58",
+        "mode": {
+          "requested": "deep",
+          "executed": "deep"
+        },
+        "limitations": [
+          "Pinned to 2ac93023d31b, resolved from bench when the request started. Later movement of bench is not reflected.",
+          "The index of commit 2ac93023d31b excludes 18 tracked entries (binary: 9, generated: 3, long_lines: 1, secret_content: 4, secret_path: 1). Excluded files were not searched, read or sent to a model, so this answer does not cover them."
+        ],
+        "answer": {
+          "text": "When the Paws process starts, it invokes `recoverOnStartup` to assess the state of all work items that were \"in flight\" (specifically those in `awaiting_input`, `running`, `verifying`, `recovering`, or `merge_queue` states) (`src/db/recovery.ts:53`, `src/db/recovery.ts:31`). Paws is designed to be safe to restart while work is ongoing, as remote runners continue to operate during downtime and preserve their results until the process returns (`README.md:54`).\n\nFor each in-flight item, Paws uses `decideStartup` to determine the appropriate recovery action (`src/db/recovery.ts:66`, `src/core/recovery.ts:75-83`). The behavior varies by state and context:\n\n1. **Merge Queue**: Items waiting in the merge queue keep their position (`src/core/recovery.ts:95`). If there is evidence that a merge call may have been in flight, the system checks GitHub to verify if the call succeeded (`src/core/recovery.ts:96`).\n2. **Verifying**: If an item is in the `verifying` state and a runner still holds its Closeout review or check run, Paws re-verifies the work and attaches to that existing runner session (`src/core/recovery.ts:81-82`, `src/core/recovery.ts:98`).\n3. **Running/Recovering**: These items generally resume in a fresh session using their last checkpoint (`src/core/recovery.ts:100`, `src/core/recovery.ts:105`).\n4. **Crash Protection**: If an item has already been resumed once and a short amount of time has passed (less than `RESUME_AGAIN_AFTER_MS`), Paws pauses to ask the user in Linear whether to start the work again, preventing potential crash loops (`src/core/recovery.ts:101-102`, `src/core/recovery.test.ts:82-90`).\n\nIf the decision is to resume, the system attaches to the existing runner work where applicable, ensuring that ongoing Closeout reviews and answer tasks are not lost (`README.md:54`, `src/core/recovery.ts:100`). When multiple items are recovered, Paws staggers the resume calls to avoid overloading the system (`src/db/recovery.ts:56`).\n\nThis is based on 17 source ranges in 15 files, and research stopped at the deep limit maxPasses, so other relevant code may not have been inspected.",
+          "outcome": "supported",
+          "caveats": [
+            "Research stopped at the deep limit maxPasses, though the core recovery logic was fully inspected.",
+            "Research stopped at the deep limit maxPasses.",
+            "Based on 17 inspected source ranges in 15 files at commit 2ac93023d31b; the rest of the repository was not read for this answer."
+          ]
+        },
+        "evidence": [
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 53,
+            "endLine": 53,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 31,
+            "endLine": 31,
+            "symbol": "ShutdownWipCommit",
+            "note": "matches the question"
+          },
+          {
+            "path": "README.md",
+            "startLine": 54,
+            "endLine": 54,
+            "note": "matches the question"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 66,
+            "endLine": 66,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 75,
+            "endLine": 83,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 95,
+            "endLine": 95,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 96,
+            "endLine": 96,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 81,
+            "endLine": 82,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 98,
+            "endLine": 98,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 100,
+            "endLine": 100,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 105,
+            "endLine": 105,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.ts",
+            "startLine": 101,
+            "endLine": 102,
+            "symbol": "decideStartup",
+            "note": "matches the question"
+          },
+          {
+            "path": "src/core/recovery.test.ts",
+            "startLine": 82,
+            "endLine": 90,
+            "note": "call site of decideStartup"
+          },
+          {
+            "path": "src/db/recovery.ts",
+            "startLine": 56,
+            "endLine": 56,
+            "symbol": "recoverOnStartup",
+            "note": "matches the question"
+          }
+        ],
+        "revision": {
+          "repositoryId": "paws-app",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "ref": "bench"
+        },
+        "index": {
+          "generationId": "build_77d27616-39d0-4d82-b330-428f5b432328",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
+        },
+        "coverage": {
+          "indexedFiles": 1775,
+          "excludedFiles": 18,
+          "excludedByReason": {
+            "binary": 9,
+            "generated": 3,
+            "long_lines": 1,
+            "secret_content": 4,
+            "secret_path": 1
+          }
+        },
+        "scope": {
+          "source": "committed",
+          "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
+          "uncommittedChanges": "none"
+        },
+        "usage": {
+          "retrievalPasses": 8,
+          "sourceReads": 17,
+          "sourceBytes": 36531,
+          "modelCalls": 3,
+          "inputTokens": 36428,
+          "outputTokens": 3300,
+          "elapsedMs": 14137
+        },
+        "providers": ["ocgo"]
+      }
+    }
+  ]
+}

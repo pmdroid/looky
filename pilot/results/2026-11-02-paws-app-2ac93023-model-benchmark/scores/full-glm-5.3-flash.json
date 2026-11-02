@@ -1,0 +1,227 @@
+{
+  "run": "full-glm-5.3-flash",
+  "scale": "0 wrong/missing, 1 partly, 2 good; useful = usable by an engineer without rewriting",
+  "scores": [
+    {
+      "q": "q01",
+      "mode": "fast",
+      "correct": 1,
+      "useful": 1,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": false,
+      "note": "Correct but covers only lease shift and merge-queue handling; misses resume, reattach, ask_restart and the 5 s stagger. Honest about coverage."
+    },
+    {
+      "q": "q01",
+      "mode": "deep",
+      "correct": 2,
+      "useful": 2,
+      "clear": 1,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Covers every decide branch, skips and the 5 s stagger. Two raw markers ([E1:56,85], [E4:97-98,103-104]) leak into prose."
+    },
+    {
+      "q": "q02",
+      "mode": "fast",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 1,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Core ask_restart rule right; misses applyAskRestart effects and the 30 min value. Spurious rationale caveat and human question."
+    },
+    {
+      "q": "q02",
+      "mode": "deep",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Full flow incl. no-session failure and question text; says RESUME_AGAIN_AFTER_MS value unseen. One caveat truncated mid-sentence at 400 chars."
+    },
+    {
+      "q": "q03",
+      "mode": "fast",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "prepareShutdown steps right; correctly says the link from the handler to prepareShutdown is inferred."
+    },
+    {
+      "q": "q03",
+      "mode": "deep",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Complete: stop stages, wip: shutdown hook with commit policy, transaction, merge queue, exit code. Citations spot-checked (src/index.ts:2054-2061)."
+    },
+    {
+      "q": "q04",
+      "mode": "fast",
+      "correct": 2,
+      "useful": 1,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Verify/parse/persist/dispatch right; misses the route, intake concurrency and onLinearEvent, and says so."
+    },
+    {
+      "q": "q04",
+      "mode": "deep",
+      "correct": 2,
+      "useful": 2,
+      "clear": 1,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Route, verification, intake queue (2, oldest first), retries. Does not reach orchestrator.onLinearEvent; says so. Long. Cross-check did not run."
+    },
+    {
+      "q": "q05",
+      "mode": "fast",
+      "correct": 0,
+      "useful": 0,
+      "clear": 0,
+      "uncertainty": 0,
+      "citations": 0,
+      "isUseful": false,
+      "note": "failed model_output_invalid after synthesis + repair (no JSON object)."
+    },
+    {
+      "q": "q05",
+      "mode": "deep",
+      "correct": 2,
+      "useful": 2,
+      "clear": 1,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "recoveryOptions, item-page approval, applyBypasses matching and outcome, evaluateCandidate. Misses orchestrator wiring and says so. Contains a visible self-correction ('declineCloseoutGate... correction:')."
+    },
+    {
+      "q": "q06",
+      "mode": "fast",
+      "correct": 1,
+      "useful": 1,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": false,
+      "note": "Docs-only: key, default and range from docs; no code, validation not answered. Retrieval found no pinned range."
+    },
+    {
+      "q": "q06",
+      "mode": "deep",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Matches the key: asInt parse, clamp 1..720, parseQueueSettings, orchestrator re-read with fallback."
+    },
+    {
+      "q": "q07",
+      "mode": "fast",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "All three error paths and the retry ladder, per-event and lane ordering."
+    },
+    {
+      "q": "q07",
+      "mode": "deep",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "As fast plus durability, first-attempt-only failure activity; inference about no dead letter marked. One invalid citation removed by Looky."
+    },
+    {
+      "q": "q08",
+      "mode": "fast",
+      "correct": 0,
+      "useful": 0,
+      "clear": 2,
+      "uncertainty": 1,
+      "citations": 2,
+      "isUseful": false,
+      "note": "Leads with 'refuses unknown sections but not keys', which is wrong for [linear]/[tracker]/[merge]; later hedges. Outcome conflicting."
+    },
+    {
+      "q": "q08",
+      "mode": "deep",
+      "correct": 1,
+      "useful": 1,
+      "clear": 2,
+      "uncertainty": 1,
+      "citations": 2,
+      "isUseful": false,
+      "note": "Never reaches assignConfig key handling. Suggests startup may continue on configError; src/index.ts:299 throws on it. Flagged as unverified, but misleading."
+    },
+    {
+      "q": "q09",
+      "mode": "fast",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Mechanism right, rationale stated as undocumented, value marked unverified."
+    },
+    {
+      "q": "q09",
+      "mode": "deep",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Constant, nextResumeAt, stagger test; rationale explicitly not established; no invented reason."
+    },
+    {
+      "q": "q10",
+      "mode": "fast",
+      "correct": 2,
+      "useful": 2,
+      "clear": 1,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Separator rule right; 60 char limit only in caveats; raw [E1:19] markers in caveats."
+    },
+    {
+      "q": "q10",
+      "mode": "deep",
+      "correct": 2,
+      "useful": 2,
+      "clear": 2,
+      "uncertainty": 2,
+      "citations": 2,
+      "isUseful": true,
+      "note": "Matches the key incl. CLASS_LIMIT and summarizeReviewRounds tie-break."
+    }
+  ],
+  "fabricatedOrCrossRevision": 0
+}
