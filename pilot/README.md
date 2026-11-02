@@ -47,7 +47,10 @@ evidence, index identity and model usage into the report with an empty reviewer 
 5. Repeats the registration and questions warm, then restarts the service and checks
    the persisted index and session token are reused without a new build.
 6. Commits a change on top of the pinned commit that renames, edits, adds and deletes
-   files, registers the next session sequence and checks the incremental refresh. It
+   files. While a Deep question at the base commit is running, it registers the next
+   session sequence at the new commit and checks the old question gets no result. Without
+   a provider the question ends before the switch, and the run records the overlap as not
+   exercised instead of passing it. It then checks the incremental refresh. It
    checks nothing is answered from an incomplete snapshot, the old session is fenced,
    the base commit keeps its own generation, and evidence at the new commit cites only
    new paths while the base still cites old ones.

@@ -777,8 +777,49 @@ async function main(): Promise<number> {
     changePins.join("; ") || next,
   );
 
+  // The task moves to the new commit while a Deep question at the base is
+  // still running, as a Paws task does when a new generation starts.
+  let switchSettled = false;
+  const inFlight = agent.ask(firstQuestion.question, "deep").finally(() => {
+    switchSettled = true;
+  });
+  // Let the question reach the service before the switch.
+  await Bun.sleep(250);
+  const settledBeforeSwitch = switchSettled;
   const nextRegistration = registration(next);
   const nextSession = await service.client.registerSession(nextRegistration);
+  const overlapped = !settledBeforeSwitch && !switchSettled;
+  const switched = await inFlight;
+  const switchedResponse = switched.response as AskProjectResponse & {
+    reason?: string;
+    revision?: { sha?: string };
+  };
+  results.revisionSwitch = {
+    base,
+    next,
+    providerConfigured,
+    overlapped,
+    supersededSessions: nextSession.superseded.length,
+    inFlight: { ms: switched.ms, response: summarize(switched.response) },
+  };
+  if (overlapped) {
+    check(
+      "switching revision during a question delivers no result to the old revision",
+      switchedResponse.status === "denied" && switchedResponse.reason === "stale_session",
+      `${switchedResponse.status} ${switchedResponse.reason ?? ""} after ${switched.ms} ms`,
+    );
+  } else {
+    // Without a model the question ends before the switch, so the overlap
+    // was not exercised. Record that instead of passing a check.
+    log(
+      `revision switch during a question not exercised: the question ended as ${switchedResponse.status} in ${switched.ms} ms before the switch`,
+    );
+    check(
+      "a question that ended before the switch stayed on its own revision",
+      switchedResponse.status !== "answered" || switchedResponse.revision?.sha === base,
+      `${switchedResponse.status}; overlap not exercised`,
+    );
+  }
   const nextAgent = await openAgent(service, nextSession.token);
   const duringBuild = await nextAgent.ask(changeQuestion.question, "fast");
   const refreshed = await waitForIndex(service, next);
@@ -1245,6 +1286,15 @@ function report(): string {
             r.refresh?.duringBuild?.response?.status,
             r.refresh?.duringBuild?.response?.mode?.executed,
             r.refresh?.duringBuild?.ms,
+          ],
+          [
+            r.revisionSwitch?.overlapped
+              ? "base question while switching SHA"
+              : "base question before the SHA switch (overlap not exercised)",
+            "deep",
+            `${r.revisionSwitch?.inFlight?.response?.status ?? ""} ${r.revisionSwitch?.inFlight?.response?.reason ?? ""}`.trim(),
+            r.revisionSwitch?.inFlight?.response?.mode?.executed,
+            r.revisionSwitch?.inFlight?.ms,
           ],
           ["on failed index", "fast", r.failure?.ask?.status, r.failure?.ask?.mode?.executed, ""],
         ],
