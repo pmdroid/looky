@@ -466,7 +466,7 @@ export function nameIsSupported(span: string, vocabulary: EvidenceVocabulary): b
       })
     );
   }
-  if (vocabulary.text.includes(name)) return true;
+  // Whole identifiers only: `dispatch` is not shown by evidence that only has `dispatchAll`.
   const segments = name.match(WORD) ?? [];
   return segments.length > 0 && segments.every((segment) => vocabulary.words.has(segment));
 }

@@ -1010,6 +1010,10 @@ describe("wiki name checks", () => {
       "src/ghost.ts",
       "lib/",
       "src/secrets/keys.ts",
+      // Part of a real identifier is not that identifier.
+      "resumeInterrupted",
+      "resumeInterrupted()",
+      "Checkpoint.load",
     ]) {
       expect([span, nameIsSupported(span, vocabulary)]).toEqual([span, false]);
     }
