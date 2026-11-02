@@ -62,12 +62,13 @@ The tests check delivered evidence and every line shown to a model against
 `git cat-file` at the pinned commit, so they check budgets and grounding without
 scoring answer quality.
 
-| File                | Covers                                                                                                                                                                          |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `lifecycle.test.ts` | Initial indexing, restart reuse, rebuild, failed-build retry, a process killed inside the publish transaction, stale and lost indexes                                           |
-| `freshness.test.ts` | Incremental add, edit, delete and rename with chunk reuse; concurrent old and new revisions; a branch advancing during Deep research                                            |
-| `grounding.test.ts` | Dirty worktrees, unsupported revisions, excluded and oversized files, coverage, prompt injection, fabricated citations, unsupported rationale, complete answers versus snippets |
-| `safety.test.ts`    | Repository and workspace isolation, revocation, path escapes, Fast and Deep budgets, quota, cancellation, retry, duplicates, stale generations, one-slot admission              |
+| File                | Covers                                                                                                                                                                                                                                                                                                                                         |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lifecycle.test.ts` | Initial indexing, restart reuse, rebuild, failed-build retry, a process killed inside the publish transaction, stale and lost indexes                                                                                                                                                                                                          |
+| `freshness.test.ts` | Incremental add, edit, delete and rename with chunk reuse; concurrent old and new revisions; a branch advancing during Deep research                                                                                                                                                                                                           |
+| `grounding.test.ts` | Dirty worktrees, unsupported revisions, excluded and oversized files, coverage, prompt injection, fabricated citations, unsupported rationale, complete answers versus snippets                                                                                                                                                                |
+| `safety.test.ts`    | Repository and workspace isolation, revocation, path escapes, Fast and Deep budgets, quota, cancellation, retry, duplicates, stale generations, one-slot admission                                                                                                                                                                             |
+| `wiki.test.ts`      | The wiki through the browser API: index, plan, generate and publish, reader, docs search, Fast and Deep page questions, refresh after an add, edit, rename and delete, removed and redirected slugs, restart reuse and repository isolation, all with a model that follows planted instructions and invents citations, names, links and intent |
 
 The kill test runs `test/support/publish-crash-child.ts` in a child process. The
 child builds a real index, stops inside the publish transaction once every entry is
@@ -955,7 +956,11 @@ Each page is written like an answer, from the same parts:
 3. Only known fields survive. Web links, images and HTML are removed. A `[[slug]]` link
    is kept only for the page's parent, children and planned links. Citation markers and
    path-and-line references are checked against the inspected evidence, and invalid ones
-   are removed and counted.
+   are removed and counted. A citation proves a range exists, not that the prose is true, so every
+   function, type or file named in backticks must also appear in the evidence the model
+   was shown. A path counts only as an inspected or planned file, or an import of one,
+   because source text can mention any path. Unknown names are marked "not found in the
+   inspected source" and counted.
 4. The summary and every section need a verified citation, or they are left out. A
    caveat without one is kept but labelled as not verified against the source.
    A section without a verified citation is dropped. A page with no grounded section
