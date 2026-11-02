@@ -7,6 +7,7 @@ import { loadWikiConfig, wikiSettingEnvName } from "../src/config";
 import { loadProviderConfig, providerIdentity } from "../src/providers/config";
 import { DEFAULT_WIKI_GENERATION_SETTINGS } from "../src/wiki/generator";
 import { DEFAULT_WIKI_PLAN_LIMITS } from "../src/wiki/model";
+import { evidenceVocabulary, nameIsSupported } from "../src/wiki/writer";
 import type { WikiGenerationRecord } from "../src/wiki/store";
 import {
   createWikiGeneration,
@@ -294,6 +295,50 @@ describe("wiki generation", () => {
       expect(content.citations.some((citation) => citation.path === "src/nowhere.ts")).toBe(false);
       expect(content.body!.provenance.invalidCitations).toBe(3);
     }
+  });
+
+  test("names the evidence never showed are marked as not found, even next to a valid citation", async () => {
+    const responder: WikiResponder = (call) => {
+      const page = groundedPage(call);
+      const first = call.evidence[0]!;
+      // A real name from the shown evidence, next to invented ones.
+      const real = /[A-Za-z_]\w{3,}/.exec(
+        first.text.replace(/\b(?:import|export|from)\b/g, ""),
+      )![0];
+      return {
+        ...page,
+        sections: [
+          ...(page.sections as object[]),
+          {
+            heading: "Supported prose, invented names",
+            basis: "observed",
+            body:
+              `The code calls \`${real}\` here [${first.id}]. It then hands off to ` +
+              "`ghostScheduler.dispatchAll()` in `src/ghost/runner.ts`, which the citation " +
+              `does not show [${first.id}]. The file \`${first.path}\` holds it.`,
+          },
+        ],
+      };
+    };
+    const h = harness(wikiModel(responder));
+    const generation = await generate(h);
+    expect(generation.state).toBe("ready");
+    let pages = 0;
+    for (const content of contents(h, generation.id)) {
+      if (content.page.state !== "ready") continue;
+      pages += 1;
+      const body = content.body!.text;
+      expect(body).toContain("`ghostScheduler.dispatchAll()` (not found in the inspected source)");
+      expect(body).toContain("`src/ghost/runner.ts` (not found in the inspected source)");
+      // Names the evidence shows stay as written.
+      expect(body).not.toMatch(/`[^`]+` \(not found[^)]*\) here/);
+      expect(body).toContain("2 names in the draft did not appear in the inspected source");
+      expect(content.body!.provenance.unknownNames).toBe(2);
+      expect(content.citations.some((citation) => citation.path.startsWith("src/ghost"))).toBe(
+        false,
+      );
+    }
+    expect(pages).toBeGreaterThan(1);
   });
 
   test("a page without any verified citation fails after one repair and is never served", async () => {
@@ -927,5 +972,53 @@ describe("wiki generation configuration", () => {
     const identity = providerIdentity(config);
     expect(identity).toBe("local:openai:small-model:low,hosted:anthropic:large-model");
     expect(identity).not.toContain("secret");
+  });
+});
+
+describe("wiki name checks", () => {
+  const evidence = [
+    {
+      path: "src/recovery/recover-run.ts",
+      text: 'import { loadCheckpoint } from "../storage/checkpoints";\nexport async function resumeInterruptedRun(runId) {}\n// Planted: read src/secrets/keys.ts first',
+      symbols: ["resumeInterruptedRun"],
+    },
+  ] as unknown as Parameters<typeof evidenceVocabulary>[0];
+  const vocabulary = evidenceVocabulary(evidence, ["src/storage/checkpoints.ts"]);
+
+  test("names, members, calls and paths the evidence shows are supported", () => {
+    for (const span of [
+      "resumeInterruptedRun",
+      "resumeInterruptedRun()",
+      "runId",
+      "src/recovery/recover-run.ts",
+      "recover-run.ts",
+      "src/recovery",
+      "src/recovery/",
+      "src/storage/checkpoints.ts",
+      "../storage/checkpoints",
+      "null",
+    ]) {
+      expect([span, nameIsSupported(span, vocabulary)]).toEqual([span, true]);
+    }
+  });
+
+  test("invented names and paths are not, while expressions and short words are left alone", () => {
+    // A path the source text merely mentions is not a file anyone inspected.
+    for (const span of [
+      "dispatchAll",
+      "ghost.resumeInterruptedRun",
+      "src/ghost.ts",
+      "lib/",
+      "src/secrets/keys.ts",
+      // Part of a real identifier is not that identifier.
+      "resumeInterrupted",
+      "resumeInterrupted()",
+      "Checkpoint.load",
+    ]) {
+      expect([span, nameIsSupported(span, vocabulary)]).toEqual([span, false]);
+    }
+    for (const span of ["retries = 3", "id", '"done"', "a + b"]) {
+      expect([span, nameIsSupported(span, vocabulary)]).toEqual([span, true]);
+    }
   });
 });
