@@ -4,14 +4,22 @@
  * React escapes every string, and links go through a {@link LinkPolicy}.
  *
  * Supported: paragraphs, headings, bullet and numbered lists, block quotes,
- * fenced code, inline code, bold, italic, backslash escapes and links.
+ * fenced code, thematic breaks, inline code, bold, italic, backslash escapes
+ * and links. A `wiki:` link the policy allows becomes an in-app link marked
+ * with `data-wiki-slug`; the caller handles its clicks.
  */
 import { Fragment, type ReactNode } from "react";
 import type { LinkPolicy } from "./links";
 
 export type Block =
   | { readonly type: "paragraph"; readonly text: string }
-  | { readonly type: "heading"; readonly level: number; readonly text: string }
+  | {
+      readonly type: "heading";
+      readonly level: number;
+      readonly text: string;
+      /** Line of the heading in the parsed text, from 0. */
+      readonly line: number;
+    }
   | {
       readonly type: "list";
       readonly ordered: boolean;
@@ -19,13 +27,15 @@ export type Block =
       readonly items: string[];
     }
   | { readonly type: "quote"; readonly blocks: Block[] }
-  | { readonly type: "code"; readonly text: string };
+  | { readonly type: "code"; readonly text: string }
+  | { readonly type: "rule" };
 
 const FENCE = /^ {0,3}(`{3,}|~{3,})/;
 const HEADING = /^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$/;
 const BULLET = /^ {0,3}[-*+]\s+(.*)$/;
 const NUMBERED = /^ {0,3}(\d{1,9})[.)]\s+(.*)$/;
 const QUOTE = /^ {0,3}>\s?(.*)$/;
+const RULE = /^ {0,3}([-*_])(?: *\1){2,} *$/;
 const MAX_DEPTH = 4;
 
 export function parseBlocks(source: string, depth = 0): Block[] {
@@ -51,9 +61,14 @@ export function parseBlocks(source: string, depth = 0): Block[] {
       blocks.push({ type: "code", text: body.join("\n") });
       continue;
     }
+    if (RULE.test(line)) {
+      blocks.push({ type: "rule" });
+      index += 1;
+      continue;
+    }
     const heading = HEADING.exec(line);
     if (heading) {
-      blocks.push({ type: "heading", level: heading[1]!.length, text: heading[2]! });
+      blocks.push({ type: "heading", level: heading[1]!.length, text: heading[2]!, line: index });
       index += 1;
       continue;
     }
@@ -82,7 +97,14 @@ export function parseBlocks(source: string, depth = 0): Block[] {
         const match = pattern.exec(current);
         if (match) {
           items.push(ordered ? match[2]! : match[1]!);
-        } else if (current.trim() !== "" && /^\s+/.test(current) && items.length > 0) {
+        } else if (
+          current.trim() !== "" &&
+          /^\s+/.test(current) &&
+          items.length > 0 &&
+          // A heading or fence ends the list, as it ends a section for Looky.
+          !HEADING.test(current) &&
+          !FENCE.test(current)
+        ) {
           // An indented continuation line belongs to the previous item.
           items[items.length - 1] += ` ${current.trim()}`;
         } else {
@@ -100,6 +122,7 @@ export function parseBlocks(source: string, depth = 0): Block[] {
         current.trim() === "" ||
         FENCE.test(current) ||
         HEADING.test(current) ||
+        RULE.test(current) ||
         QUOTE.test(current) ||
         BULLET.test(current) ||
         NUMBERED.test(current)
@@ -116,7 +139,7 @@ export function parseBlocks(source: string, depth = 0): Block[] {
 
 const INLINE = new RegExp(
   [
-    String.raw`\\([\\\x60*_{}\[\]()#+\-.!>|~])`, // 1 escape
+    String.raw`\\([\\\x60*_{}\[\]()#+\-.!<>|~])`, // 1 escape
     String.raw`(\x60+)([^\x60]|[\s\S]*?[^\x60])\2(?!\x60)`, // 2,3 code
     String.raw`\[((?:[^\[\]\n]|\\[\[\]])+)\]\(\s*<?([^()\s<>]+)>?(?:\s+"[^"\n]*")?\s*\)`, // 4,5 link
     String.raw`\*\*(?=\S)([\s\S]+?)\*\*`, // 6 strong
@@ -151,9 +174,14 @@ export function renderInline(
       );
     } else if (linkText !== undefined && href !== undefined) {
       const children = renderInline(linkText, links, depth + 1, false);
-      const target = allowLinks ? links.href(href) : undefined;
+      const internal = allowLinks ? links.internal(href) : undefined;
+      const target = allowLinks && !internal ? links.href(href) : undefined;
       nodes.push(
-        target ? (
+        internal ? (
+          <a key={key} href={internal.href} data-wiki-slug={internal.slug}>
+            {children}
+          </a>
+        ) : target ? (
           <a key={key} href={target} target="_blank" rel="noopener noreferrer nofollow">
             {children}
           </a>
@@ -179,6 +207,8 @@ function renderBlocks(
   blocks: readonly Block[],
   links: LinkPolicy,
   headingBase: number,
+  /** Element id per top-level heading block, by block index. */
+  ids?: ReadonlyMap<number, string>,
 ): ReactNode[] {
   return blocks.map((block, index) => {
     switch (block.type) {
@@ -191,8 +221,9 @@ function renderBlocks(
       case "heading": {
         const level = Math.min(6, headingBase + block.level - 1);
         const Tag = `h${level}` as "h3";
+        const id = ids?.get(index);
         return (
-          <Tag key={index} dir="auto">
+          <Tag key={index} dir="auto" {...(id ? { id, tabIndex: -1 } : {})}>
             {renderInline(block.text, links)}
           </Tag>
         );
@@ -223,8 +254,66 @@ function renderBlocks(
             <code>{block.text}</code>
           </pre>
         );
+      case "rule":
+        return <hr key={index} />;
     }
   });
+}
+
+/** A heading Looky splits page sections at: `##` to `######`, outside fenced code. */
+const SECTION_HEADING = /^ {0,3}(#{2,6})\s+(.*?)\s*#*\s*$/;
+
+/**
+ * Lines of the headings Looky gave anchors to, in order, found exactly as
+ * Looky finds them (`wikiSections`): every `##` to `######` line outside
+ * fenced code. Looky's sanitizer keeps every line in place, so these are the
+ * same lines in the served body as in the stored one.
+ */
+export function sectionHeadingLines(source: string): number[] {
+  const lines: number[] = [];
+  let fence: string | undefined;
+  source
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .forEach((line, at) => {
+      if (fence) {
+        if (line.trimStart().startsWith(fence)) fence = undefined;
+        return;
+      }
+      const opened = FENCE.exec(line);
+      if (opened) {
+        fence = opened[1]!;
+        return;
+      }
+      if (SECTION_HEADING.test(line)) lines.push(at);
+    });
+  return lines;
+}
+
+/**
+ * Element ids for top-level heading blocks, from anchors Looky computed for
+ * the same body. Each anchor belongs to a source line, never to a position
+ * among rendered headings, so a heading this renderer reads differently can
+ * at most go without an id; it never takes another heading's anchor.
+ */
+export function headingIds(
+  blocks: readonly Block[],
+  source: string,
+  anchors: readonly string[],
+  idFor: (anchor: string) => string,
+): Map<number, string> {
+  const byLine = new Map<number, string>();
+  sectionHeadingLines(source).forEach((line, at) => {
+    const anchor = anchors[at];
+    if (anchor !== undefined) byLine.set(line, anchor);
+  });
+  const ids = new Map<number, string>();
+  blocks.forEach((block, index) => {
+    if (block.type !== "heading") return;
+    const anchor = byLine.get(block.line);
+    if (anchor !== undefined) ids.set(index, idFor(anchor));
+  });
+  return ids;
 }
 
 export function Markdown(props: {
@@ -232,6 +321,12 @@ export function Markdown(props: {
   readonly links: LinkPolicy;
   /** Level used for a `#` heading inside the text. */
   readonly headingBase?: number;
+  /** Anchors of the text's `##` and lower headings, in order, and how they become ids. */
+  readonly anchors?: { readonly list: readonly string[]; readonly idFor: (a: string) => string };
 }) {
-  return <>{renderBlocks(parseBlocks(props.text), props.links, props.headingBase ?? 3)}</>;
+  const blocks = parseBlocks(props.text);
+  const ids = props.anchors
+    ? headingIds(blocks, props.text, props.anchors.list, props.anchors.idFor)
+    : undefined;
+  return <>{renderBlocks(blocks, props.links, props.headingBase ?? 3, ids)}</>;
 }

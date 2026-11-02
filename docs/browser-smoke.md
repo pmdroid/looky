@@ -59,6 +59,24 @@ questions from that pilot's list where one exists, so both use one corpus.
    a question runs. Confirm that no answer appears for either question.
 9. Stop the service with Ctrl-C and add a row to the record below.
 
+## Wiki reader
+
+Run this part after the question steps, on the same service and commit.
+
+1. Open the **Wiki** view. Check that it says "No wiki for this commit yet" and that
+   nothing has been generated yet. Press **Generate wiki** once and watch the page count
+   rise. Note the time it took and the usage the service logged.
+2. Read the overview, then one module and one workflow. For each, open two cited source
+   links and check that they open the cited lines at the pinned SHA and support the text.
+3. Search the docs for a word from one section heading, and open the result. Check that
+   the page opens at that heading.
+4. On a module page, use **Ask about this page** in Fast and then in Deep. Check that the
+   answers cite source, not the page.
+5. Reload a page at a heading, then use Back and Forward. Check that each returns to the
+   same page and heading.
+
+Record the wiki run as its own row, with the mode column set to `wiki`.
+
 ## What to record
 
 For each question, record the following:

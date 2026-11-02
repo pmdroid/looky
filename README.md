@@ -95,11 +95,12 @@ On Linux without the browser's system libraries, run
 instead, as CI does. Browser tests are not part of `bun run check`; CI runs them in a
 separate `browser` job.
 
-| File                | Covers                                                                                                                                                                                                                                                  |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `answers.e2e.ts`    | Initial indexing seen from the page, Fast and Deep answers checked against the returned SHA, generation and sources, multi-file explanations, Unicode and RTL, hostile answer text and links, restart reuse, refresh to a new commit, no leaked secrets |
-| `interrupts.e2e.ts` | Double submit, a lost submission resent once, Cancel and Escape, another session's same question, foreign question ids, switching repository or revision mid-question, late results, back/forward, reload                                               |
-| `access.e2e.ts`     | Token sign-in, authorized repositories only, forged and path-like requests, invalid and unknown revisions, provider outage, busy, Fast timeout, Deep only on request, keyboard-only use, the skip link, 320 px                                          |
+| File                | Covers                                                                                                                                                                                                                                                                                                                                                                                                |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `answers.e2e.ts`    | Initial indexing seen from the page, Fast and Deep answers checked against the returned SHA, generation and sources, multi-file explanations, Unicode and RTL, hostile answer text and links, restart reuse, refresh to a new commit, no leaked secrets                                                                                                                                               |
+| `interrupts.e2e.ts` | Double submit, a lost submission resent once, Cancel and Escape, another session's same question, foreign question ids, switching repository or revision mid-question, late results, back/forward, reload                                                                                                                                                                                             |
+| `access.e2e.ts`     | Token sign-in, authorized repositories only, forged and path-like requests, invalid and unknown revisions, provider outage, busy, Fast timeout, Deep only on request, keyboard-only use, the skip link, 320 px                                                                                                                                                                                        |
+| `wiki.e2e.ts`       | A wiki Looky plans and writes itself: generate, cancel and retry only on request, overview to module to workflow to citation, docs search to a heading, page questions in Fast and Deep, reload, shared links, back/forward, late answers, revision switches during generation, renamed, removed and unknown pages, expired sign-in, provider failure and no provider, hostile generated text, 320 px |
 
 Each test asserts what the page shows and how many provider calls Looky made, so a
 cancelled, repeated or switched question is shown never as current and never paid twice.
@@ -486,8 +487,9 @@ SHA, which always equals the answer's.
 
 ### The browser app
 
-`web/` holds a single React screen for people. It uses the browser API above and has no
-index, answer engine or storage of its own.
+`web/` holds one React app for people with two views: **Ask**, the code question
+screen, and **Wiki**, the reader for a revision's generated wiki. It uses the browser API
+above and has no index, answer engine or storage of its own.
 
 ```sh
 bun run web:build              # dist/web, or: bun run web:build <outdir>
@@ -529,6 +531,44 @@ and runs `bun run serve` with `LOOKY_BROWSER_ASSETS_DIR` pointing there. Every o
   reachable by keyboard. Ctrl or ⌘ + Enter asks and Escape cancels. Status changes are
   announced in a live region, and focus moves to the outcome when a question ends.
   Unicode and right-to-left text render as written.
+
+#### The wiki reader
+
+- **Addresses.** `/wiki?repo=…&ref=…` opens the wiki of a revision at its overview.
+  `/wiki/<slug>?repo=…&ref=…#<heading>` opens one page at one heading. Once a branch,
+  tag or `HEAD` resolves, the wiki address names the exact commit instead, so reload,
+  shared links and Back/Forward return to the same page, heading and documentation even
+  after the branch moves. Changing the revision keeps
+  the page address, so the same page can be read at another commit. A renamed slug
+  shows the page under its new slug and replaces the address. A removed page and an
+  unknown address each get their own message with a way back to the overview.
+- **State.** The reader shows whether the commit is indexed, whether a wiki is being
+  written with its page count, and whether the last attempt failed or was cancelled and
+  why. Indexing and writing pages are separate steps. Only a published wiki is shown as
+  ready; a failed or incomplete generation never is. A wiki of another commit is never
+  shown as this commit's; the reader offers to select that commit instead.
+- **Generation controls.** Generate, Cancel and Try again are buttons, and generation
+  starts only from them. A double click starts one generation, and Looky joins a
+  generation already running. When Looky must index the commit first, the reader asks
+  again once the index is ready, because nothing was planned or paid for yet. A failed
+  or cancelled generation is never retried by itself. Without a configured model
+  provider, Generate explains that generation is not available.
+- **Reading.** The sidebar lists every page of the hierarchy. Pages without generated text
+  are listed but not linked. A page shows breadcrumbs, its kind and scope, the source
+  revision and the commit it was generated from, a table of contents, the generated
+  prose, related pages and its cited ranges as links pinned to the commit. The overview
+  also shows coverage and what the plan left out.
+- **Safety.** Page bodies are rendered through the same Markdown subset as answers, never
+  as HTML. Only `wiki:` links to ready pages of the same generation become in-app links,
+  and only the page's own cited source links open outside.
+- **Search.** "Search the docs" searches the generated pages of the published wiki on
+  screen, never the source and never another repository or commit. A result opens its
+  page at the matched heading.
+- **Page questions.** "Ask about this page" uses the same question form and runner as the
+  Ask view, with an explicit Fast or Deep choice. It sends the page's generation and id.
+  The runner accepts only an answer about that page at the selected commit. Going to
+  another page, view or revision cancels the running question, so a late answer never
+  appears under another page.
 
 The [browser tests](#browser-tests) verify these behaviours end to end with a scripted
 provider. [docs/browser-smoke.md](docs/browser-smoke.md) is the manual check with a real

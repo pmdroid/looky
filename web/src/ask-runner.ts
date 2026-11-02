@@ -35,6 +35,16 @@ export interface AskSnapshot {
   readonly sha: string;
   readonly revisionId: string;
   readonly ref?: string;
+  /** Asked about this generated wiki page, of the same commit. Looky resolves it again. */
+  readonly wikiPage?: AskPage;
+}
+
+/** The wiki page a question is about, as the reader showed it. */
+export interface AskPage {
+  readonly generationId: string;
+  readonly pageId: string;
+  readonly slug: string;
+  readonly title: string;
 }
 
 export type AskState =
@@ -232,6 +242,17 @@ export class AskRunner {
     ) {
       throw new Mismatch("Looky returned a question for another selection.");
     }
+    // A page question is answered about that page at this commit; an ordinary one about none.
+    const page = snapshot.wikiPage;
+    if (
+      page
+        ? view.wikiPage?.generationId !== page.generationId ||
+          view.wikiPage.pageId !== page.pageId ||
+          view.wikiPage.sha !== snapshot.sha
+        : view.wikiPage !== undefined
+    ) {
+      throw new Mismatch("Looky returned a question about another page.");
+    }
     const response = view.response;
     if (response && "revision" in response && response.revision) {
       if (
@@ -276,6 +297,14 @@ export class AskRunner {
             question: snapshot.question,
             mode: snapshot.mode,
             clientRequestId,
+            ...(snapshot.wikiPage
+              ? {
+                  wikiPage: {
+                    generationId: snapshot.wikiPage.generationId,
+                    pageId: snapshot.wikiPage.pageId,
+                  },
+                }
+              : {}),
           }),
         );
         run.questionId = view.state === "running" ? view.id : undefined;
