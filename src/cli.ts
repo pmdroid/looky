@@ -11,10 +11,11 @@
  *   bun run looky ask --repo <git-dir> --sha <commit> [--id <id>] [--mode fast|deep] <question…>
  *   bun run looky cancel <build-id>
  *   bun run looky wiki plan --repo <git-dir> --sha <commit> [--id <repository-id>]
- *   bun run looky wiki generate --repo <git-dir> --sha <commit> [--id <repository-id>]
+ *   bun run looky wiki generate --repo <git-dir> --sha <commit> [--id <repository-id>] [--rebuild]
  *   bun run looky wiki status --id <repository-id> [--sha <commit>]
  *   bun run looky wiki index <generation-id> --id <repository-id>
  *   bun run looky wiki page <generation-id> <slug> --id <repository-id>
+ *   bun run looky wiki search <generation-id> <query> --id <repository-id> [--limit <n>]
  *   bun run looky serve
  *   bun run looky mcp --repo <git-dir> [--id <repository-id>] [--ref <ref>]
  *
@@ -58,8 +59,11 @@ import { serveStdio } from "./mcp/stdio";
 import { createLookyService, dataDirFrom, localPrincipal } from "./service/bootstrap";
 import { WikiGenerator } from "./wiki/generator";
 import { planWiki } from "./wiki/planner";
+import { DEFAULT_SEARCH_LIMIT, parseSearchQuery, searchWiki } from "./wiki/search";
 import {
+  authorizedGeneration,
   listWikiGenerations,
+  wikiCurrency,
   priorWikiPages,
   wikiHistory,
   resolveWikiSlug,
@@ -79,10 +83,11 @@ const USAGE = `Usage:
   looky ask --repo <git-dir> --sha <commit> [--id <id>] [--mode fast|deep] <question>
   looky cancel <build-id>
   looky wiki plan --repo <git-dir> --sha <commit> [--id <repository-id>]
-  looky wiki generate --repo <git-dir> --sha <commit> [--id <repository-id>]
+  looky wiki generate --repo <git-dir> --sha <commit> [--id <repository-id>] [--rebuild]
   looky wiki status --id <repository-id> [--sha <commit>]
   looky wiki index <generation-id> --id <repository-id>
   looky wiki page <generation-id> <slug> --id <repository-id>
+  looky wiki search <generation-id> <query> --id <repository-id> [--limit <n>]
   looky serve
   looky mcp --repo <git-dir> [--id <repository-id>] [--ref <ref>]`;
 
@@ -518,7 +523,13 @@ async function mcpStdio(values: {
 async function wiki(
   db: ReturnType<typeof openDatabase>,
   args: readonly string[],
-  values: { repo?: string | undefined; id?: string | undefined; sha?: string | undefined },
+  values: {
+    repo?: string | undefined;
+    id?: string | undefined;
+    sha?: string | undefined;
+    rebuild?: boolean | undefined;
+    limit?: string | undefined;
+  },
 ): Promise<number> {
   const [subcommand, ...rest] = args;
   switch (subcommand) {
@@ -567,18 +578,56 @@ async function wiki(
       if (!generationId || !slug || !values.id) {
         return fail("wiki page needs a generation id, a slug and --id");
       }
+      const generation = authorizedGeneration(db, values.id, generationId);
+      if (!generation) return fail(`Unknown wiki generation ${generationId}`);
+      // Every page is shown with the commit it belongs to and whether that
+      // generation is still the one served for its scope.
+      const pinned = { sha: generation.sha, currency: wikiCurrency(generation) };
       const resolution = resolveWikiSlug(db, { repositoryId: values.id, generationId, slug });
       if (resolution.outcome !== "page" && resolution.outcome !== "redirect") {
-        print(resolution);
+        print({ ...pinned, ...resolution });
         return 1;
       }
       print({
+        ...pinned,
         ...resolution,
         content: wikiPage(db, {
           repositoryId: values.id,
           generationId,
           pageId: resolution.page.pageId,
         }),
+      });
+      return 0;
+    }
+    case "search": {
+      const [generationId, ...words] = rest;
+      if (!generationId || words.length === 0 || !values.id) {
+        return fail("wiki search needs a generation id, a query and --id");
+      }
+      const generation = authorizedGeneration(db, values.id, generationId);
+      if (!generation) return fail(`Unknown wiki generation ${generationId}`);
+      if (generation.state !== "ready") {
+        return fail(`Wiki generation ${generationId} is ${generation.state}, not published`);
+      }
+      const query = parseSearchQuery(words.join(" "));
+      if (!query.ok) return fail(`Invalid search query: ${query.code}`);
+      const slugs = new Map(
+        (wikiIndex(db, { repositoryId: values.id, generationId })?.pages ?? []).map((page) => [
+          page.pageId,
+          page.slug,
+        ]),
+      );
+      const found = searchWiki(db, {
+        generationId,
+        expression: query.expression,
+        limit: values.limit ? Number(values.limit) : DEFAULT_SEARCH_LIMIT,
+        offset: 0,
+      });
+      print({
+        sha: generation.sha,
+        currency: wikiCurrency(generation),
+        total: found.total,
+        hits: found.hits.map((hit) => ({ slug: slugs.get(hit.pageId), ...hit })),
       });
       return 0;
     }
@@ -595,7 +644,12 @@ async function wiki(
  */
 async function generateWiki(
   db: ReturnType<typeof openDatabase>,
-  values: { repo?: string | undefined; id?: string | undefined; sha?: string | undefined },
+  values: {
+    repo?: string | undefined;
+    id?: string | undefined;
+    sha?: string | undefined;
+    rebuild?: boolean | undefined;
+  },
 ): Promise<number> {
   if (!values.repo || !values.sha) return fail("wiki generate needs --repo and --sha");
   const directory = resolve(values.repo);
@@ -638,7 +692,10 @@ async function generateWiki(
   try {
     for (;;) {
       if (interrupted.signal.aborted) return stopped();
-      const started = await generator.start({ repositoryId, sha });
+      const started = await generator.start(
+        { repositoryId, sha },
+        values.rebuild ? { rebuild: true } : {},
+      );
       if (started.state === "indexing") {
         console.error(`looky: indexing ${repositoryId}@${sha} (${started.progress.phase})`);
         building = started.buildId;
@@ -675,6 +732,7 @@ async function generateWiki(
         pages: pages.map((page) => ({
           slug: page.slug,
           state: page.state,
+          ...(page.refreshReason ? { refresh: page.refreshReason } : {}),
           ...(page.errorMessage ? { error: page.errorMessage } : {}),
           ...(page.usage ? { usage: page.usage } : {}),
         })),

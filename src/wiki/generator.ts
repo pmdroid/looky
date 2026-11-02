@@ -49,14 +49,19 @@ import {
   addWikiUsage,
   EMPTY_WIKI_USAGE,
   shortHash,
+  WIKI_PLANNER_VERSION,
   type WikiGeneratorConfig,
   wikiGeneratorKey,
+  type WikiPageKind,
   type WikiPlanLimits,
+  type WikiRefreshReason,
   type WikiSourceRef,
   type WikiUsage,
 } from "./model";
+import { indexedFiles, relabelWikiBody, wikiRefreshReport } from "./refresh";
 import { WIKI_PROMPT_VERSION, type WikiNeighbour } from "./prompts";
 import {
+  acquireWikiLease,
   createWikiGeneration,
   findActiveWikiGeneration,
   findReadyWikiGeneration,
@@ -66,14 +71,19 @@ import {
   type InspectedBlob,
   publishWikiGeneration,
   recordWikiGenerationUsage,
+  recordWikiPageInputs,
   recordWikiPageUsage,
+  recordWikiRefreshPages,
+  releaseWikiLease,
   setWikiPageState,
   startWikiGeneration,
   storeWikiDraft,
   storeWikiPageBody,
   touchWikiDraft,
   type WikiGenerationRecord,
+  wikiGenerationFiles,
   WikiIntegrityError,
+  type WikiPageDependencies,
   type WikiPageRecord,
   WikiStateError,
   type WikiScope,
@@ -283,10 +293,17 @@ export class WikiGenerator {
    * Return the published wiki of this exact scope, join the generation
    * already queued or running for it, or plan and queue a new one. Never
    * waits for pages to be written.
+   *
+   * A new generation refreshes from the repository's latest published wiki:
+   * pages whose inputs and source blobs are verifiably unchanged are carried
+   * forward without a model call, every other page is written again. With
+   * `rebuild`, a new generation is planned even when the scope is published
+   * and every page is written again; the published one keeps serving until
+   * the rebuild publishes.
    */
   async start(
     scope: Scope,
-    options: { readonly signal?: AbortSignal } = {},
+    options: { readonly signal?: AbortSignal; readonly rebuild?: boolean } = {},
   ): Promise<WikiStartResult> {
     if (this.#closed) throw new LookyUnavailableError("The wiki generator is closed");
     this.#authorize(scope.repositoryId);
@@ -295,7 +312,7 @@ export class WikiGenerator {
     }
     const keyed = this.scope(scope);
     const ready = findReadyWikiGeneration(this.#db, keyed);
-    if (ready) return { state: "ready", generation: ready };
+    if (ready && !options.rebuild) return { state: "ready", generation: ready };
     const active = this.#join(keyed);
     if (active)
       return { state: active.state as "queued" | "running", generation: active, created: false };
@@ -320,7 +337,13 @@ export class WikiGenerator {
     }
     if (this.#closed) throw new LookyUnavailableError("The wiki generator is closed");
     // The store shares one queued or running generation per scope under its write lock.
-    const { created, generation } = createWikiGeneration(this.#db, plan, this.#config.generator);
+    const refresh = wikiRefreshReport(this.#db, plan, options.rebuild ? { rebuild: true } : {});
+    const { created, generation } = createWikiGeneration(
+      this.#db,
+      plan,
+      this.#config.generator,
+      refresh,
+    );
     if (created) this.#enqueue(generation.id);
     else this.#join(keyed);
     return { state: generation.state as "queued" | "running", generation, created };
@@ -341,9 +364,13 @@ export class WikiGenerator {
         `Wiki generation ${generationId} is ${generation.state}, not failed or cancelled`,
       );
     }
+    // A retried rebuild rebuilds again rather than settling for the wiki it was meant to replace.
     return this.start(
       { repositoryId: generation.repositoryId, sha: generation.sha },
-      signal ? { signal } : {},
+      {
+        ...(signal ? { signal } : {}),
+        ...(generation.refresh?.mode === "rebuild" ? { rebuild: true } : {}),
+      },
     );
   }
 
@@ -498,6 +525,7 @@ export class WikiGenerator {
     }, settings.totals.maxElapsedMs);
     let usage: WikiUsage = EMPTY_WIKI_USAGE;
     let lease: GenerationLease | undefined;
+    let baseLease: string | undefined;
     const save = () =>
       recordWikiGenerationUsage(db, id, {
         ...usage,
@@ -519,36 +547,50 @@ export class WikiGenerator {
       }
       lease = resolved.lease;
       const indexGeneration = resolved.generation;
-      const files = indexedBlobs(db, indexGeneration.generationId);
+      // Verify against the files the generation was planned from; they are the
+      // files publishing checks, so reuse and the mixed-revision guard agree.
+      const planned = wikiGenerationFiles(db, id);
+      const files = planned.size > 0 ? planned : indexedFiles(db, indexGeneration.generationId);
       const index = wikiIndex(db, { repositoryId: record.repositoryId, generationId: id });
       if (!index) throw new Error(`Wiki generation ${id} has no pages`);
       const pages = index.pages.filter((page) => page.state === "queued");
       const neighbours = neighbourhoods(index);
 
-      // Reuse validated drafts first: no model call, no spend.
+      // Keep the base generation stored while its pages are compared and copied.
+      const baseId =
+        record.refresh?.mode === "refresh" && record.refresh.changes !== null
+          ? record.refresh.base?.generationId
+          : undefined;
+      if (baseId) {
+        const held = acquireWikiLease(db, baseId, settings.totals.maxElapsedMs + 60_000);
+        if (held) baseLease = held.leaseId;
+      }
+      const decisions = this.#decide(record, pages, index, neighbours, files, baseLease && baseId);
+
+      // Carry forward verified pages first: no model call, no spend.
       const toWrite: { page: WikiPageRecord; input: WikiPageInput; draftKey: string }[] = [];
+      const reasons: Partial<Record<WikiRefreshReason, number>> = {};
       for (const page of pages) {
-        const sources = wikiPage(db, {
-          repositoryId: record.repositoryId,
-          generationId: id,
-          pageId: page.pageId,
-        })!.plannedSources;
-        const input: WikiPageInput = {
-          title: page.title,
-          kind: page.kind,
-          description: page.description,
-          scopePath: page.scopePath,
-          sources,
-          neighbours: neighbours.get(page.pageId) ?? [],
-        };
-        const draftKey = this.#draftKey(record, page, input);
-        recordWikiPageUsage(db, id, page.pageId, { draftKey });
-        if (this.#reuse(record, page, draftKey, files)) {
+        const decision = decisions.get(page.pageId)!;
+        reasons[decision.reason] = (reasons[decision.reason] ?? 0) + 1;
+        recordWikiPageInputs(db, id, page.pageId, {
+          inputKey: decision.inputKey,
+          dependencies: decision.dependencies,
+          refreshReason: decision.reason,
+        });
+        recordWikiPageUsage(db, id, page.pageId, { draftKey: decision.inputKey });
+        if (decision.reuse) {
+          this.#carry(record, page, decision.inputKey, decision.reuse);
           usage = addWikiUsage(usage, { pagesReused: 1 });
           continue;
         }
-        toWrite.push({ page, input, draftKey });
+        toWrite.push({ page, input: decision.input, draftKey: decision.inputKey });
       }
+      recordWikiRefreshPages(db, id, {
+        reused: pages.length - toWrite.length,
+        regenerated: toWrite.length,
+        reasons,
+      });
       save();
 
       const ledger = new Ledger(settings.totals, settings.page);
@@ -651,6 +693,7 @@ export class WikiGenerator {
               provenance,
               draftKey,
               usage: pageUsage,
+              inspected: written.inspected,
             });
           }
         } catch (error) {
@@ -721,6 +764,7 @@ export class WikiGenerator {
       clearTimeout(timer);
       save();
       lease?.release();
+      if (baseLease) releaseWikiLease(db, baseLease);
     }
   }
 
@@ -745,14 +789,168 @@ export class WikiGenerator {
   }
 
   /**
-   * The draft key: commit, page identity and plan inputs, planned sources
-   * with their blobs, the page's link neighbourhood and the writer fingerprint.
+   * Decide for every queued page whether earlier prose can be carried
+   * forward, and why not otherwise. See `./refresh` for the rules.
    */
-  #draftKey(record: WikiGenerationRecord, page: WikiPageRecord, input: WikiPageInput): string {
+  #decide(
+    record: WikiGenerationRecord,
+    pages: readonly WikiPageRecord[],
+    index: NonNullable<ReturnType<typeof wikiIndex>>,
+    neighbours: ReadonlyMap<string, WikiNeighbour[]>,
+    files: ReadonlyMap<string, string>,
+    baseId: string | undefined,
+  ): Map<string, Decision> {
+    const db = this.#db;
+    const rebuild = record.refresh?.mode === "rebuild";
+    const decisions = new Map<string, Decision>();
+    // Navigation pages describe their children and linked pages. Their key
+    // includes those pages' keys, so a navigation page is decided after them.
+    const children = new Map<string, string[]>();
+    for (const page of index.pages) {
+      if (page.parentPageId === null || page.state === "unavailable") continue;
+      children.set(page.parentPageId, [...(children.get(page.parentPageId) ?? []), page.pageId]);
+    }
+    for (const link of index.links) {
+      const target = index.pages.find((page) => page.pageId === link.toPageId);
+      if (target && target.state !== "unavailable") {
+        children.set(link.fromPageId, [...(children.get(link.fromPageId) ?? []), link.toPageId]);
+      }
+    }
+    const ordered = [...pages].sort(
+      (a, b) =>
+        Number(NAVIGATION_KINDS.has(a.kind)) - Number(NAVIGATION_KINDS.has(b.kind)) ||
+        b.depth - a.depth,
+    );
+    for (const page of ordered) {
+      const sources = wikiPage(db, {
+        repositoryId: record.repositoryId,
+        generationId: record.id,
+        pageId: page.pageId,
+      })!.plannedSources;
+      const input: WikiPageInput = {
+        title: page.title,
+        kind: page.kind,
+        description: page.description,
+        scopePath: page.scopePath,
+        sources,
+        neighbours: neighbours.get(page.pageId) ?? [],
+      };
+      const structure = structuralScope(page.kind, page.scopePath, files);
+      const dependencies: WikiPageDependencies = {
+        writerKey: this.writerKey,
+        structureKey: shortHash(JSON.stringify(structure)),
+        structureFiles: structure.length,
+        neighbours: input.neighbours.map((n) => `${n.relation} ${n.slug} ${n.title}`),
+        ...(NAVIGATION_KINDS.has(page.kind)
+          ? {
+              dependsOn: [...new Set(children.get(page.pageId) ?? [])]
+                .sort()
+                .map((pageId) => `${pageId} ${decisions.get(pageId)?.inputKey ?? "unknown"}`),
+            }
+          : {}),
+      };
+      const inputKey = this.#inputKey(record, page, input, dependencies);
+      const base: Decision = { input, inputKey, dependencies, reason: "new_page" };
+      if (rebuild) {
+        decisions.set(page.pageId, { ...base, reason: "rebuild" });
+        continue;
+      }
+      const prior = baseId
+        ? wikiPage(db, {
+            repositoryId: record.repositoryId,
+            generationId: baseId,
+            pageId: page.pageId,
+          })
+        : undefined;
+      let reason: WikiRefreshReason = "new_page";
+      let reuse: Reuse | undefined;
+      if (prior?.body && prior.page.state === "ready") {
+        if (prior.page.inputKey === null || prior.page.inspected === null) {
+          reason = "dependency_unknown";
+        } else if (prior.page.dependencies?.writerKey !== this.writerKey) {
+          reason = "configuration_changed";
+        } else if (prior.page.inputKey !== inputKey) {
+          reason = "inputs_changed";
+        } else {
+          const checked = verifyReuse(
+            {
+              body: prior.body.text,
+              citations: prior.citations,
+              inspected: prior.page.inspected,
+              provenance: prior.body.provenance,
+              origin: { generationId: baseId!, sha: String(prior.body.provenance.sha ?? "") },
+            },
+            record.sha,
+            files,
+          );
+          if (checked.ok) reuse = checked.reuse;
+          else reason = checked.reason;
+        }
+      }
+      if (!reuse) {
+        // A validated draft of the same inputs, such as a finished page of a failed attempt.
+        const draft = findWikiDraft(db, record.repositoryId, inputKey);
+        if (draft && draft.writerKey === this.writerKey && draft.pageId === page.pageId) {
+          const checked = verifyReuse(
+            {
+              body: draft.body,
+              citations: draft.citations,
+              inspected: draft.inspected,
+              provenance: draft.provenance,
+              origin: { draftKey: inputKey, sha: String(draft.provenance.sha ?? "") },
+            },
+            record.sha,
+            files,
+          );
+          if (checked.ok) reuse = checked.reuse;
+          else if (reason === "new_page") reason = checked.reason;
+        }
+      }
+      decisions.set(
+        page.pageId,
+        reuse ? { ...base, reason: "reused", reuse } : { ...base, reason },
+      );
+    }
+    // Same keys can still hide changed content: a child whose earlier prose
+    // failed verification is written again, so its navigation pages are too.
+    for (let changed = true; changed;) {
+      changed = false;
+      for (const page of ordered) {
+        const decision = decisions.get(page.pageId)!;
+        if (!decision.reuse || !NAVIGATION_KINDS.has(page.kind)) continue;
+        const dependsOn = children.get(page.pageId) ?? [];
+        if (
+          dependsOn.some((pageId) => {
+            const child = decisions.get(pageId);
+            return child !== undefined && CONTENT_CHANGED.has(child.reason);
+          })
+        ) {
+          const { reuse: _dropped, ...rest } = decision;
+          decisions.set(page.pageId, { ...rest, reason: "navigation" });
+          changed = true;
+        }
+      }
+    }
+    return decisions;
+  }
+
+  /**
+   * The sha-neutral key of everything a page body depends on: planner and
+   * writer fingerprints, page identity and plan text, planned sources with
+   * their blobs, the structural scope and the link neighbourhood. It is also
+   * the draft key, so a validated draft is found for the same inputs at any
+   * commit and still has to pass blob verification there.
+   */
+  #inputKey(
+    record: WikiGenerationRecord,
+    page: WikiPageRecord,
+    input: WikiPageInput,
+    dependencies: WikiPageDependencies,
+  ): string {
     const material = {
+      plannerVersion: WIKI_PLANNER_VERSION,
       writerKey: this.writerKey,
       repositoryId: record.repositoryId,
-      sha: record.sha,
       pageId: page.pageId,
       conceptKey: page.conceptKey,
       kind: page.kind,
@@ -761,34 +959,116 @@ export class WikiGenerator {
       scopePath: page.scopePath,
       sources: input.sources.map((s) => [s.path, s.blobOid, s.startLine, s.endLine, s.kind]),
       neighbours: input.neighbours.map((n) => [n.slug, n.title, n.relation]),
+      structure: dependencies.structureKey,
+      dependsOn: dependencies.dependsOn ?? [],
     };
-    return `wd-${new Bun.CryptoHasher("sha256").update(JSON.stringify(material)).digest("hex")}`;
+    return `wi-${new Bun.CryptoHasher("sha256").update(JSON.stringify(material)).digest("hex")}`;
   }
 
-  /** Store a cached draft as the page's body when every blob it read is unchanged. */
-  #reuse(
-    record: WikiGenerationRecord,
-    page: WikiPageRecord,
-    draftKey: string,
-    files: ReadonlyMap<string, string>,
-  ): boolean {
-    const draft = findWikiDraft(this.#db, record.repositoryId, draftKey);
-    if (!draft || draft.writerKey !== this.writerKey || draft.pageId !== page.pageId) return false;
-    if (!blobsCurrent(draft.inspected, files) || !blobsCurrent(draft.citations, files))
-      return false;
+  /** Store verified earlier prose as the page's body at this generation's commit. */
+  #carry(record: WikiGenerationRecord, page: WikiPageRecord, inputKey: string, reuse: Reuse): void {
     setWikiPageState(this.#db, record.id, page.pageId, "running");
     storeWikiPageBody(this.#db, {
       generationId: record.id,
       pageId: page.pageId,
-      body: draft.body,
-      citations: draft.citations,
-      provenance: { ...draft.provenance, reusedDraft: true, draftCreatedAt: draft.createdAt },
-      draftKey,
+      body: reuse.body,
+      citations: reuse.citations,
+      provenance: {
+        ...reuse.provenance,
+        sha: record.sha,
+        reused: true,
+        reusedFromSha: reuse.origin.sha,
+        ...(reuse.origin.generationId ? { reusedFromGeneration: reuse.origin.generationId } : {}),
+        ...(reuse.origin.draftKey ? { reusedDraft: true } : {}),
+        verifiedBlobs: reuse.verifiedBlobs,
+      },
+      draftKey: inputKey,
       usage: { ...EMPTY_WIKI_USAGE, pagesReused: 1, reused: true },
+      inspected: reuse.inspected,
     });
-    touchWikiDraft(this.#db, record.repositoryId, draftKey);
-    return true;
+    if (reuse.origin.draftKey) touchWikiDraft(this.#db, record.repositoryId, reuse.origin.draftKey);
   }
+}
+
+const NAVIGATION_KINDS: ReadonlySet<WikiPageKind> = new Set([
+  "overview",
+  "architecture",
+  "section",
+]);
+
+/** Reasons a page is written again although its input key did not change. */
+const CONTENT_CHANGED: ReadonlySet<WikiRefreshReason> = new Set([
+  "sources_changed",
+  "dependency_unknown",
+  "relabel_unverified",
+  "navigation",
+]);
+
+interface Reuse {
+  readonly body: string;
+  readonly citations: readonly WikiSourceRef[];
+  readonly inspected: readonly InspectedBlob[];
+  readonly provenance: Readonly<Record<string, unknown>> & { readonly generator: string };
+  readonly origin: {
+    readonly sha: string;
+    readonly generationId?: string;
+    readonly draftKey?: string;
+  };
+  readonly verifiedBlobs: number;
+}
+
+interface Decision {
+  readonly input: WikiPageInput;
+  readonly inputKey: string;
+  readonly dependencies: WikiPageDependencies;
+  readonly reason: WikiRefreshReason;
+  readonly reuse?: Reuse;
+}
+
+/**
+ * Check earlier prose against the target commit: every blob it read and every
+ * blob it cites must be the blob indexed there, and its commit label must be
+ * rewritable. Identical blobs have identical lines, so the cited ranges are
+ * exact at the target commit.
+ */
+function verifyReuse(
+  candidate: Omit<Reuse, "verifiedBlobs">,
+  sha: string,
+  files: ReadonlyMap<string, string>,
+):
+  | { readonly ok: true; readonly reuse: Reuse }
+  | { readonly ok: false; readonly reason: WikiRefreshReason } {
+  if (!isFullCommitSha(candidate.origin.sha)) return { ok: false, reason: "dependency_unknown" };
+  if (candidate.inspected.length === 0) return { ok: false, reason: "dependency_unknown" };
+  if (!blobsCurrent(candidate.inspected, files) || !blobsCurrent(candidate.citations, files)) {
+    return { ok: false, reason: "sources_changed" };
+  }
+  const verifiedBlobs = new Set(
+    [...candidate.inspected, ...candidate.citations].map((blob) => `${blob.path}\0${blob.blobOid}`),
+  ).size;
+  const body = relabelWikiBody(candidate.body, candidate.origin.sha, sha, verifiedBlobs);
+  if (body === undefined) return { ok: false, reason: "relabel_unverified" };
+  return { ok: true, reuse: { ...candidate, body, verifiedBlobs } };
+}
+
+/**
+ * Indexed files that shape a page beyond its planned sources: every file
+ * under a module's directory, and every indexed file for the overview and
+ * architecture pages, whose plan text and selection depend on the whole
+ * repository. Section and workflow pages depend on their planned sources,
+ * neighbours and, through navigation, on their children.
+ */
+function structuralScope(
+  kind: WikiPageKind,
+  scopePath: string | null,
+  files: ReadonlyMap<string, string>,
+): [string, string][] {
+  const all = [...files].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+  if (kind === "overview" || kind === "architecture") return all;
+  if (kind === "module" && scopePath !== null) {
+    return all.filter(([path]) => path.startsWith(`${scopePath}/`));
+  }
+  return [];
 }
 
 // ---------------------------------------------------------------------------
@@ -940,18 +1220,6 @@ function pageFailure(error: unknown): string {
   if (error instanceof ModelOutputError) return `invalid_output: ${error.message}`;
   if (error instanceof BudgetExhaustedError) return `budget_exhausted: ${error.limit}`;
   return errorText(error);
-}
-
-/** Path → blob of every indexed file in an index generation. */
-function indexedBlobs(db: Database, buildId: string): Map<string, string> {
-  return new Map(
-    db
-      .query<{ path: string; blob_oid: string }, [string]>(
-        "SELECT path, blob_oid FROM index_files WHERE build_id = ? AND status = 'indexed'",
-      )
-      .all(buildId)
-      .map((row) => [row.path, row.blob_oid]),
-  );
 }
 
 function blobsCurrent(

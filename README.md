@@ -30,25 +30,25 @@ development dependency, bundled into the [browser app](#the-browser-app) at buil
 
 ## Development commands
 
-| Command                | Operation                                                                              |
-| ---------------------- | -------------------------------------------------------------------------------------- |
-| `bun run check`        | Format check, lint, TypeScript check, and tests, without rewriting files               |
-| `bun run format:check` | Check formatting with oxfmt                                                            |
-| `bun run format:fix`   | Rewrite formatting with oxfmt                                                          |
-| `bun run lint`         | Check with oxlint and reject warnings                                                  |
-| `bun run lint:fix`     | Apply oxlint's automatic fixes                                                         |
-| `bun run typecheck`    | Check TypeScript without emitting files                                                |
-| `bun test`             | Run isolated database and entrypoint tests                                             |
-| `bun test --watch`     | Rerun tests during development                                                         |
-| `bun run e2e:install`  | Download the headless Chromium the [browser tests](#browser-tests) use                 |
-| `bun run test:e2e`     | Run the [browser tests](#browser-tests) against the production app build               |
-| `bun start`            | Open storage, verify FTS5, migrate, report readiness, and close                        |
-| `bun run serve`        | Run the [MCP service](#mcp-service) over HTTP                                          |
-| `bun run web:build`    | Build the [browser app](#the-browser-app) into `dist/web`                              |
-| `bun run web:dev`      | Rebuild the browser app on change and run `serve` with it                              |
-| `bun run looky …`      | Build, inspect and search codebase indexes; see [Codebase index](#codebase-index)      |
-| `bun run looky wiki …` | Plan, generate and inspect the wiki; see [Generated wiki model](#generated-wiki-model) |
-| `bun run pilot`        | Run the real-codebase pilot on paws-app; see [pilot/README.md](pilot/README.md)        |
+| Command                | Operation                                                                                               |
+| ---------------------- | ------------------------------------------------------------------------------------------------------- |
+| `bun run check`        | Format check, lint, TypeScript check, and tests, without rewriting files                                |
+| `bun run format:check` | Check formatting with oxfmt                                                                             |
+| `bun run format:fix`   | Rewrite formatting with oxfmt                                                                           |
+| `bun run lint`         | Check with oxlint and reject warnings                                                                   |
+| `bun run lint:fix`     | Apply oxlint's automatic fixes                                                                          |
+| `bun run typecheck`    | Check TypeScript without emitting files                                                                 |
+| `bun test`             | Run isolated database and entrypoint tests                                                              |
+| `bun test --watch`     | Rerun tests during development                                                                          |
+| `bun run e2e:install`  | Download the headless Chromium the [browser tests](#browser-tests) use                                  |
+| `bun run test:e2e`     | Run the [browser tests](#browser-tests) against the production app build                                |
+| `bun start`            | Open storage, verify FTS5, migrate, report readiness, and close                                         |
+| `bun run serve`        | Run the [MCP service](#mcp-service) over HTTP                                                           |
+| `bun run web:build`    | Build the [browser app](#the-browser-app) into `dist/web`                                               |
+| `bun run web:dev`      | Rebuild the browser app on change and run `serve` with it                                               |
+| `bun run looky …`      | Build, inspect and search codebase indexes; see [Codebase index](#codebase-index)                       |
+| `bun run looky wiki …` | Plan, generate, refresh, search and inspect the wiki; see [Generated wiki model](#generated-wiki-model) |
+| `bun run pilot`        | Run the real-codebase pilot on paws-app; see [pilot/README.md](pilot/README.md)                         |
 
 Tool configurations exclude dependencies, build output, coverage, and local
 database/index directories. The formatter also excludes the generated lockfile.
@@ -773,17 +773,22 @@ records the index build it was planned from as provenance.
 
 Migration 5 adds these tables:
 
-| Table               | Holds                                                                            |
-| ------------------- | -------------------------------------------------------------------------------- |
-| `wiki_generations`  | Scope, state, plan coverage and disclosures, generator configuration, timestamps |
-| `wiki_pages`        | Navigation only: stable page id, slug, title, kind, parent, depth, sibling order |
-| `wiki_page_bodies`  | Natural-language body, its hash, generation time and provenance                  |
-| `wiki_page_sources` | Planned sources and cited source ranges, each with path, blob id and lines       |
-| `wiki_page_links`   | Internal links between pages of the same generation                              |
-| `wiki_slug_aliases` | Every slug a repository published, for redirects and removed pages               |
-| `wiki_page_drafts`  | Validated page drafts kept for reuse, with the blobs they read (migration 6)     |
+| Table                   | Holds                                                                            |
+| ----------------------- | -------------------------------------------------------------------------------- |
+| `wiki_generations`      | Scope, state, plan coverage and disclosures, generator configuration, timestamps |
+| `wiki_pages`            | Navigation only: stable page id, slug, title, kind, parent, depth, sibling order |
+| `wiki_page_bodies`      | Natural-language body, its hash, generation time and provenance                  |
+| `wiki_page_sources`     | Planned sources and cited source ranges, each with path, blob id and lines       |
+| `wiki_page_links`       | Internal links between pages of the same generation                              |
+| `wiki_slug_aliases`     | Every slug a repository published, for redirects and removed pages               |
+| `wiki_page_drafts`      | Validated page drafts kept for reuse, with the blobs they read (migration 6)     |
+| `wiki_search_fts`       | Documentation search sections of published pages (migration 7)                   |
+| `wiki_generation_files` | The indexed paths and blobs a generation was planned from (migration 8)          |
+| `wiki_leases`           | Reader leases that keep a generation from being collected (migration 8)          |
 
-Migration 6 also adds the budget and usage of each generation and page.
+Migration 6 also adds the budget and usage of each generation and page. Migration 8 adds
+each generation's base generation and refresh report, and each page's input key,
+inspected blobs, dependencies and refresh reason.
 
 Composite foreign keys keep every parent, link, body and source inside its own
 generation, so the database refuses dangling entries. Each generation has exactly one
@@ -855,10 +860,14 @@ generation that fails the check stays running; partial pages are never published
 On startup, generations left queued or running are marked failed, `interrupted` and
 retryable.
 
-The wiki status of a scope is `ready` only for a published generation of exactly that
-repository, commit, index key and fingerprint. Otherwise it is the latest attempt's
-state, or `unavailable` when there was none. A published generation for another
-commit or configuration is returned separately as stale, with the reason.
+The wiki status of a scope is `ready` only for a published, unretired generation of
+exactly that repository, commit, index key and fingerprint. Otherwise it is the latest
+attempt's state (`queued` or `running` while building, `failed`, `cancelled`), or
+`unavailable` when there was none. The status also names the selected commit
+(`selectedSha`), the commit of the content a reader can see (`generatedSha`) and
+`freshness`: `current`, `stale` or `none`. A published generation for another commit or
+configuration is returned separately as `stale`, with the reasons `revision`, `index` or
+`configuration`. It is historical content and is only ever read pinned to its own commit.
 
 ### Stable pages, redirects and removal
 
@@ -943,13 +952,14 @@ Every other page budget field has a `LOOKY_WIKI_PAGE_*` variable, research limit
 `LOOKY_WIKI_RESEARCH_*` variables, and source bytes have `LOOKY_WIKI_TOTAL_MAX_SOURCE_BYTES`.
 `LOOKY_SOURCE_LINK_TEMPLATE` also turns wiki citations into links pinned to the commit.
 
-**Reuse and fingerprints.** Every validated page is kept as a draft. Its key covers the
-commit, the page's identity and plan text, its planned sources with their blobs, its
-link neighbourhood and the writer fingerprint. The writer fingerprint holds the writer
+**Reuse and fingerprints.** Every validated page is kept as a draft. Its key is the
+page's input key, described in [Refreshing pages](#refreshing-pages). It covers the
+page's identity and plan text, its planned sources with their blobs, its structural
+scope, its link neighbourhood and the writer fingerprint, but not the commit. The writer fingerprint holds the writer
 and prompt versions, the provider ids, kinds, models and reasoning effort in fallback
 order, the page budget, the research limits and the link template. It never holds
 credentials. A draft is reused only for the same key, and only when every blob it read
-is still the indexed blob. A different model, prompt or budget gives a different key,
+and every blob it cites is the blob indexed at the new commit. A different model, prompt or budget gives a different key,
 so earlier output is never reused for it. The generation fingerprint adds the plan
 limits, so a model change also makes the published wiki stale rather than current.
 
@@ -971,16 +981,118 @@ and every `[Title](wiki:slug)` link in a body reaches a ready page of the same
 generation. A failed, cancelled, interrupted or over-budget generation stays explicitly
 incomplete and never replaces the last published one.
 
+### Refreshing pages
+
+A new commit or a new configuration gets a new generation. It is planned from the
+commit's ready index, which the index lifecycle refreshes incrementally first. The new
+generation then refreshes from the repository's latest published generation, its
+**base**. Nothing in a published generation changes.
+
+**Change report.** Every generation stores the indexed paths and blobs it was planned
+from. The refresh report of a new generation compares them with the base: added,
+changed, deleted and renamed paths, where a rename is a deleted path whose exact blob
+reappears at an added path. It also lists the base's pages that the new plan no longer
+has. This works after index retention deleted the base's index build.
+
+**Dependencies.** Each page records more than its citations:
+
+| Dependency       | What it covers                                                                                            |
+| ---------------- | --------------------------------------------------------------------------------------------------------- |
+| Plan inputs      | Page id, concept, kind, title, description and scope directory                                            |
+| Planned sources  | Every planned file with its blob and lines                                                                |
+| Inspected blobs  | Every blob the writer actually read, recorded with the body                                               |
+| Structural scope | Every indexed file under a module's directory; every indexed file for the overview and architecture pages |
+| Neighbourhood    | Slugs and titles of the pages the body may link to                                                        |
+| Child keys       | Overview, architecture and section pages: the input keys of their children and linked pages               |
+| Fingerprints     | Planner version and writer fingerprint: model, prompt, budgets and link template                          |
+
+These form the page's sha-neutral **input key**. Planning reads imports, file sizes and
+symbols of the whole index, so structural changes such as a deleted module, a moved
+file or a new import flow show up as changed plan inputs, sources or neighbours.
+
+**Reuse is verified, never assumed.** A page keeps earlier prose only when all of
+these hold:
+
+1. The base page or a cached draft has exactly the same input key.
+2. It recorded the blobs it read. A page without that record cannot show its impact,
+   so it is written again (`dependency_unknown`).
+3. Every inspected and every cited blob is the blob indexed at the new commit. An
+   identical blob has identical lines, so the cited ranges are exact there.
+4. The body's commit label and any commit-pinned source links can be rewritten to the
+   new commit with no trace of the old commit left (`relabel_unverified` otherwise).
+5. For a navigation page, no child or linked page was written again for changed
+   content.
+
+A reused page states where its prose came from: "Carried forward unchanged from commit
+…". Its provenance records the source commit, generation and the number of verified
+blobs. Every other page is written again by the model, with one of these reasons:
+`new_page`, `inputs_changed`, `configuration_changed`, `sources_changed`,
+`dependency_unknown`, `navigation`, `relabel_unverified` or `rebuild`. The refresh
+report counts reused and rewritten pages by reason.
+
+The rules are deliberately conservative. Any change inside a module's directory
+rewrites that module page even when no planned file changed. Any indexed change
+rewrites the overview and architecture pages. A module or workflow page whose inputs
+changed, or whose earlier prose failed verification, also rewrites the section and
+navigation pages above it. Pages whose inputs match exactly, such as an
+untouched module, cost no model call.
+
+**No mixed revisions.** Publishing refuses a generation whose planned, cited or
+inspected blobs differ from the blobs indexed at its commit, or whose page provenance
+names another commit. Body links must reach ready pages of the same generation.
+
+**Atomic publication.** Pages, table of contents, links, slug history for redirects and
+removed pages, and documentation search sections become visible in one transaction.
+Search sections exist only for ready pages of a published generation and are deleted
+with it, so search never returns a page that is gone. Generations published before
+search existed are indexed on their first search. A slug of a page the new generation dropped resolves
+to `removed` with its last title.
+
+**Failure, cancellation and retry.** A refresh that fails, is cancelled or is
+interrupted never touches the published generation. It stays served for its own commit
+and is reported as `stale` for the new one. Pages it finished are kept as drafts, so a
+retry pays only for the rest, and the retry is checked like any other generation before
+it publishes.
+
+**Configuration changes and rebuilds.** A different model, prompt, budget or link
+template changes the writer fingerprint. Earlier prose is then never reused
+(`configuration_changed`), and the published wiki is reported stale with the reason
+`configuration`. A deliberate rebuild (`wiki generate --rebuild`,
+`LookyService.wikiRebuild`) plans a new generation even for a published scope and writes
+every page again. The published generation keeps serving until the rebuild publishes and
+replaces it. A retried rebuild rebuilds again.
+
+**Retention and readers.** Retention keeps `LOOKY_INDEX_RETAIN_READY` published
+generations per repository and retires older ones. A newer generation of the same scope
+retires the one it replaces. A retired generation is no longer current. It stays readable
+only as historical content pinned to its own commit, until garbage collection deletes it.
+Readers that need a generation across several reads take a wiki lease with
+`acquireWikiLease` and release it with `releaseWikiLease`. Garbage
+collection never deletes a generation with an unexpired lease, and a refresh holds a
+lease on its base while it compares and copies pages. Deleting a generation deletes its
+pages, file manifest and search entries. Slug history is kept, so old links still
+resolve to a redirect or to `removed`.
+
+`pinnedWikiPage` reads a page for a named commit. It refuses a generation of another
+commit and marks the result `current` or `historical`. Documentation search over one
+published generation is described in
+[Wiki browsing, docs search and page questions](#wiki-browsing-docs-search-and-page-questions).
+
 ### Commands
 
 ```sh
 bun run looky wiki plan --repo <git-dir> --sha <commit> [--id <repository-id>]
 # Ctrl-C cancels the index build or the generation; nothing starts after it.
-bun run looky wiki generate --repo <git-dir> --sha <commit> [--id <repository-id>]
+bun run looky wiki generate --repo <git-dir> --sha <commit> [--id <repository-id>] [--rebuild]
 bun run looky wiki status --id <repository-id> [--sha <commit>]
 bun run looky wiki index <generation-id> --id <repository-id>
 bun run looky wiki page <generation-id> <slug> --id <repository-id>
+bun run looky wiki search <generation-id> <query> --id <repository-id> [--limit <n>]
 ```
+
+`wiki generate` on a new commit refreshes from the last published wiki and lists each
+page's refresh reason. `wiki page` and `wiki search` print the commit of the generation
+and whether it is `current` or `historical`.
 
 ## The ask_project contract
 

@@ -607,8 +607,15 @@ describe("wiki generation", () => {
       generation = await h.generator.wait(retried.generation.id);
     }
     expect(generation.state).toBe("ready");
-    // Every page was paid for once, plus the one whose draft no longer matched.
-    expect(model.calls.length).toBe(total + 1);
+    // Every page was paid for once, plus the one whose draft no longer matched
+    // and any navigation page describing it, which is conservatively rewritten.
+    const navigation = h.db
+      .query<{ n: number }, []>(
+        "SELECT COUNT(DISTINCT page_id) AS n FROM wiki_pages WHERE refresh_reason = 'navigation'",
+      )
+      .get()!.n;
+    expect(navigation).toBeLessThanOrEqual(2);
+    expect(model.calls.length).toBe(total + 1 + navigation);
     expect(generation.usage!.pagesReused + generation.usage!.pagesWritten).toBe(total);
     expect(first.id).not.toBe(generation.id);
   });

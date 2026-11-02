@@ -903,9 +903,10 @@ export class LookyService {
   async wikiGenerate(
     client: ClientConfig,
     scope: { readonly repositoryId: string; readonly sha: string },
+    options: { readonly rebuild?: boolean } = {},
   ): Promise<WikiStartResult> {
     this.#allowed(client, scope.repositoryId);
-    const started = await this.wiki.start(scope);
+    const started = await this.wiki.start(scope, options.rebuild ? { rebuild: true } : {});
     if (started.state === "unsupported_revision") {
       throw new OperationError("invalid", started.message);
     }
@@ -919,10 +920,24 @@ export class LookyService {
     if (generation.state !== "failed" && generation.state !== "cancelled") {
       throw new OperationError("invalid", `Wiki generation ${generationId} is ${generation.state}`);
     }
-    return this.wikiGenerate(client, {
-      repositoryId: generation.repositoryId,
-      sha: generation.sha,
-    });
+    // A retried rebuild rebuilds again rather than settling for the wiki it was meant to replace.
+    return this.wikiGenerate(
+      client,
+      { repositoryId: generation.repositoryId, sha: generation.sha },
+      generation.refresh?.mode === "rebuild" ? { rebuild: true } : {},
+    );
+  }
+
+  /**
+   * Write every page of a commit's wiki again, for example after a prompt or
+   * model change was rolled back. The published wiki keeps serving until the
+   * rebuild publishes and replaces it.
+   */
+  wikiRebuild(
+    client: ClientConfig,
+    scope: { readonly repositoryId: string; readonly sha: string },
+  ): Promise<WikiStartResult> {
+    return this.wikiGenerate(client, scope, { rebuild: true });
   }
 
   /** A generation of a repository the client may use; others are reported as missing. */
