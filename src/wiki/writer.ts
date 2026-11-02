@@ -147,6 +147,8 @@ export async function writeWikiPage(
     });
     try {
       return render(reply.text, bundle, input, {
+        // Only evidence the model was shown can support its claims.
+        included: fitted.packed.included,
         omitted: fitted.packed.omitted.length,
         rejected,
         maxChars,
@@ -434,6 +436,7 @@ function render(
   bundle: EvidenceBundle,
   input: WikiPageInput,
   context: {
+    readonly included: readonly Evidence[];
     readonly omitted: number;
     readonly rejected: number;
     readonly maxChars: number;
@@ -443,7 +446,7 @@ function render(
   const draft = parseWikiReply(reply);
   const allowed = new Set(input.neighbours.map((n) => n.slug));
   const titles = new Map(input.neighbours.map((n) => [n.slug, n.title]));
-  const evidence = bundle.evidence;
+  const evidence = context.included;
   const docsIds = new Set(evidence.filter((item) => item.kind === "docs").map((item) => item.id));
   const run = (raw: string) => check(raw, evidence, allowed, titles, context.sourceLink);
 
@@ -460,7 +463,9 @@ function render(
   const summary = run(draft.summary);
   tally(summary);
   const parts: string[] = [];
-  if (summary.text.length > 0 && hasExplanatoryProse(summary.text)) {
+  // The summary makes claims too: it is kept only with a verified citation.
+  const summaryKept = summary.citedIds.size > 0 && hasExplanatoryProse(summary.text);
+  if (summaryKept) {
     parts.push(summary.text);
     refs.push(...summary.evidence);
   }
@@ -476,7 +481,12 @@ function render(
       dropped += 1;
       continue;
     }
-    const heading = run(section.heading).text.replace(/\[[^\]]*\]\(wiki:[^)]*\)/g, "") || "Notes";
+    // Headings carry no citations or links; the section body holds the evidence.
+    const heading =
+      run(section.heading)
+        .text.replace(CITATION_GROUP, "")
+        .replace(/\[[^\]]*\]\(wiki:[^)]*\)/g, "")
+        .trim() || "Notes";
     const label =
       section.basis === "inferred"
         ? "*Inferred from the cited code; the source does not state this directly.*\n\n"
@@ -522,7 +532,13 @@ function render(
   for (const caveat of draft.caveats) {
     const checked = run(caveat);
     tally(checked);
-    if (checked.text.length > 0) caveats.push(checked.text);
+    if (checked.text.length > 0) {
+      caveats.push(checked.text);
+      refs.push(...checked.evidence);
+    }
+  }
+  if (draft.summary.trim().length > 0 && !summaryKept) {
+    caveats.push("The drafted summary was left out because it cited no inspected evidence.");
   }
   if (invalid > 0) {
     caveats.push(

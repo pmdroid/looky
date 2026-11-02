@@ -346,6 +346,117 @@ describe("wiki generation", () => {
     expect(page.body!.provenance.rejectedReplies).toBe(1);
   });
 
+  test("a summary without a verified citation is left out of the published page", async () => {
+    let flip = 0;
+    const responder: WikiResponder = (call) => ({
+      ...groundedPage(call),
+      // Alternate an uncited summary with one that cites only nonexistent evidence.
+      summary:
+        flip++ % 2 === 0
+          ? "This module guarantees exactly-once delivery across restarts."
+          : "This module guarantees exactly-once delivery across restarts [E99].",
+    });
+    const h = harness(wikiModel(responder));
+    const generation = await generate(h);
+    expect(generation.state).toBe("ready");
+    for (const content of contents(h, generation.id)) {
+      if (content.page.state !== "ready") continue;
+      expect(content.body!.text).not.toContain("exactly-once");
+      expect(content.body!.text).toContain(
+        "The drafted summary was left out because it cited no inspected evidence.",
+      );
+    }
+  });
+
+  test("citations must point at evidence the model was shown, not evidence cut by the budget", async () => {
+    let omittedSeen = 0;
+    const responder: WikiResponder = (call) => {
+      const omitted = Number(
+        /(\d+) further inspected ranges did not fit/.exec(call.request.prompt)?.[1] ?? 0,
+      );
+      const shown = new Set(call.evidence.map((item) => item.id));
+      const total = call.evidence.length + omitted;
+      const hidden = Array.from({ length: total }, (_, i) => `E${i + 1}`).find(
+        (id) => !shown.has(id),
+      );
+      const page = groundedPage(call);
+      if (!hidden) return page;
+      omittedSeen += 1;
+      return {
+        ...page,
+        sections: [
+          ...(page.sections as object[]),
+          {
+            heading: "Hidden claim",
+            basis: "observed",
+            body: `The hidden range proves a claim [${hidden}].`,
+          },
+        ],
+      };
+    };
+    const model = wikiModel(responder);
+    const h = harness(model, {
+      settings: { page: { ...DEFAULT_WIKI_GENERATION_SETTINGS.page, maxInputTokens: 1_600 } },
+    });
+    const generation = await generate(h);
+    expect(omittedSeen).toBeGreaterThan(0);
+    for (const content of contents(h, generation.id)) {
+      if (!content.body) continue;
+      expect(content.body.text).not.toContain("Hidden claim");
+      expect(content.body.text).not.toContain("hidden range proves");
+    }
+    // Every stored citation lies in a range a prompt actually showed.
+    const shown = model.calls.flatMap((call) => call.evidence);
+    for (const content of contents(h, generation.id)) {
+      for (const citation of content.citations) {
+        expect(
+          shown.some(
+            (item) =>
+              item.path === citation.path &&
+              item.startLine <= citation.startLine &&
+              citation.endLine <= item.endLine,
+          ),
+        ).toBe(true);
+      }
+    }
+  });
+
+  test("citations kept in caveats are persisted and headings carry no citations", async () => {
+    const responder: WikiResponder = (call) => {
+      const page = groundedPage(call);
+      const middle = call.evidence[1] ?? call.evidence[0]!;
+      return {
+        ...page,
+        sections: (page.sections as { heading: string }[]).map((section, index) =>
+          index === 0 ? { ...section, heading: `Responsibilities [${middle.id}]` } : section,
+        ),
+        caveats: [`Error handling here is only partly visible [${middle.id}].`],
+      };
+    };
+    const h = harness(wikiModel(responder));
+    const generation = await generate(h);
+    expect(generation.state).toBe("ready");
+    let checked = 0;
+    for (const content of contents(h, generation.id)) {
+      if (!content.body) continue;
+      expect(content.body.text).toMatch(/## Responsibilities\n/);
+      const caveat =
+        /Error handling here is only partly visible \(`([^`]+):(\d+)(?:-(\d+))?`\)/.exec(
+          content.body.text,
+        );
+      expect(caveat).not.toBeNull();
+      const [, path, start, end] = caveat!;
+      expect(
+        content.citations.some(
+          (c) =>
+            c.path === path && c.startLine === Number(start) && c.endLine === Number(end ?? start),
+        ),
+      ).toBe(true);
+      checked += 1;
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
   // -------------------------------------------------------------------------
   // Prompt injection
 
