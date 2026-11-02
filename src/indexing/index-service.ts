@@ -6,6 +6,14 @@ import type { IndexCoverage, IndexProgress } from "../contract/response";
 import type { WorkerRequest, WorkerResponse } from "./build-worker";
 import { commitExists, repositoryAccessible } from "./git-snapshot";
 import { runIndexBuild } from "./ingest";
+import type { WikiPlan, WikiPlanLimits } from "../wiki/model";
+import { planWiki } from "../wiki/planner";
+import {
+  collectWikiGarbage,
+  failInterruptedWikiGenerations,
+  priorWikiPages,
+  wikiHistory,
+} from "../wiki/store";
 import { DEFAULT_INDEX_LIMITS, indexKey, type IndexLimits, validateLimits } from "./policy";
 import {
   acquireLease,
@@ -141,6 +149,7 @@ export class IndexService implements IndexCatalog {
     }
     acquireBuildOwnership(this.db, this.ownerToken);
     failInterruptedBuilds(this.db);
+    failInterruptedWikiGenerations(this.db);
     this.collectGarbage();
   }
 
@@ -491,6 +500,23 @@ export class IndexService implements IndexCatalog {
     });
   }
 
+  /**
+   * Plan the wiki of exactly this repository and commit from its ready,
+   * intact index generation under the current index key. Starts nothing and
+   * calls no model. Page identities follow the repository's last published
+   * wiki. Returns undefined when no ready index exists for the SHA.
+   */
+  planWiki(scope: Scope, limits: WikiPlanLimits): WikiPlan | undefined {
+    this.directoryOf(scope.repositoryId);
+    const ready = findReadyBuild(this.db, this.keyed(scope));
+    if (!ready || !this.intact(ready)) return undefined;
+    return planWiki(this.db, ready.id, {
+      limits,
+      prior: priorWikiPages(this.db, scope.repositoryId),
+      history: wikiHistory(this.db, scope.repositoryId),
+    });
+  }
+
   private authorizeRead(request: {
     readonly repositoryId: string;
     readonly generationId: string;
@@ -524,7 +550,9 @@ export class IndexService implements IndexCatalog {
    * staged rows of failed builds and unreferenced chunk content. Skipped while
    * a build is queued or running; it runs again when builds go idle.
    */
-  collectGarbage(): GarbageReport {
+  collectGarbage(): GarbageReport & {
+    readonly wiki: { readonly retired: number; readonly deleted: number };
+  } {
     const report = collectGarbage(this.db, {
       indexKey: this.indexKey,
       retainReadyPerRepository: this.retention.retainReadyPerRepository,
@@ -533,7 +561,13 @@ export class IndexService implements IndexCatalog {
     for (const buildId of this.verified) {
       if (!getBuild(this.db, buildId)) this.verified.delete(buildId);
     }
-    return report;
+    // Wiki generations reference commits, not index rows, so they are bounded
+    // separately and even while index builds run.
+    const wiki = collectWikiGarbage(this.db, {
+      retainReadyPerRepository: this.retention.retainReadyPerRepository,
+      retainFailedPerRepository: this.retention.retainFailedPerRepository,
+    });
+    return { ...report, wiki };
   }
 
   private collectWhenIdle(): void {

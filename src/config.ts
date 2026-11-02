@@ -13,6 +13,11 @@ import { DEFAULT_MAX_QUESTION_CHARS, MODES } from "./contract/input";
 import { DEFAULT_INDEX_RETENTION, type IndexRetention } from "./indexing/index-service";
 import { DEFAULT_INDEX_LIMITS, type IndexLimits, validateLimits } from "./indexing/policy";
 import {
+  DEFAULT_WIKI_PLAN_LIMITS,
+  validateWikiPlanLimits,
+  type WikiPlanLimits,
+} from "./wiki/model";
+import {
   DEFAULT_RESEARCH_LIMITS,
   RESEARCH_LIMIT_FIELDS,
   type ResearchLimitField,
@@ -123,6 +128,34 @@ export function loadIndexConfig(
         readPositiveInt(env, "LOOKY_INDEX_LEASE_TTL_MS") ?? DEFAULT_INDEX_RETENTION.leaseTtlMs,
     },
   };
+}
+
+/** Environment variable for one wiki plan limit, such as `LOOKY_WIKI_MAX_PAGES`. */
+export function wikiLimitEnvName(field: keyof WikiPlanLimits): string {
+  return `LOOKY_WIKI_${field.replace(/[A-Z]/g, (letter) => `_${letter}`).toUpperCase()}`;
+}
+
+/**
+ * Load wiki plan limits from `LOOKY_WIKI_*` environment variables over
+ * documented defaults. `LOOKY_WIKI_MAX_MODULES` and `LOOKY_WIKI_MAX_WORKFLOWS`
+ * accept 0 to plan no pages of that kind.
+ */
+export function loadWikiConfig(env: Record<string, string | undefined> = process.env): {
+  readonly limits: WikiPlanLimits;
+} {
+  const limits: Record<string, number> = { ...DEFAULT_WIKI_PLAN_LIMITS };
+  for (const field of Object.keys(DEFAULT_WIKI_PLAN_LIMITS) as (keyof WikiPlanLimits)[]) {
+    const name = wikiLimitEnvName(field);
+    if ((field === "maxModules" || field === "maxWorkflows") && env[name]?.trim() === "0") {
+      limits[field] = 0;
+      continue;
+    }
+    const value = readPositiveInt(env, name);
+    if (value !== undefined) limits[field] = value;
+  }
+  const result = limits as unknown as WikiPlanLimits;
+  validateWikiPlanLimits(result);
+  return { limits: result };
 }
 
 /** Environment variable for one research limit, such as `LOOKY_DEEP_RESEARCH_MAX_PASSES`. */
