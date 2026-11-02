@@ -16,6 +16,7 @@ import {
   wikiGeneratorKey,
 } from "../src/wiki/model";
 import { planWiki, slugify } from "../src/wiki/planner";
+import { parseSearchQuery, searchWiki } from "../src/wiki/search";
 import {
   collectWikiGarbage,
   createWikiGeneration,
@@ -191,6 +192,56 @@ describe("generated wiki model", () => {
     ]);
     migrate(upgraded);
     expect(schemaVersion(upgraded)).toBe(migrations.length);
+    upgraded.close();
+  });
+
+  test("pages published before the search and refresh migrations stay searchable", () => {
+    const file = join(root, "published.sqlite");
+    const old = new Database(file, { create: true, strict: true });
+    old.exec("PRAGMA foreign_keys = ON");
+    migrate(old, migrations.slice(0, 6));
+    const insertGeneration = old.query(
+      `INSERT INTO wiki_generations (id, repository_id, sha, index_key, index_build_id,
+         generator_key, generator_config, plan_report, page_count, state, created_at, updated_at)
+       VALUES (?, 'pilot', ?, 'k', 'b', 'g', '{}', '{}', 1, ?, 'now', 'now')`,
+    );
+    const insertPage = old.query(
+      `INSERT INTO wiki_pages (generation_id, page_id, concept_key, slug, kind, title, description,
+         depth, ordinal, state, updated_at)
+       VALUES (?, 'pg_root', 'overview', 'overview', 'overview', 'Overview', '', 0, 0, 'ready', 'now')`,
+    );
+    const insertBody = old.query(
+      `INSERT INTO wiki_page_bodies (generation_id, page_id, body, body_hash, generated_at, provenance)
+       VALUES (?, 'pg_root', ?, 'h', 'now', '{}')`,
+    );
+    insertGeneration.run("wiki_published", sha, "ready");
+    insertPage.run("wiki_published");
+    insertBody.run("wiki_published", "Recovery replays checkpoints after a crash.");
+    // A failed generation's staged page must not become searchable.
+    insertGeneration.run("wiki_failed", sha, "failed");
+    insertPage.run("wiki_failed");
+    insertBody.run("wiki_failed", "Recovery draft that never published.");
+    old.close();
+
+    const upgraded = new Database(file, { strict: true });
+    upgraded.exec("PRAGMA foreign_keys = ON");
+    migrate(upgraded);
+    const query = parseSearchQuery("checkpoints");
+    if (!query.ok) throw new Error(query.code);
+    const found = searchWiki(upgraded, {
+      generationId: "wiki_published",
+      expression: query.expression,
+      limit: 5,
+      offset: 0,
+    });
+    expect(found.hits.map((hit) => hit.pageId)).toEqual(["pg_root"]);
+    // Only the published generation was indexed; the failed one stays out of search.
+    expect(
+      upgraded
+        .query<{ generation_id: string }, []>("SELECT DISTINCT generation_id FROM wiki_search_fts")
+        .all()
+        .map((row) => row.generation_id),
+    ).toEqual(["wiki_published"]);
     upgraded.close();
   });
 
