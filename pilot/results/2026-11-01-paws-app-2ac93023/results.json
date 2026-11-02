@@ -1,13 +1,13 @@
 {
   "environment": {
-    "startedAt": "2026-11-01T23:59:56.556Z",
+    "startedAt": "2026-11-02T00:11:03.614Z",
     "bun": "1.4.4",
     "looky": {
-      "sha": "8584994e288852c809107179de70f86536512b86",
+      "sha": "bc88d804e3207beb22f9673835093542d1665130",
       "dirty": false
     },
     "source": "https://github.com/pmdroid/paws-app.git",
-    "work": "/tmp/pilot/run4",
+    "work": "/tmp/pilot/run5",
     "providerConfigured": false,
     "configuredLimits": {
       "index": {
@@ -68,10 +68,10 @@
     "name": "looky",
     "version": "0.1.0",
     "protocolVersions": ["1"],
-    "startedAt": "2026-11-01T23:59:58.784Z",
+    "startedAt": "2026-11-02T00:11:07.329Z",
     "host": "agentbox",
-    "pid": 3907506,
-    "dataDir": "/tmp/pilot/run4/data",
+    "pid": 4172016,
+    "dataDir": "/tmp/pilot/run5/data",
     "indexKey": "p1-4bbce1d89061240c",
     "repositories": ["paws-app"],
     "capacity": {
@@ -90,9 +90,9 @@
     }
   },
   "cold": {
-    "buildId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
-    "waitMs": 2419,
-    "buildMs": 2406,
+    "buildId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
+    "waitMs": 2345,
+    "buildMs": 2330,
     "progress": [
       "building queued ?/?",
       "building indexing 0/1793",
@@ -105,7 +105,7 @@
       "ready"
     ],
     "build": {
-      "id": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+      "id": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
       "repositoryId": "paws-app",
       "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
       "policyVersion": 1,
@@ -134,10 +134,10 @@
       "errorCode": null,
       "errorMessage": null,
       "retryable": null,
-      "createdAt": "2026-11-01T23:59:58.796Z",
-      "startedAt": "2026-11-01T23:59:58.807Z",
-      "updatedAt": "2026-11-02T00:00:01.213Z",
-      "finishedAt": "2026-11-02T00:00:01.213Z",
+      "createdAt": "2026-11-02T00:11:07.340Z",
+      "startedAt": "2026-11-02T00:11:07.350Z",
+      "updatedAt": "2026-11-02T00:11:09.680Z",
+      "finishedAt": "2026-11-02T00:11:09.680Z",
       "retiredAt": null,
       "lastUsedAt": null,
       "progress": {
@@ -149,7 +149,7 @@
     "databaseBytes": 29954048,
     "coverage": {
       "build": {
-        "id": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+        "id": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
         "repositoryId": "paws-app",
         "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
         "policyVersion": 1,
@@ -178,10 +178,10 @@
         "errorCode": null,
         "errorMessage": null,
         "retryable": null,
-        "createdAt": "2026-11-01T23:59:58.796Z",
-        "startedAt": "2026-11-01T23:59:58.807Z",
-        "updatedAt": "2026-11-02T00:00:01.213Z",
-        "finishedAt": "2026-11-02T00:00:01.213Z",
+        "createdAt": "2026-11-02T00:11:07.340Z",
+        "startedAt": "2026-11-02T00:11:07.350Z",
+        "updatedAt": "2026-11-02T00:11:09.680Z",
+        "finishedAt": "2026-11-02T00:11:09.680Z",
         "retiredAt": null,
         "lastUsedAt": null
       },
@@ -288,12 +288,12 @@
       "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
       "state": "ready",
       "ready": {
-        "buildId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+        "buildId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
         "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
       }
     },
     "fast": {
-      "ms": 69,
+      "ms": 71,
       "response": {
         "status": "unavailable",
         "mode": {
@@ -306,7 +306,7 @@
       }
     },
     "deep": {
-      "ms": 153,
+      "ms": 157,
       "response": {
         "status": "unavailable",
         "mode": {
@@ -324,7 +324,7 @@
       "id": "q01",
       "mode": "fast",
       "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
-      "generationId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
       "coverage": {
         "rangesHit": 2,
         "filesHit": 2,
@@ -344,7 +344,7 @@
         "passes": 2,
         "reads": 5,
         "bytes": 13768,
-        "elapsedMs": 70
+        "elapsedMs": 77
       },
       "stop": {
         "reason": "complete"
@@ -355,14 +355,14 @@
       "conflicts": 0,
       "suggestDeep": true,
       "withinLimits": true,
-      "coldMs": 70,
-      "warmMs": 72
+      "coldMs": 77,
+      "warmMs": 65
     },
     {
       "id": "q01",
       "mode": "deep",
       "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
-      "generationId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
       "coverage": {
         "rangesHit": 2,
         "filesHit": 2,
@@ -394,7 +394,7 @@
         "passes": 8,
         "reads": 17,
         "bytes": 36531,
-        "elapsedMs": 184
+        "elapsedMs": 171
       },
       "stop": {
         "reason": "limit",
@@ -404,14 +404,14 @@
       "conflicts": 0,
       "suggestDeep": false,
       "withinLimits": true,
-      "coldMs": 184,
-      "warmMs": 192
+      "coldMs": 171,
+      "warmMs": 166
     },
     {
       "id": "q02",
       "mode": "fast",
       "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
-      "generationId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
       "coverage": {
         "rangesHit": 1,
         "filesHit": 1,
@@ -436,7 +436,7 @@
         "passes": 2,
         "reads": 6,
         "bytes": 12234,
-        "elapsedMs": 70
+        "elapsedMs": 65
       },
       "stop": {
         "reason": "complete"
@@ -445,14 +445,14 @@
       "conflicts": 0,
       "suggestDeep": false,
       "withinLimits": true,
-      "coldMs": 70,
-      "warmMs": 73
+      "coldMs": 65,
+      "warmMs": 62
     },
     {
       "id": "q02",
       "mode": "deep",
       "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
-      "generationId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
       "coverage": {
         "rangesHit": 3,
         "filesHit": 3,
@@ -485,7 +485,7 @@
         "passes": 8,
         "reads": 18,
         "bytes": 48950,
-        "elapsedMs": 189
+        "elapsedMs": 180
       },
       "stop": {
         "reason": "limit",
@@ -495,14 +495,14 @@
       "conflicts": 0,
       "suggestDeep": false,
       "withinLimits": true,
-      "coldMs": 189,
-      "warmMs": 191
+      "coldMs": 180,
+      "warmMs": 187
     },
     {
       "id": "q03",
       "mode": "fast",
       "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
-      "generationId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
       "coverage": {
         "rangesHit": 1,
         "filesHit": 2,
@@ -521,7 +521,7 @@
         "passes": 2,
         "reads": 4,
         "bytes": 6609,
-        "elapsedMs": 74
+        "elapsedMs": 72
       },
       "stop": {
         "reason": "complete"
@@ -530,14 +530,14 @@
       "conflicts": 0,
       "suggestDeep": true,
       "withinLimits": true,
-      "coldMs": 74,
-      "warmMs": 79
+      "coldMs": 72,
+      "warmMs": 73
     },
     {
       "id": "q03",
       "mode": "deep",
       "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
-      "generationId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
       "coverage": {
         "rangesHit": 2,
         "filesHit": 2,
@@ -567,7 +567,7 @@
         "passes": 8,
         "reads": 15,
         "bytes": 35913,
-        "elapsedMs": 184
+        "elapsedMs": 188
       },
       "stop": {
         "reason": "limit",
@@ -580,14 +580,14 @@
       "conflicts": 0,
       "suggestDeep": false,
       "withinLimits": true,
-      "coldMs": 184,
-      "warmMs": 181
+      "coldMs": 188,
+      "warmMs": 180
     },
     {
       "id": "q04",
       "mode": "fast",
       "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
-      "generationId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
       "coverage": {
         "rangesHit": 1,
         "filesHit": 1,
@@ -612,7 +612,7 @@
         "passes": 2,
         "reads": 6,
         "bytes": 11767,
-        "elapsedMs": 80
+        "elapsedMs": 75
       },
       "stop": {
         "reason": "complete"
@@ -621,14 +621,14 @@
       "conflicts": 0,
       "suggestDeep": true,
       "withinLimits": true,
-      "coldMs": 80,
-      "warmMs": 84
+      "coldMs": 75,
+      "warmMs": 72
     },
     {
       "id": "q04",
       "mode": "deep",
       "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
-      "generationId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
       "coverage": {
         "rangesHit": 1,
         "filesHit": 2,
@@ -665,7 +665,7 @@
         "passes": 8,
         "reads": 18,
         "bytes": 34332,
-        "elapsedMs": 197
+        "elapsedMs": 196
       },
       "stop": {
         "reason": "limit",
@@ -675,14 +675,14 @@
       "conflicts": 0,
       "suggestDeep": false,
       "withinLimits": true,
-      "coldMs": 197,
-      "warmMs": 202
+      "coldMs": 196,
+      "warmMs": 197
     },
     {
       "id": "q05",
       "mode": "fast",
       "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
-      "generationId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
       "coverage": {
         "rangesHit": 1,
         "filesHit": 1,
@@ -706,7 +706,7 @@
         "passes": 2,
         "reads": 5,
         "bytes": 10783,
-        "elapsedMs": 61
+        "elapsedMs": 60
       },
       "stop": {
         "reason": "complete"
@@ -715,14 +715,14 @@
       "conflicts": 0,
       "suggestDeep": true,
       "withinLimits": true,
-      "coldMs": 61,
-      "warmMs": 55
+      "coldMs": 60,
+      "warmMs": 63
     },
     {
       "id": "q05",
       "mode": "deep",
       "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
-      "generationId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
       "coverage": {
         "rangesHit": 2,
         "filesHit": 3,
@@ -753,7 +753,7 @@
         "passes": 8,
         "reads": 16,
         "bytes": 32720,
-        "elapsedMs": 184
+        "elapsedMs": 170
       },
       "stop": {
         "reason": "limit",
@@ -763,14 +763,14 @@
       "conflicts": 0,
       "suggestDeep": false,
       "withinLimits": true,
-      "coldMs": 184,
-      "warmMs": 176
+      "coldMs": 170,
+      "warmMs": 180
     },
     {
       "id": "q06",
       "mode": "fast",
       "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
-      "generationId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
       "coverage": {
         "rangesHit": 0,
         "filesHit": 0,
@@ -795,7 +795,7 @@
         "passes": 2,
         "reads": 6,
         "bytes": 24973,
-        "elapsedMs": 119
+        "elapsedMs": 109
       },
       "stop": {
         "reason": "complete"
@@ -807,14 +807,14 @@
       "conflicts": 0,
       "suggestDeep": false,
       "withinLimits": true,
-      "coldMs": 119,
-      "warmMs": 118
+      "coldMs": 109,
+      "warmMs": 114
     },
     {
       "id": "q06",
       "mode": "deep",
       "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
-      "generationId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
       "coverage": {
         "rangesHit": 1,
         "filesHit": 3,
@@ -845,7 +845,7 @@
         "passes": 8,
         "reads": 16,
         "bytes": 54496,
-        "elapsedMs": 162
+        "elapsedMs": 159
       },
       "stop": {
         "reason": "limit",
@@ -855,14 +855,14 @@
       "conflicts": 0,
       "suggestDeep": false,
       "withinLimits": true,
-      "coldMs": 162,
-      "warmMs": 175
+      "coldMs": 159,
+      "warmMs": 169
     },
     {
       "id": "q07",
       "mode": "fast",
       "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
-      "generationId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
       "coverage": {
         "rangesHit": 2,
         "filesHit": 2,
@@ -883,7 +883,7 @@
         "passes": 2,
         "reads": 6,
         "bytes": 13276,
-        "elapsedMs": 71
+        "elapsedMs": 78
       },
       "stop": {
         "reason": "complete"
@@ -892,14 +892,14 @@
       "conflicts": 0,
       "suggestDeep": true,
       "withinLimits": true,
-      "coldMs": 71,
-      "warmMs": 78
+      "coldMs": 78,
+      "warmMs": 81
     },
     {
       "id": "q07",
       "mode": "deep",
       "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
-      "generationId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
       "coverage": {
         "rangesHit": 2,
         "filesHit": 2,
@@ -943,13 +943,13 @@
       "suggestDeep": false,
       "withinLimits": true,
       "coldMs": 178,
-      "warmMs": 169
+      "warmMs": 165
     },
     {
       "id": "q08",
       "mode": "fast",
       "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
-      "generationId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
       "coverage": {
         "rangesHit": 1,
         "filesHit": 4,
@@ -972,7 +972,7 @@
         "passes": 2,
         "reads": 4,
         "bytes": 15981,
-        "elapsedMs": 78
+        "elapsedMs": 88
       },
       "stop": {
         "reason": "complete"
@@ -983,14 +983,14 @@
       "conflicts": 0,
       "suggestDeep": true,
       "withinLimits": true,
-      "coldMs": 78,
-      "warmMs": 91
+      "coldMs": 88,
+      "warmMs": 80
     },
     {
       "id": "q08",
       "mode": "deep",
       "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
-      "generationId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
       "coverage": {
         "rangesHit": 1,
         "filesHit": 4,
@@ -1025,7 +1025,7 @@
         "passes": 8,
         "reads": 16,
         "bytes": 44323,
-        "elapsedMs": 223
+        "elapsedMs": 211
       },
       "stop": {
         "reason": "limit",
@@ -1035,14 +1035,14 @@
       "conflicts": 0,
       "suggestDeep": false,
       "withinLimits": true,
-      "coldMs": 223,
-      "warmMs": 210
+      "coldMs": 211,
+      "warmMs": 215
     },
     {
       "id": "q09",
       "mode": "fast",
       "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
-      "generationId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
       "coverage": {
         "rangesHit": 1,
         "filesHit": 2,
@@ -1062,7 +1062,7 @@
         "passes": 2,
         "reads": 5,
         "bytes": 20117,
-        "elapsedMs": 73
+        "elapsedMs": 70
       },
       "stop": {
         "reason": "complete"
@@ -1073,14 +1073,14 @@
       "conflicts": 0,
       "suggestDeep": true,
       "withinLimits": true,
-      "coldMs": 73,
-      "warmMs": 72
+      "coldMs": 70,
+      "warmMs": 71
     },
     {
       "id": "q09",
       "mode": "deep",
       "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
-      "generationId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
       "coverage": {
         "rangesHit": 1,
         "filesHit": 2,
@@ -1111,7 +1111,7 @@
         "passes": 8,
         "reads": 16,
         "bytes": 45746,
-        "elapsedMs": 195
+        "elapsedMs": 193
       },
       "stop": {
         "reason": "limit",
@@ -1121,14 +1121,14 @@
       "conflicts": 0,
       "suggestDeep": false,
       "withinLimits": true,
-      "coldMs": 195,
-      "warmMs": 180
+      "coldMs": 193,
+      "warmMs": 191
     },
     {
       "id": "q10",
       "mode": "fast",
       "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
-      "generationId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
       "coverage": {
         "rangesHit": 1,
         "filesHit": 1,
@@ -1149,7 +1149,7 @@
         "passes": 2,
         "reads": 6,
         "bytes": 10022,
-        "elapsedMs": 74
+        "elapsedMs": 76
       },
       "stop": {
         "reason": "complete"
@@ -1158,14 +1158,14 @@
       "conflicts": 0,
       "suggestDeep": true,
       "withinLimits": true,
-      "coldMs": 74,
-      "warmMs": 78
+      "coldMs": 76,
+      "warmMs": 80
     },
     {
       "id": "q10",
       "mode": "deep",
       "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
-      "generationId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+      "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
       "coverage": {
         "rangesHit": 1,
         "filesHit": 1,
@@ -1196,7 +1196,7 @@
         "passes": 8,
         "reads": 16,
         "bytes": 38125,
-        "elapsedMs": 170
+        "elapsedMs": 194
       },
       "stop": {
         "reason": "limit",
@@ -1206,21 +1206,21 @@
       "conflicts": 0,
       "suggestDeep": false,
       "withinLimits": true,
-      "coldMs": 170,
-      "warmMs": 161
+      "coldMs": 194,
+      "warmMs": 181
     }
   ],
   "warm": {
     "ask": {
       "fast": {
         "status": "unavailable",
-        "ms": [63, 57, 56],
-        "medianMs": 57
+        "ms": [58, 56, 56],
+        "medianMs": 56
       },
       "deep": {
         "status": "unavailable",
-        "ms": [172, 158, 167],
-        "medianMs": 167
+        "ms": [155, 149, 170],
+        "medianMs": 155
       }
     },
     "indexStatus": {
@@ -1228,7 +1228,7 @@
       "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
       "state": "ready",
       "ready": {
-        "buildId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+        "buildId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
         "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
       }
     }
@@ -1236,15 +1236,15 @@
   "restart": {
     "stoppedService": {
       "exitCode": 0,
-      "cpuMs": 4048,
-      "maxRssMb": 103
+      "cpuMs": 3901,
+      "maxRssMb": 102
     },
     "indexStatus": {
       "repositoryId": "paws-app",
       "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
       "state": "ready",
       "ready": {
-        "buildId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+        "buildId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
         "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
       }
     },
@@ -1253,19 +1253,19 @@
       "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
       "state": "ready",
       "ready": {
-        "buildId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+        "buildId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
         "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
       }
     },
     "firstAsk": {
-      "ms": 73,
+      "ms": 84,
       "status": "unavailable"
     },
     "builds": 1
   },
   "refresh": {
     "base": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
-    "next": "4418030fea3ca672a8cb6454f50353fbe010a18f",
+    "next": "163ae9601785516a3be6d53033602796094da977",
     "nameStatus": [
       "A\tdocs/closeout-round-summary.md",
       "M\tsrc/closeout/index.ts",
@@ -1275,7 +1275,7 @@
       "D\ttest/fixtures/runner-answer-uid.ts"
     ],
     "duringBuild": {
-      "ms": 127,
+      "ms": 136,
       "response": {
         "status": "unavailable",
         "mode": {
@@ -1290,9 +1290,9 @@
     "waitMs": 0,
     "progress": ["ready"],
     "build": {
-      "id": "build_e9507cf4-f8ce-4714-b82c-f3c0815b97ba",
+      "id": "build_1c39b4f2-6481-402f-8748-6294adebf57d",
       "repositoryId": "paws-app",
-      "sha": "4418030fea3ca672a8cb6454f50353fbe010a18f",
+      "sha": "163ae9601785516a3be6d53033602796094da977",
       "policyVersion": 1,
       "indexKey": "p1-4bbce1d89061240c",
       "requestedMode": "auto",
@@ -1308,7 +1308,7 @@
       "refresh": {
         "mode": "incremental",
         "reason": null,
-        "baseBuildId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+        "baseBuildId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
         "baseSha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
         "added": 2,
         "modified": 3,
@@ -1319,25 +1319,25 @@
       "errorCode": null,
       "errorMessage": null,
       "retryable": null,
-      "createdAt": "2026-11-02T00:00:10.285Z",
-      "startedAt": "2026-11-02T00:00:10.296Z",
-      "updatedAt": "2026-11-02T00:00:10.347Z",
-      "finishedAt": "2026-11-02T00:00:10.347Z",
+      "createdAt": "2026-11-02T00:11:18.691Z",
+      "startedAt": "2026-11-02T00:11:18.704Z",
+      "updatedAt": "2026-11-02T00:11:18.761Z",
+      "finishedAt": "2026-11-02T00:11:18.761Z",
       "retiredAt": null,
-      "lastUsedAt": "2026-11-02T00:00:10.351Z",
+      "lastUsedAt": "2026-11-02T00:11:18.769Z",
       "progress": {
         "phase": "ready",
         "filesDone": 1793,
         "filesTotal": 1793
       }
     },
-    "buildMs": 51,
+    "buildMs": 57,
     "baseStill": {
       "repositoryId": "paws-app",
       "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
       "state": "ready",
       "ready": {
-        "buildId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+        "buildId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
         "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff"
       }
     },
@@ -1349,8 +1349,8 @@
       {
         "id": "q10-after",
         "mode": "fast",
-        "sha": "4418030fea3ca672a8cb6454f50353fbe010a18f",
-        "generationId": "build_e9507cf4-f8ce-4714-b82c-f3c0815b97ba",
+        "sha": "163ae9601785516a3be6d53033602796094da977",
+        "generationId": "build_1c39b4f2-6481-402f-8748-6294adebf57d",
         "coverage": {
           "rangesHit": 1,
           "filesHit": 1,
@@ -1381,13 +1381,13 @@
         "suggestDeep": true,
         "withinLimits": true,
         "coldMs": 77,
-        "warmMs": 85
+        "warmMs": 80
       },
       {
         "id": "q10-after",
         "mode": "deep",
-        "sha": "4418030fea3ca672a8cb6454f50353fbe010a18f",
-        "generationId": "build_e9507cf4-f8ce-4714-b82c-f3c0815b97ba",
+        "sha": "163ae9601785516a3be6d53033602796094da977",
+        "generationId": "build_1c39b4f2-6481-402f-8748-6294adebf57d",
         "coverage": {
           "rangesHit": 1,
           "filesHit": 1,
@@ -1418,7 +1418,7 @@
           "passes": 8,
           "reads": 16,
           "bytes": 38125,
-          "elapsedMs": 175
+          "elapsedMs": 169
         },
         "stop": {
           "reason": "limit",
@@ -1428,7 +1428,7 @@
         "conflicts": 0,
         "suggestDeep": false,
         "withinLimits": true,
-        "coldMs": 175,
+        "coldMs": 169,
         "warmMs": 166
       }
     ],
@@ -1437,7 +1437,7 @@
         "id": "q10-after",
         "mode": "fast",
         "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
-        "generationId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+        "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
         "coverage": {
           "rangesHit": 0,
           "filesHit": 0,
@@ -1458,7 +1458,7 @@
           "passes": 2,
           "reads": 6,
           "bytes": 10022,
-          "elapsedMs": 77
+          "elapsedMs": 80
         },
         "stop": {
           "reason": "complete"
@@ -1467,14 +1467,14 @@
         "conflicts": 0,
         "suggestDeep": true,
         "withinLimits": true,
-        "coldMs": 77,
-        "warmMs": 82
+        "coldMs": 80,
+        "warmMs": 75
       },
       {
         "id": "q10-after",
         "mode": "deep",
         "sha": "2ac93023d31bab6f0ef26690a7e6e8e8d2540bff",
-        "generationId": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415",
+        "generationId": "build_515923a5-8a7e-41ad-8087-426254bf1a92",
         "coverage": {
           "rangesHit": 0,
           "filesHit": 0,
@@ -1505,7 +1505,7 @@
           "passes": 8,
           "reads": 16,
           "bytes": 38125,
-          "elapsedMs": 164
+          "elapsedMs": 157
         },
         "stop": {
           "reason": "limit",
@@ -1515,8 +1515,8 @@
         "conflicts": 0,
         "suggestDeep": false,
         "withinLimits": true,
-        "coldMs": 164,
-        "warmMs": 179
+        "coldMs": 157,
+        "warmMs": 153
       }
     ],
     "search": {
@@ -1527,16 +1527,16 @@
     }
   },
   "failure": {
-    "sha": "3830709209efa275777144a0dd66970777f0ea3c",
+    "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
     "limit": {
       "LOOKY_INDEX_MAX_FILES": 100
     },
     "status": {
       "repositoryId": "paws-app",
-      "sha": "3830709209efa275777144a0dd66970777f0ea3c",
+      "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
       "state": "failed",
       "failure": {
-        "buildId": "build_c1132cff-9d1a-428a-9cd7-5b7b626098d6",
+        "buildId": "build_f08253ed-9a30-4c1c-8938-3c6902497cdd",
         "code": "limit_exceeded",
         "message": "The commit has more than 100 tracked entries (maxFiles)",
         "retryable": false
@@ -1552,16 +1552,16 @@
       "limitations": [],
       "stage": "index",
       "code": "index_failed",
-      "message": "Index build build_c1132cff-9d1a-428a-9cd7-5b7b626098d6 failed (limit_exceeded): The commit has more than 100 tracked entries (maxFiles)",
+      "message": "Index build build_f08253ed-9a30-4c1c-8938-3c6902497cdd failed (limit_exceeded): The commit has more than 100 tracked entries (maxFiles)",
       "retryable": false,
-      "buildId": "build_c1132cff-9d1a-428a-9cd7-5b7b626098d6"
+      "buildId": "build_f08253ed-9a30-4c1c-8938-3c6902497cdd"
     },
     "afterRestart": {
       "repositoryId": "paws-app",
-      "sha": "3830709209efa275777144a0dd66970777f0ea3c",
+      "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
       "state": "failed",
       "failure": {
-        "buildId": "build_c1132cff-9d1a-428a-9cd7-5b7b626098d6",
+        "buildId": "build_f08253ed-9a30-4c1c-8938-3c6902497cdd",
         "code": "limit_exceeded",
         "message": "The commit has more than 100 tracked entries (maxFiles)",
         "retryable": false
@@ -1570,10 +1570,10 @@
     "retry": {
       "accepted": {
         "repositoryId": "paws-app",
-        "sha": "3830709209efa275777144a0dd66970777f0ea3c",
+        "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
         "state": "building",
         "active": {
-          "buildId": "build_5d716704-2c4f-4722-97c4-3bc95cc6670e",
+          "buildId": "build_46516112-5d66-44dc-a954-f42b3e476a88",
           "state": "queued",
           "progress": {
             "phase": "queued"
@@ -1591,11 +1591,11 @@
           }
         }
       },
-      "progress": ["building queued ?/?", "building indexing 1794/1794", "ready"],
+      "progress": ["building queued ?/?", "ready"],
       "build": {
-        "id": "build_5d716704-2c4f-4722-97c4-3bc95cc6670e",
+        "id": "build_46516112-5d66-44dc-a954-f42b3e476a88",
         "repositoryId": "paws-app",
-        "sha": "3830709209efa275777144a0dd66970777f0ea3c",
+        "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
         "policyVersion": 1,
         "indexKey": "p1-4bbce1d89061240c",
         "requestedMode": "auto",
@@ -1611,8 +1611,8 @@
         "refresh": {
           "mode": "incremental",
           "reason": null,
-          "baseBuildId": "build_e9507cf4-f8ce-4714-b82c-f3c0815b97ba",
-          "baseSha": "4418030fea3ca672a8cb6454f50353fbe010a18f",
+          "baseBuildId": "build_1c39b4f2-6481-402f-8748-6294adebf57d",
+          "baseSha": "163ae9601785516a3be6d53033602796094da977",
           "added": 1,
           "modified": 0,
           "deleted": 0,
@@ -1622,10 +1622,10 @@
         "errorCode": null,
         "errorMessage": null,
         "retryable": null,
-        "createdAt": "2026-11-02T00:00:12.216Z",
-        "startedAt": "2026-11-02T00:00:12.228Z",
-        "updatedAt": "2026-11-02T00:00:12.268Z",
-        "finishedAt": "2026-11-02T00:00:12.268Z",
+        "createdAt": "2026-11-02T00:11:20.603Z",
+        "startedAt": "2026-11-02T00:11:20.613Z",
+        "updatedAt": "2026-11-02T00:11:20.650Z",
+        "finishedAt": "2026-11-02T00:11:20.650Z",
         "retiredAt": null,
         "lastUsedAt": null,
         "progress": {
@@ -1638,12 +1638,12 @@
     "stoppedServices": [
       {
         "exitCode": 0,
-        "cpuMs": 365,
-        "maxRssMb": 77
+        "cpuMs": 392,
+        "maxRssMb": 76
       },
       {
         "exitCode": 0,
-        "cpuMs": 126,
+        "cpuMs": 121,
         "maxRssMb": 53
       }
     ]
@@ -1651,14 +1651,14 @@
   "interrupted": {
     "rebuildStarted": {
       "repositoryId": "paws-app",
-      "sha": "3830709209efa275777144a0dd66970777f0ea3c",
+      "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
       "state": "ready",
       "ready": {
-        "buildId": "build_5d716704-2c4f-4722-97c4-3bc95cc6670e",
-        "sha": "3830709209efa275777144a0dd66970777f0ea3c"
+        "buildId": "build_46516112-5d66-44dc-a954-f42b3e476a88",
+        "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0"
       },
       "active": {
-        "buildId": "build_c8598745-81de-4a43-98cc-5349d797c549",
+        "buildId": "build_33f60870-f759-425b-a9d2-ed1d7ba38f67",
         "state": "queued",
         "progress": {
           "phase": "queued"
@@ -1678,9 +1678,9 @@
     },
     "killedWhile": "running indexing 256/1794",
     "killedBuild": {
-      "id": "build_c8598745-81de-4a43-98cc-5349d797c549",
+      "id": "build_33f60870-f759-425b-a9d2-ed1d7ba38f67",
       "repositoryId": "paws-app",
-      "sha": "3830709209efa275777144a0dd66970777f0ea3c",
+      "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
       "policyVersion": 1,
       "indexKey": "p1-4bbce1d89061240c",
       "requestedMode": "full",
@@ -1707,10 +1707,10 @@
       "errorCode": "interrupted",
       "errorMessage": "The service stopped before this build finished",
       "retryable": true,
-      "createdAt": "2026-11-02T00:00:12.324Z",
-      "startedAt": "2026-11-02T00:00:12.334Z",
-      "updatedAt": "2026-11-02T00:00:12.417Z",
-      "finishedAt": "2026-11-02T00:00:12.417Z",
+      "createdAt": "2026-11-02T00:11:20.659Z",
+      "startedAt": "2026-11-02T00:11:20.668Z",
+      "updatedAt": "2026-11-02T00:11:20.747Z",
+      "finishedAt": "2026-11-02T00:11:20.747Z",
       "retiredAt": null,
       "lastUsedAt": null,
       "progress": {
@@ -1721,23 +1721,23 @@
     },
     "servedAfterKill": {
       "repositoryId": "paws-app",
-      "sha": "3830709209efa275777144a0dd66970777f0ea3c",
+      "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
       "state": "ready",
       "ready": {
-        "buildId": "build_5d716704-2c4f-4722-97c4-3bc95cc6670e",
-        "sha": "3830709209efa275777144a0dd66970777f0ea3c"
+        "buildId": "build_46516112-5d66-44dc-a954-f42b3e476a88",
+        "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0"
       }
     },
     "retry": {
       "repositoryId": "paws-app",
-      "sha": "3830709209efa275777144a0dd66970777f0ea3c",
+      "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
       "state": "ready",
       "ready": {
-        "buildId": "build_5d716704-2c4f-4722-97c4-3bc95cc6670e",
-        "sha": "3830709209efa275777144a0dd66970777f0ea3c"
+        "buildId": "build_46516112-5d66-44dc-a954-f42b3e476a88",
+        "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0"
       },
       "active": {
-        "buildId": "build_cc8d6ad2-4240-4ee4-9f5b-340a45e5888c",
+        "buildId": "build_a134ddee-c22a-4d75-a3dc-8f179d85ebe4",
         "state": "queued",
         "progress": {
           "phase": "queued"
@@ -1756,9 +1756,9 @@
       }
     },
     "recoveryBuild": {
-      "id": "build_cc8d6ad2-4240-4ee4-9f5b-340a45e5888c",
+      "id": "build_a134ddee-c22a-4d75-a3dc-8f179d85ebe4",
       "repositoryId": "paws-app",
-      "sha": "3830709209efa275777144a0dd66970777f0ea3c",
+      "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
       "policyVersion": 1,
       "indexKey": "p1-4bbce1d89061240c",
       "requestedMode": "full",
@@ -1785,10 +1785,10 @@
       "errorCode": null,
       "errorMessage": null,
       "retryable": null,
-      "createdAt": "2026-11-02T00:00:12.433Z",
-      "startedAt": "2026-11-02T00:00:12.444Z",
-      "updatedAt": "2026-11-02T00:00:12.517Z",
-      "finishedAt": "2026-11-02T00:00:12.517Z",
+      "createdAt": "2026-11-02T00:11:20.758Z",
+      "startedAt": "2026-11-02T00:11:20.769Z",
+      "updatedAt": "2026-11-02T00:11:20.840Z",
+      "finishedAt": "2026-11-02T00:11:20.840Z",
       "retiredAt": null,
       "lastUsedAt": null,
       "progress": {
@@ -1799,28 +1799,28 @@
     },
     "recovered": {
       "repositoryId": "paws-app",
-      "sha": "3830709209efa275777144a0dd66970777f0ea3c",
+      "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
       "state": "ready",
       "ready": {
-        "buildId": "build_cc8d6ad2-4240-4ee4-9f5b-340a45e5888c",
-        "sha": "3830709209efa275777144a0dd66970777f0ea3c"
+        "buildId": "build_a134ddee-c22a-4d75-a3dc-8f179d85ebe4",
+        "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0"
       }
     }
   },
   "cancellation": {
     "cancelled": {
-      "buildId": "build_6bd7f1cc-1c59-47f5-8043-30319c800aba",
+      "buildId": "build_1aa9ad93-380c-47cd-b672-22eab1d874ab",
       "cancelled": true,
       "index": {
         "repositoryId": "paws-app",
-        "sha": "3830709209efa275777144a0dd66970777f0ea3c",
+        "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
         "state": "ready",
         "ready": {
-          "buildId": "build_cc8d6ad2-4240-4ee4-9f5b-340a45e5888c",
-          "sha": "3830709209efa275777144a0dd66970777f0ea3c"
+          "buildId": "build_a134ddee-c22a-4d75-a3dc-8f179d85ebe4",
+          "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0"
         },
         "active": {
-          "buildId": "build_6bd7f1cc-1c59-47f5-8043-30319c800aba",
+          "buildId": "build_1aa9ad93-380c-47cd-b672-22eab1d874ab",
           "state": "queued",
           "progress": {
             "phase": "queued"
@@ -1840,9 +1840,9 @@
       }
     },
     "build": {
-      "id": "build_6bd7f1cc-1c59-47f5-8043-30319c800aba",
+      "id": "build_1aa9ad93-380c-47cd-b672-22eab1d874ab",
       "repositoryId": "paws-app",
-      "sha": "3830709209efa275777144a0dd66970777f0ea3c",
+      "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
       "policyVersion": 1,
       "indexKey": "p1-4bbce1d89061240c",
       "requestedMode": "full",
@@ -1869,10 +1869,10 @@
       "errorCode": "cancelled",
       "errorMessage": "The build was cancelled",
       "retryable": true,
-      "createdAt": "2026-11-02T00:00:12.540Z",
-      "startedAt": "2026-11-02T00:00:12.550Z",
-      "updatedAt": "2026-11-02T00:00:12.553Z",
-      "finishedAt": "2026-11-02T00:00:12.553Z",
+      "createdAt": "2026-11-02T00:11:20.865Z",
+      "startedAt": "2026-11-02T00:11:20.874Z",
+      "updatedAt": "2026-11-02T00:11:20.877Z",
+      "finishedAt": "2026-11-02T00:11:20.877Z",
       "retiredAt": null,
       "lastUsedAt": null,
       "progress": {
@@ -1881,11 +1881,11 @@
     },
     "indexStatus": {
       "repositoryId": "paws-app",
-      "sha": "3830709209efa275777144a0dd66970777f0ea3c",
+      "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0",
       "state": "ready",
       "ready": {
-        "buildId": "build_cc8d6ad2-4240-4ee4-9f5b-340a45e5888c",
-        "sha": "3830709209efa275777144a0dd66970777f0ea3c"
+        "buildId": "build_a134ddee-c22a-4d75-a3dc-8f179d85ebe4",
+        "sha": "1c54e8acaeffdc84c634849cab0c037ddeb2d2a0"
       }
     }
   },
@@ -1894,10 +1894,10 @@
   },
   "finalService": {
     "exitCode": 0,
-    "cpuMs": 239,
+    "cpuMs": 232,
     "maxRssMb": 63
   },
-  "finalDatabaseBytes": 31416320,
+  "finalDatabaseBytes": 31444992,
   "checks": [
     {
       "name": "pinned revision checked out",
@@ -1917,7 +1917,7 @@
     {
       "name": "cold index is ready",
       "passed": true,
-      "detail": "1775 files, 6791 chunks in 2406 ms"
+      "detail": "1775 files, 6791 chunks in 2330 ms"
     },
     {
       "name": "cold build is a full build",
@@ -1957,12 +1957,12 @@
     {
       "name": "every bundle comes from the cold generation",
       "passed": true,
-      "detail": "build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415"
+      "detail": "build_515923a5-8a7e-41ad-8087-426254bf1a92"
     },
     {
       "name": "duplicate registration returns the same session",
       "passed": true,
-      "detail": "ses_1d493d13-6fdb-40ff-ae9a-05bcce6828a2"
+      "detail": "ses_23fa63e6-77dc-4984-832b-5cfe04dab212"
     },
     {
       "name": "warm repeats reuse the cold index",
@@ -1972,7 +1972,7 @@
     {
       "name": "restart serves the persisted index without rebuilding",
       "passed": true,
-      "detail": "ready build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415"
+      "detail": "ready build_515923a5-8a7e-41ad-8087-426254bf1a92"
     },
     {
       "name": "session token survives the restart",
@@ -1982,12 +1982,12 @@
     {
       "name": "change question pins hold at the new commit",
       "passed": true,
-      "detail": "4418030fea3ca672a8cb6454f50353fbe010a18f"
+      "detail": "163ae9601785516a3be6d53033602796094da977"
     },
     {
       "name": "refresh is incremental from the cold build",
       "passed": true,
-      "detail": "{\"mode\":\"incremental\",\"reason\":null,\"baseBuildId\":\"build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415\",\"baseSha\":\"2ac93023d31bab6f0ef26690a7e6e8e8d2540bff\",\"added\":2,\"modified\":3,\"deleted\":2,\"renamed\":0,\"carried\":1788}"
+      "detail": "{\"mode\":\"incremental\",\"reason\":null,\"baseBuildId\":\"build_515923a5-8a7e-41ad-8087-426254bf1a92\",\"baseSha\":\"2ac93023d31bab6f0ef26690a7e6e8e8d2540bff\",\"added\":2,\"modified\":3,\"deleted\":2,\"renamed\":0,\"carried\":1788}"
     },
     {
       "name": "refresh counts the added, changed, deleted and renamed paths",
@@ -2002,7 +2002,7 @@
     {
       "name": "the base revision keeps its own published index",
       "passed": true,
-      "detail": "ready build_6a579eff-a1d8-4bac-9d2a-4b1b8ac23415"
+      "detail": "ready build_515923a5-8a7e-41ad-8087-426254bf1a92"
     },
     {
       "name": "the superseded session is fenced",
@@ -2022,7 +2022,7 @@
     {
       "name": "refreshed retrieval matches the new commit's text",
       "passed": true,
-      "detail": "build_e9507cf4-f8ce-4714-b82c-f3c0815b97ba"
+      "detail": "build_1c39b4f2-6481-402f-8748-6294adebf57d"
     },
     {
       "name": "the changed code is retrieved in both modes at the new commit",
@@ -2057,7 +2057,7 @@
     {
       "name": "retry through the API publishes the revision",
       "passed": true,
-      "detail": "{\"mode\":\"incremental\",\"reason\":null,\"baseBuildId\":\"build_e9507cf4-f8ce-4714-b82c-f3c0815b97ba\",\"baseSha\":\"4418030fea3ca672a8cb6454f50353fbe010a18f\",\"added\":1,\"modified\":0,\"deleted\":0,\"renamed\":0,\"carried\":1793}"
+      "detail": "{\"mode\":\"incremental\",\"reason\":null,\"baseBuildId\":\"build_1c39b4f2-6481-402f-8748-6294adebf57d\",\"baseSha\":\"163ae9601785516a3be6d53033602796094da977\",\"added\":1,\"modified\":0,\"deleted\":0,\"renamed\":0,\"carried\":1793}"
     },
     {
       "name": "a rebuild was killed while running",
@@ -2072,18 +2072,18 @@
     {
       "name": "the previous generation keeps serving after the kill",
       "passed": true,
-      "detail": "ready build_5d716704-2c4f-4722-97c4-3bc95cc6670e"
+      "detail": "ready build_46516112-5d66-44dc-a954-f42b3e476a88"
     },
     {
       "name": "retry of the interrupted rebuild rebuilds and publishes a new generation",
       "passed": true,
-      "detail": "ready build_cc8d6ad2-4240-4ee4-9f5b-340a45e5888c"
+      "detail": "ready build_a134ddee-c22a-4d75-a3dc-8f179d85ebe4"
     },
     {
       "name": "a cancelled rebuild leaves the ready generation serving",
       "passed": true,
-      "detail": "cancelled; serving build_cc8d6ad2-4240-4ee4-9f5b-340a45e5888c"
+      "detail": "cancelled; serving build_a134ddee-c22a-4d75-a3dc-8f179d85ebe4"
     }
   ],
-  "finishedAt": "2026-11-02T00:00:12.601Z"
+  "finishedAt": "2026-11-02T00:11:20.926Z"
 }

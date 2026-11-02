@@ -1,6 +1,6 @@
 # Pilot run on paws-app 2ac93023
 
-Looky 8584994 on Bun 1.4.4 ran from a clean install against a fresh clone of
+Looky bc88d80, rebased on main with the React app, on Bun 1.4.4 ran from a clean install against a fresh clone of
 `pmdroid/paws-app` at `2ac93023d31bab6f0ef26690a7e6e8e8d2540bff`. All 37 lifecycle and
 grounding checks passed. No model provider was configured, so this run has no answers
 and no reviewer scores. `report.md` has every check, table and pinned question, and
@@ -32,12 +32,12 @@ adapter.
 | Excluded files                                       | 18         |
 | Chunks                                               | 6791       |
 | Indexed bytes                                        | 14,148,510 |
-| Cold build                                           | 2.4 s      |
+| Cold build                                           | 2.3 s      |
 | Database after the cold build                        | 30.0 MB    |
 | Database after all phases                            | 31.4 MB    |
-| Service CPU through the cold build and first queries | 4.0 s      |
-| Service peak memory                                  | 103 MB     |
-| Incremental refresh                                  | 51 ms      |
+| Service CPU through the cold build and first queries | 3.9 s      |
+| Service peak memory                                  | 102 MB     |
+| Incremental refresh                                  | 57 ms      |
 | Files reused by the refresh                          | 1770       |
 
 Exclusions were 9 binary, 4 secret content, 3 generated, 1 secret path and 1 long-line
@@ -66,7 +66,7 @@ file.
 
 | Mode | Pinned ranges hit | Pinned files hit | Median files read | Median research time |
 | ---- | ----------------- | ---------------- | ----------------- | -------------------- |
-| Fast | 11 of 29          | 16 of 29         | 4                 | 74 ms                |
+| Fast | 11 of 29          | 16 of 29         | 4                 | 76 ms                |
 | Deep | 16 of 29          | 24 of 29         | 13                | 184 ms               |
 
 Every retrieved range was the exact committed text of the pinned generation. Every
