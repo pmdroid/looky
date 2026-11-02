@@ -210,6 +210,11 @@ export interface ModelResult {
   readonly outputTokens: number;
   /** Configured provider that actually served the call, when routed. */
   readonly providerId?: string;
+  /**
+   * Whether the provider reported the token counts. `false` means the counts
+   * are Looky's conservative estimate; absent means the provider did not say.
+   */
+  readonly usageReported?: boolean;
 }
 
 /**

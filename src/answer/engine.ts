@@ -369,7 +369,7 @@ export class LookyAnswerEngine implements AnswerEngine {
  * Pack as much evidence as fits so that system plus prompt stay within
  * `allowance` estimated tokens. Undefined when not even one range fits.
  */
-function fitPrompt(
+export function fitPrompt(
   system: string,
   allowance: number,
   evidence: EvidenceBundle["evidence"],

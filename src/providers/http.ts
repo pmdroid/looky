@@ -243,5 +243,6 @@ function parseResponse(
     // Providers that omit usage are charged a conservative estimate.
     inputTokens: inputTokens ?? estimateTokens(request.system + request.prompt),
     outputTokens: outputTokens ?? Math.min(estimateTokens(output), request.maxOutputTokens),
+    usageReported: inputTokens !== undefined && outputTokens !== undefined,
   };
 }

@@ -295,6 +295,36 @@ export const migrations: readonly Migration[] = [
       PRIMARY KEY (repository_id, slug)
     ) STRICT;`,
   },
+  {
+    // Generated wiki prose. Validated page drafts are cached per repository
+    // under a key of the page's planned sources, neighbourhood and writer
+    // fingerprint, with the blobs they actually inspected, so a retry or a
+    // restart reuses finished pages instead of paying for them again.
+    // Generations and pages record budgets and usage.
+    version: 6,
+    sql: `CREATE TABLE wiki_page_drafts (
+      repository_id TEXT NOT NULL,
+      draft_key TEXT NOT NULL,
+      page_id TEXT NOT NULL,
+      concept_key TEXT NOT NULL,
+      writer_key TEXT NOT NULL,
+      body TEXT NOT NULL CHECK (length(body) > 0),
+      body_hash TEXT NOT NULL,
+      citations TEXT NOT NULL,
+      inspected TEXT NOT NULL,
+      provenance TEXT NOT NULL,
+      usage TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      last_used_at TEXT NOT NULL,
+      PRIMARY KEY (repository_id, draft_key)
+    ) STRICT;
+    CREATE INDEX wiki_page_drafts_used ON wiki_page_drafts (repository_id, last_used_at);
+
+    ALTER TABLE wiki_generations ADD COLUMN budget TEXT;
+    ALTER TABLE wiki_generations ADD COLUMN usage TEXT;
+    ALTER TABLE wiki_pages ADD COLUMN draft_key TEXT;
+    ALTER TABLE wiki_pages ADD COLUMN usage TEXT;`,
+  },
 ];
 
 export function schemaVersion(db: Database): number {

@@ -27,6 +27,7 @@ import {
   type WikiPlan,
   type WikiPlanReport,
   type WikiSourceRef,
+  type WikiUsage,
 } from "./model";
 import type { PriorWikiPage, WikiHistory } from "./planner";
 
@@ -70,6 +71,10 @@ export interface WikiGenerationRecord extends WikiScope {
   readonly finishedAt: string | null;
   /** Set when a newer generation of the same scope published or retention retired it. */
   readonly retiredAt: string | null;
+  /** Limits the generation ran under, once it started. */
+  readonly budget: Readonly<Record<string, unknown>> | null;
+  /** What it spent so far, once it started. */
+  readonly usage: WikiUsage | null;
 }
 
 interface GenerationRow {
@@ -91,6 +96,8 @@ interface GenerationRow {
   updated_at: string;
   finished_at: string | null;
   retired_at: string | null;
+  budget: string | null;
+  usage: string | null;
 }
 
 function toGeneration(row: GenerationRow): WikiGenerationRecord {
@@ -113,6 +120,8 @@ function toGeneration(row: GenerationRow): WikiGenerationRecord {
     updatedAt: row.updated_at,
     finishedAt: row.finished_at,
     retiredAt: row.retired_at,
+    budget: row.budget === null ? null : (JSON.parse(row.budget) as Record<string, unknown>),
+    usage: row.usage === null ? null : (JSON.parse(row.usage) as WikiUsage),
   };
 }
 
@@ -132,6 +141,10 @@ export interface WikiPageRecord {
   readonly unavailableReason: string | null;
   readonly errorMessage: string | null;
   readonly updatedAt: string;
+  /** Cache key of the draft that wrote or would write this page. */
+  readonly draftKey: string | null;
+  /** What writing this page spent; zero calls when a cached draft was reused. */
+  readonly usage: (WikiUsage & { readonly reused?: boolean }) | null;
 }
 
 interface PageRow {
@@ -150,6 +163,8 @@ interface PageRow {
   unavailable_reason: string | null;
   error_message: string | null;
   updated_at: string;
+  draft_key: string | null;
+  usage: string | null;
 }
 
 function toPage(row: PageRow): WikiPageRecord {
@@ -169,6 +184,8 @@ function toPage(row: PageRow): WikiPageRecord {
     unavailableReason: row.unavailable_reason,
     errorMessage: row.error_message,
     updatedAt: row.updated_at,
+    draftKey: row.draft_key,
+    usage: row.usage === null ? null : (JSON.parse(row.usage) as WikiUsage),
   };
 }
 
@@ -468,11 +485,50 @@ function transitionGeneration(
   return getWikiGeneration(db, id)!;
 }
 
-/** queued → running. */
-export function startWikiGeneration(db: Database, id: string): WikiGenerationRecord {
+/** queued → running, recording the budget it runs under. */
+export function startWikiGeneration(
+  db: Database,
+  id: string,
+  budget?: Readonly<Record<string, unknown>>,
+): WikiGenerationRecord {
   return db
-    .transaction(() => transitionGeneration(db, id, "running", ", started_at = ?", [now()]))
+    .transaction(() =>
+      transitionGeneration(db, id, "running", ", started_at = ?, budget = ?", [
+        now(),
+        budget === undefined ? null : JSON.stringify(budget),
+      ]),
+    )
     .immediate();
+}
+
+/** Record what a generation has spent so far. Allowed in any state, so a failed run keeps its cost. */
+export function recordWikiGenerationUsage(db: Database, id: string, usage: WikiUsage): void {
+  db.query("UPDATE wiki_generations SET usage = ?, updated_at = ? WHERE id = ?").run(
+    JSON.stringify(usage),
+    now(),
+    id,
+  );
+}
+
+/** Record a page's draft key and what writing it spent, in any state. */
+export function recordWikiPageUsage(
+  db: Database,
+  generationId: string,
+  pageId: string,
+  record: {
+    readonly draftKey?: string;
+    readonly usage?: WikiUsage & { readonly reused?: boolean };
+  },
+): void {
+  db.query(
+    `UPDATE wiki_pages SET draft_key = coalesce(?, draft_key), usage = coalesce(?, usage)
+     WHERE generation_id = ? AND page_id = ?`,
+  ).run(
+    record.draftKey ?? null,
+    record.usage === undefined ? null : JSON.stringify(record.usage),
+    generationId,
+    pageId,
+  );
 }
 
 /**
@@ -623,6 +679,8 @@ export function storeWikiPageBody(
     readonly body: string;
     readonly citations: readonly WikiSourceRef[];
     readonly provenance: WikiPageProvenance;
+    readonly draftKey?: string;
+    readonly usage?: WikiUsage & { readonly reused?: boolean };
   },
 ): WikiPageRecord {
   if (input.body.trim().length === 0) throw new WikiIntegrityError(["page body is empty"]);
@@ -654,6 +712,10 @@ export function storeWikiPageBody(
         `UPDATE wiki_pages SET state = 'ready', error_message = NULL, updated_at = ?
          WHERE generation_id = ? AND page_id = ?`,
       ).run(timestamp, input.generationId, input.pageId);
+      recordWikiPageUsage(db, input.generationId, input.pageId, {
+        ...(input.draftKey !== undefined ? { draftKey: input.draftKey } : {}),
+        ...(input.usage !== undefined ? { usage: input.usage } : {}),
+      });
       return toPage(getPageRow(db, input.generationId, input.pageId)!);
     })
     .immediate();
@@ -712,7 +774,33 @@ export function wikiIntegrityProblems(db: Database, generationId: string): strin
     )
     .get(generationId)!.n;
   if (dangling > 0) problems.push(`${dangling} links point to missing pages`);
+  // Links written into bodies must reach a page of this generation that will be served.
+  const bySlug = new Map(pages.map((page) => [page.slug, page]));
+  const bodies = db
+    .query<{ page_id: string; body: string }, [string]>(
+      "SELECT page_id, body FROM wiki_page_bodies WHERE generation_id = ?",
+    )
+    .all(generationId);
+  for (const { page_id, body } of bodies) {
+    for (const slug of wikiBodyLinks(body)) {
+      const target = bySlug.get(slug);
+      if (!target)
+        problems.push(`page ${byId.get(page_id)?.slug ?? page_id} links to missing ${slug}`);
+      else if (target.state !== "ready") {
+        problems.push(
+          `page ${byId.get(page_id)?.slug ?? page_id} links to ${target.state} ${slug}`,
+        );
+      }
+    }
+  }
   return problems;
+}
+
+/** Internal page links in a stored body, written as `[Title](wiki:slug)`. */
+export const WIKI_LINK = /\]\(wiki:([^)\s]*)\)/g;
+
+export function wikiBodyLinks(body: string): string[] {
+  return [...body.matchAll(WIKI_LINK)].map((match) => match[1]!);
 }
 
 /**
@@ -1077,6 +1165,130 @@ export function wikiHistory(db: Database, repositoryId: string): WikiHistory {
 }
 
 // ---------------------------------------------------------------------------
+// Draft cache
+
+/** A blob a draft actually read, checked again before the draft is reused. */
+export interface InspectedBlob {
+  readonly path: string;
+  readonly blobOid: string;
+}
+
+/**
+ * A validated page draft, kept apart from any generation. Its key covers the
+ * page's planned sources, its link neighbourhood and the writer fingerprint
+ * (generator, prompt, model and output-affecting budgets), so a draft is only
+ * found for the same inputs and the same writer.
+ */
+export interface WikiDraftRecord {
+  readonly repositoryId: string;
+  readonly draftKey: string;
+  readonly pageId: string;
+  readonly conceptKey: string;
+  readonly writerKey: string;
+  readonly body: string;
+  readonly bodyHash: string;
+  readonly citations: readonly WikiSourceRef[];
+  readonly inspected: readonly InspectedBlob[];
+  readonly provenance: WikiPageProvenance;
+  readonly usage: WikiUsage;
+  readonly createdAt: string;
+  readonly lastUsedAt: string;
+}
+
+interface DraftRow {
+  repository_id: string;
+  draft_key: string;
+  page_id: string;
+  concept_key: string;
+  writer_key: string;
+  body: string;
+  body_hash: string;
+  citations: string;
+  inspected: string;
+  provenance: string;
+  usage: string;
+  created_at: string;
+  last_used_at: string;
+}
+
+export function findWikiDraft(
+  db: Database,
+  repositoryId: string,
+  draftKey: string,
+): WikiDraftRecord | undefined {
+  const row = db
+    .query<DraftRow, [string, string]>(
+      "SELECT * FROM wiki_page_drafts WHERE repository_id = ? AND draft_key = ?",
+    )
+    .get(repositoryId, draftKey);
+  if (!row) return undefined;
+  return {
+    repositoryId: row.repository_id,
+    draftKey: row.draft_key,
+    pageId: row.page_id,
+    conceptKey: row.concept_key,
+    writerKey: row.writer_key,
+    body: row.body,
+    bodyHash: row.body_hash,
+    citations: JSON.parse(row.citations) as WikiSourceRef[],
+    inspected: JSON.parse(row.inspected) as InspectedBlob[],
+    provenance: JSON.parse(row.provenance) as WikiPageProvenance,
+    usage: JSON.parse(row.usage) as WikiUsage,
+    createdAt: row.created_at,
+    lastUsedAt: row.last_used_at,
+  };
+}
+
+/** Keep a validated draft for reuse. A later draft for the same key replaces it. */
+export function storeWikiDraft(
+  db: Database,
+  draft: Omit<WikiDraftRecord, "bodyHash" | "createdAt" | "lastUsedAt">,
+): void {
+  if (draft.body.trim().length === 0) throw new WikiIntegrityError(["draft body is empty"]);
+  const problems = draft.citations.flatMap((source) => sourceProblems(draft.pageId, source));
+  if (problems.length > 0) throw new WikiIntegrityError(problems);
+  const timestamp = now();
+  db.query(
+    `INSERT INTO wiki_page_drafts (repository_id, draft_key, page_id, concept_key, writer_key,
+       body, body_hash, citations, inspected, provenance, usage, created_at, last_used_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT (repository_id, draft_key) DO UPDATE SET
+       page_id = excluded.page_id, concept_key = excluded.concept_key,
+       writer_key = excluded.writer_key, body = excluded.body, body_hash = excluded.body_hash,
+       citations = excluded.citations, inspected = excluded.inspected,
+       provenance = excluded.provenance, usage = excluded.usage,
+       created_at = excluded.created_at, last_used_at = excluded.last_used_at`,
+  ).run(
+    draft.repositoryId,
+    draft.draftKey,
+    draft.pageId,
+    draft.conceptKey,
+    draft.writerKey,
+    draft.body,
+    new Bun.CryptoHasher("sha256").update(draft.body).digest("hex"),
+    JSON.stringify(draft.citations),
+    JSON.stringify(draft.inspected),
+    JSON.stringify(draft.provenance),
+    JSON.stringify(draft.usage),
+    timestamp,
+    timestamp,
+  );
+}
+
+export function touchWikiDraft(db: Database, repositoryId: string, draftKey: string): void {
+  db.query(
+    "UPDATE wiki_page_drafts SET last_used_at = ? WHERE repository_id = ? AND draft_key = ?",
+  ).run(now(), repositoryId, draftKey);
+}
+
+export function deleteWikiDraft(db: Database, repositoryId: string, draftKey: string): void {
+  db.query("DELETE FROM wiki_page_drafts WHERE repository_id = ? AND draft_key = ?").run(
+    repositoryId,
+    draftKey,
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Retention
 
 export interface WikiRetention {
@@ -1084,6 +1296,8 @@ export interface WikiRetention {
   readonly retainReadyPerRepository: number;
   /** Failed and cancelled generations kept per repository for diagnostics. */
   readonly retainFailedPerRepository: number;
+  /** Cached page drafts kept per repository, most recently used first. Default 1000. */
+  readonly retainDraftsPerRepository?: number;
 }
 
 /**
@@ -1121,6 +1335,14 @@ export function collectWikiGarbage(
              ) WHERE rank > ?)`,
         )
         .run(retention.retainFailedPerRepository).changes;
+      db.query(
+        `DELETE FROM wiki_page_drafts WHERE rowid IN (
+           SELECT rowid FROM (
+             SELECT rowid, ROW_NUMBER() OVER (
+               PARTITION BY repository_id ORDER BY last_used_at DESC, rowid DESC) AS rank
+             FROM wiki_page_drafts
+           ) WHERE rank > ?)`,
+      ).run(retention.retainDraftsPerRepository ?? 1000);
       return { retired, deleted: deletedRetired + deletedFailed };
     })
     .immediate();
