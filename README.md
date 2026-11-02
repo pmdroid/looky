@@ -47,6 +47,7 @@ development dependency, bundled into the [browser app](#the-browser-app) at buil
 | `bun run web:build`    | Build the [browser app](#the-browser-app) into `dist/web`                         |
 | `bun run web:dev`      | Rebuild the browser app on change and run `serve` with it                         |
 | `bun run looky …`      | Build, inspect and search codebase indexes; see [Codebase index](#codebase-index) |
+| `bun run pilot`        | Run the real-codebase pilot on paws-app; see [pilot/README.md](pilot/README.md)   |
 
 Tool configurations exclude dependencies, build output, coverage, and local
 database/index directories. The formatter also excludes the generated lockfile.
