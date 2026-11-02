@@ -1096,7 +1096,8 @@ export function wikiStatus(db: Database, scope: WikiScope): WikiStatus {
       }
     : base;
   if (active) return { ...withStale, state: active.state };
-  if (latest) return { ...withStale, state: latest.state };
+  // A retired generation of this scope is no longer served; it is only historical.
+  if (latest && latest.state !== "ready") return { ...withStale, state: latest.state };
   return { ...withStale, state: "unavailable" };
 }
 
