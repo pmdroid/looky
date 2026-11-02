@@ -71,6 +71,19 @@ describe("HTTP providers", () => {
     });
   });
 
+  test("an OpenAI-compatible request carries the configured reasoning effort", async () => {
+    const captured: Captured[] = [];
+    const provider = createHttpProvider({
+      id: "hosted",
+      kind: "openai",
+      model: "m",
+      reasoningEffort: "low",
+      fetch: fakeFetch(() => json(200, { choices: [{ message: { content: "ok" } }] }), captured),
+    });
+    await provider.complete(request, signal());
+    expect(captured[0]!.body.reasoning_effort).toBe("low");
+  });
+
   test("Anthropic request and response", async () => {
     const captured: Captured[] = [];
     const provider = createHttpProvider({
@@ -301,6 +314,7 @@ describe("provider configuration", () => {
       LOOKY_PROVIDER_LOCAL_MODEL: "qwen",
       LOOKY_PROVIDER_LOCAL_BASE_URL: "http://127.0.0.1:11434/v1",
       LOOKY_PROVIDER_LOCAL_MAX_TOKENS_FIELD: "max_completion_tokens",
+      LOOKY_PROVIDER_LOCAL_REASONING_EFFORT: "low",
       LOOKY_PROVIDER_HOSTED_KIND: "anthropic",
       LOOKY_PROVIDER_HOSTED_MODEL: "m",
       LOOKY_PROVIDER_HOSTED_API_KEY: "k",
@@ -316,6 +330,7 @@ describe("provider configuration", () => {
         timeoutMs: 60_000,
         baseUrl: "http://127.0.0.1:11434/v1",
         maxTokensField: "max_completion_tokens",
+        reasoningEffort: "low",
         quota: {},
       },
       {
@@ -344,6 +359,9 @@ describe("provider configuration", () => {
     expect(() => loadProviderConfig({ ...base, LOOKY_PROVIDER_P_TIMEOUT_MS: "-1" })).toThrow(
       "LOOKY_PROVIDER_P_TIMEOUT_MS",
     );
+    expect(() =>
+      loadProviderConfig({ ...base, LOOKY_PROVIDER_P_REASONING_EFFORT: "low; drop" }),
+    ).toThrow("LOOKY_PROVIDER_P_REASONING_EFFORT");
     expect(() => loadProviderConfig({ ...base, LOOKY_PROVIDER: "Bad Id" })).toThrow(
       ProviderConfigError,
     );
