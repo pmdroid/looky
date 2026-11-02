@@ -47,7 +47,7 @@ development dependency, bundled into the [browser app](#the-browser-app) at buil
 | `bun run web:build`    | Build the [browser app](#the-browser-app) into `dist/web`                              |
 | `bun run web:dev`      | Rebuild the browser app on change and run `serve` with it                              |
 | `bun run looky …`      | Build, inspect and search codebase indexes; see [Codebase index](#codebase-index)      |
-| `bun run looky wiki …` | Plan and inspect the generated wiki; see [Generated wiki model](#generated-wiki-model) |
+| `bun run looky wiki …` | Plan, generate and inspect the wiki; see [Generated wiki model](#generated-wiki-model) |
 | `bun run pilot`        | Run the real-codebase pilot on paws-app; see [pilot/README.md](pilot/README.md)        |
 
 Tool configurations exclude dependencies, build output, coverage, and local
@@ -717,10 +717,11 @@ bound the disk one generation uses; retention bounds how many generations are ke
 ## Generated wiki model
 
 The generated wiki is planned from the [codebase index](#codebase-index). It is not a
-second code index and not a list of files. This part stores the document model and
-derives a bounded page plan. Page prose is written by a later generation step; until
-then a plan has no bodies. The code lives in `src/wiki/`, and `IndexService` plans
-wikis for authorized repositories.
+second code index and not a list of files. Looky stores the document model, derives a
+bounded page plan and then writes every page's prose from verified source in a bounded
+background job; see [Generating pages](#generating-pages). The code lives in
+`src/wiki/`. `IndexService` plans wikis for authorized repositories and `WikiGenerator`
+writes them.
 
 ### Scope and storage
 
@@ -739,6 +740,9 @@ Migration 5 adds these tables:
 | `wiki_page_sources` | Planned sources and cited source ranges, each with path, blob id and lines       |
 | `wiki_page_links`   | Internal links between pages of the same generation                              |
 | `wiki_slug_aliases` | Every slug a repository published, for redirects and removed pages               |
+| `wiki_page_drafts`  | Validated page drafts kept for reuse, with the blobs they read (migration 6)     |
+
+Migration 6 also adds the budget and usage of each generation and page.
 
 Composite foreign keys keep every parent, link, body and source inside its own
 generation, so the database refuses dangling entries. Each generation has exactly one
@@ -839,10 +843,96 @@ A slug never redirects to a different page. Retention keeps
 `LOOKY_INDEX_RETAIN_READY` published generations and `LOOKY_INDEX_RETAIN_FAILED`
 failed ones per repository. Slug history is kept so old links stay explainable.
 
+### Generating pages
+
+`WikiGenerator.start` returns at once. It returns the published wiki of the exact
+scope without any work or model call. It joins a generation already queued or running
+for that scope. Otherwise it plans one from the commit's ready index and queues it, or
+reports `indexing` after starting or joining the index build. Pages are written on a
+background queue, never in the request that started them. `LookyService` exposes this
+as `wikiGenerate`, `wikiStatus`, `wikiRetry` and `wikiCancel`, scoped to the client's
+repositories.
+
+Each page is written like an answer, from the same parts:
+
+1. Research runs through a guarded session pinned to the repository, commit and index
+   generation and re-authorized before every search, read and model call. It searches
+   only the page's planned files, so a page reads nothing outside its plan. Every range
+   is read from committed source and checked byte for byte against the index.
+2. The model sees the evidence fenced as untrusted data, with the page title, kind and
+   the neighbouring pages it may link to. It replies with JSON: a summary, sections
+   marked `observed` or `inferred`, intent statements and caveats.
+3. Only known fields survive. Web links, images and HTML are removed. A `[[slug]]` link
+   is kept only for the page's parent, children and planned links. Citation markers and
+   path-and-line references are checked against the inspected evidence, and invalid ones
+   are removed and counted.
+4. A section without a verified citation is dropped. A page with no grounded section
+   gets one repair request, then fails. Inferred sections are labelled. Intent is shown
+   as documented only when it cites documentation; otherwise it is listed as not stated
+   in the source.
+
+A page body ends with the commit it was generated from. Citations are stored with the
+path, lines and blob id they were read from. Provenance records the writer, prompt and
+model fingerprint, the provider that served the call and the validation counts.
+
+Limits are finite at three levels. A page runs under its own budget. A ledger reserves
+each page's budget from the generation's totals before the page starts, so pages
+running at once can never spend more than the totals together. The generation also has
+a wall-clock limit. When the totals or the time run out, the generation fails with
+`budget_exhausted` and stays unpublished.
+
+| Setting                      | Default   | Variable                                |
+| ---------------------------- | --------- | --------------------------------------- |
+| Generations at once          | 1         | `LOOKY_WIKI_MAX_CONCURRENT_GENERATIONS` |
+| Pages at once                | 2         | `LOOKY_WIKI_MAX_CONCURRENT_PAGES`       |
+| Model calls per page         | 2         | `LOOKY_WIKI_PAGE_MAX_MODEL_CALLS`       |
+| Input tokens per page        | 48,000    | `LOOKY_WIKI_PAGE_MAX_INPUT_TOKENS`      |
+| Output tokens per page       | 4,000     | `LOOKY_WIKI_PAGE_MAX_OUTPUT_TOKENS`     |
+| Source reads per page        | 32        | `LOOKY_WIKI_PAGE_MAX_SOURCE_READS`      |
+| Time per page                | 120 s     | `LOOKY_WIKI_PAGE_MAX_ELAPSED_MS`        |
+| Model calls per generation   | 80        | `LOOKY_WIKI_TOTAL_MAX_MODEL_CALLS`      |
+| Input tokens per generation  | 1,600,000 | `LOOKY_WIKI_TOTAL_MAX_INPUT_TOKENS`     |
+| Output tokens per generation | 120,000   | `LOOKY_WIKI_TOTAL_MAX_OUTPUT_TOKENS`    |
+| Source reads per generation  | 1,200     | `LOOKY_WIKI_TOTAL_MAX_SOURCE_READS`     |
+| Time per generation          | 30 min    | `LOOKY_WIKI_TOTAL_MAX_ELAPSED_MS`       |
+
+Every other page budget field has a `LOOKY_WIKI_PAGE_*` variable, research limits have
+`LOOKY_WIKI_RESEARCH_*` variables, and source bytes have `LOOKY_WIKI_TOTAL_MAX_SOURCE_BYTES`.
+`LOOKY_SOURCE_LINK_TEMPLATE` also turns wiki citations into links pinned to the commit.
+
+**Reuse and fingerprints.** Every validated page is kept as a draft. Its key covers the
+commit, the page's identity and plan text, its planned sources with their blobs, its
+link neighbourhood and the writer fingerprint. The writer fingerprint holds the writer
+and prompt versions, the provider ids, kinds, models and reasoning effort in fallback
+order, the page budget, the research limits and the link template. It never holds
+credentials. A draft is reused only for the same key, and only when every blob it read
+is still the indexed blob. A different model, prompt or budget gives a different key,
+so earlier output is never reused for it. The generation fingerprint adds the plan
+limits, so a model change also makes the published wiki stale rather than current.
+
+**Usage.** Generations and pages record model calls, tokens, reads, bytes and time.
+Calls whose provider reported token counts are counted apart from calls Looky had to
+estimate and calls whose provider did not say, so totals are never shown as more exact
+than they are.
+
+**Cancellation, retry and restart.** `cancel` aborts in-flight model calls and ends the
+generation `cancelled`. `retry` starts a new generation for the same scope. A service
+that stops cancels its generations as `service_stopped`. A process that dies leaves
+them queued or running, and the next start marks them failed, `interrupted` and
+retryable. In every case pages that finished before are reused from their drafts, so
+only unfinished pages cost model calls again. Nothing is retried automatically.
+
+**Publishing.** Pages are staged inside their generation. It publishes in one
+transaction only when every page is ready or unavailable, every body has its citations
+and every `[Title](wiki:slug)` link in a body reaches a ready page of the same
+generation. A failed, cancelled, interrupted or over-budget generation stays explicitly
+incomplete and never replaces the last published one.
+
 ### Commands
 
 ```sh
 bun run looky wiki plan --repo <git-dir> --sha <commit> [--id <repository-id>]
+bun run looky wiki generate --repo <git-dir> --sha <commit> [--id <repository-id>]
 bun run looky wiki status --id <repository-id> [--sha <commit>]
 bun run looky wiki index <generation-id> --id <repository-id>
 bun run looky wiki page <generation-id> <slug> --id <repository-id>
