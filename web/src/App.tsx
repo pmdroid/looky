@@ -1,11 +1,13 @@
 /**
- * Looky's question-and-answer screen: sign in, choose an authorized
- * repository and committed revision, ask in Fast or Deep, read the answer.
+ * Looky's app: sign in, choose an authorized repository and committed
+ * revision, then either ask a code question in Fast or Deep, or read the
+ * revision's generated wiki and ask about one of its pages.
  *
- * State lives in memory only. The question text survives errors and a new
- * sign-in, but nothing is written to browser storage. The repository and ref
- * are mirrored in the URL (`?repo=…&ref=…`) so a reload or a shared link
- * selects the same revision again, never the question or the answer.
+ * State lives in memory only. Question text survives errors and a new
+ * sign-in, but nothing is written to browser storage. The view, repository,
+ * ref and wiki page are mirrored in the URL (see `route.ts`), so a reload, a
+ * shared link or Back/Forward returns to the same place, never to a question
+ * or an answer.
  */
 import {
   useCallback,
@@ -14,6 +16,9 @@ import {
   useState,
   type FormEvent,
   type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+  type RefObject,
 } from "react";
 import {
   ApiError,
@@ -24,7 +29,7 @@ import {
   type RevisionState,
   type SessionState,
 } from "./api";
-import { AskRunner, type AskSnapshot, type AskState } from "./ask-runner";
+import { AskRunner, type AskPage, type AskSnapshot, type AskState } from "./ask-runner";
 import { AnswerView } from "./AnswerView";
 import { watchIndex } from "./index-watch";
 import {
@@ -37,6 +42,8 @@ import {
   refValue,
   shortSha,
 } from "./presentation";
+import { parseRoute, routeHref, type Route, type View } from "./route";
+import { WikiView } from "./WikiView";
 
 const AUTH_CODES = new Set(["unauthenticated", "session_expired"]);
 const FULL_SHA = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
@@ -57,7 +64,9 @@ export function App(props: { readonly api?: BrowserApi }) {
   const [auth, setAuth] = useState<Auth>({ kind: "checking" });
   // Kept here so an expired session or an error never loses what was typed.
   const [question, setQuestion] = useState("");
+  const [pageQuestion, setPageQuestion] = useState("");
   const [mode, setMode] = useState<Mode>("fast");
+  const [view, setView] = useState<View>(() => parseRoute(window.location).view);
 
   // One session check at a time, even when an effect runs twice.
   const loading = useRef<Promise<void> | undefined>(undefined);
@@ -114,9 +123,23 @@ export function App(props: { readonly api?: BrowserApi }) {
 
   return (
     <div className="shell">
-      <a className="skip-link" href="#question">
-        Skip to the question
-      </a>
+      {view === "wiki" ? (
+        <a
+          className="skip-link"
+          href="#wiki-main"
+          onClick={(event) => {
+            // Focus without a fragment, so the page's own heading anchor stays in the URL.
+            event.preventDefault();
+            document.getElementById("wiki-main")?.focus();
+          }}
+        >
+          Skip to the page
+        </a>
+      ) : (
+        <a className="skip-link" href="#question">
+          Skip to the question
+        </a>
+      )}
       <header className="masthead">
         <p className="wordmark">
           Looky<span className="wordmark-note">code answers</span>
@@ -152,6 +175,9 @@ export function App(props: { readonly api?: BrowserApi }) {
           api={api}
           question={question}
           onQuestion={setQuestion}
+          pageQuestion={pageQuestion}
+          onPageQuestion={setPageQuestion}
+          onView={setView}
           mode={mode}
           onMode={setMode}
           onSessionLost={onSessionLost}
@@ -250,19 +276,38 @@ interface Target {
   readonly nonce: number;
 }
 
-function readLocation(): { repo?: string; ref?: string } {
-  const params = new URLSearchParams(window.location.search);
-  const repo = params.get("repo") ?? undefined;
-  const ref = params.get("ref") ?? undefined;
-  return { ...(repo ? { repo } : {}), ...(ref ? { ref } : {}) };
+/** Where in the app: the view and, for the wiki, the page and heading. */
+type Place = Pick<Route, "view" | "page" | "anchor">;
+
+function readLocation(): Route {
+  return parseRoute(window.location);
 }
 
-function writeLocation(target: Target, push: boolean): void {
-  const params = new URLSearchParams({ repo: target.repositoryId, ref: target.ref });
-  const next = `${window.location.pathname}?${params.toString()}`;
-  if (next === `${window.location.pathname}${window.location.search}`) return;
+function placeOf(route: Route): Place {
+  return {
+    view: route.view,
+    ...(route.page !== undefined ? { page: route.page } : {}),
+    ...(route.anchor !== undefined ? { anchor: route.anchor } : {}),
+  };
+}
+
+function hrefOf(target: Target | undefined, place: Place): string {
+  return routeHref({
+    ...place,
+    ...(target ? { repo: target.repositoryId, ref: target.ref } : {}),
+  });
+}
+
+function writeLocation(target: Target | undefined, place: Place, push: boolean): void {
+  const next = hrefOf(target, place);
+  const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (next === current) return;
   if (push) window.history.pushState(null, "", next);
   else window.history.replaceState(null, "", next);
+}
+
+function plainClick(event: MouseEvent): boolean {
+  return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
 }
 
 function refLabel(listing: RefListing | undefined, ref: string): string {
@@ -276,15 +321,19 @@ function Workspace(props: {
   readonly api: BrowserApi;
   readonly question: string;
   readonly onQuestion: (value: string) => void;
+  readonly pageQuestion: string;
+  readonly onPageQuestion: (value: string) => void;
   readonly mode: Mode;
   readonly onMode: (mode: Mode) => void;
+  readonly onView: (view: View) => void;
   readonly onSessionLost: () => void;
 }) {
-  const { api, onSessionLost } = props;
+  const { api, onSessionLost, onView } = props;
   const [repos, setRepos] = useState<Repos>({ status: "loading" });
   const [refs, setRefs] = useState<Refs>({ status: "idle" });
   const [target, setTarget] = useState<Target | undefined>();
   const [selection, setSelection] = useState<Selection>({ status: "none" });
+  const [place, setPlace] = useState<Place>(() => placeOf(readLocation()));
   const [shaInput, setShaInput] = useState("");
   const [shaError, setShaError] = useState<string | undefined>();
   const [ask, setAsk] = useState<AskState>({ kind: "idle" });
@@ -296,8 +345,11 @@ function Workspace(props: {
   const questionRef = useRef<HTMLTextAreaElement>(null);
   const resultRef = useRef<HTMLHeadingElement>(null);
   const nonce = useRef(0);
-  // The latest choice, for history events that arrive between renders.
+  // The latest choice and place, for history events that arrive between renders.
   const targetRef = useRef<Target | undefined>(undefined);
+  const placeRef = useRef<Place>(place);
+
+  useEffect(() => onView(place.view), [place.view, onView]);
 
   const lost = useCallback(
     (error: unknown): boolean => {
@@ -340,30 +392,80 @@ function Workspace(props: {
     if (ask.kind === "error" && ask.status === 401 && AUTH_CODES.has(ask.code)) onSessionLost();
   }, [ask, onSessionLost]);
 
-  /**
-   * Choose a repository and ref. The running question is detached and the
-   * current answer cleared, so nothing from the previous selection is shown
-   * against the new one.
-   */
-  const choose = useCallback((repositoryId: string, ref: string, push = true) => {
+  /** Forget the running question and its answer: they belong to the place being left. */
+  const leaveQuestion = useCallback(() => {
     runnerRef.current?.detach();
     // Cleared here as well, whether or not a question is running: a finished
     // answer or error, and the actions bound to its snapshot, never outlive it.
     setAsk({ kind: "idle" });
     setAskSeq((value) => value + 1);
-    nonce.current += 1;
-    const next = { repositoryId, ref, nonce: nonce.current };
-    writeLocation(next, push);
-    setRefs((current) =>
-      current.status !== "idle" && current.repositoryId === repositoryId
-        ? current
-        : { status: "loading", repositoryId },
-    );
-    setSelection({ status: "resolving", repositoryId, ref });
-    setWatch("idle");
-    targetRef.current = next;
-    setTarget(next);
   }, []);
+
+  /**
+   * Choose a repository and ref. The running question is detached and the
+   * current answer cleared, so nothing from the previous selection is shown
+   * against the new one. The view and wiki page stay, so the same page can be
+   * read at another revision.
+   */
+  const choose = useCallback(
+    (repositoryId: string, ref: string, push = true) => {
+      leaveQuestion();
+      nonce.current += 1;
+      const next = { repositoryId, ref, nonce: nonce.current };
+      writeLocation(next, placeRef.current, push);
+      setRefs((current) =>
+        current.status !== "idle" && current.repositoryId === repositoryId
+          ? current
+          : { status: "loading", repositoryId },
+      );
+      setSelection({ status: "resolving", repositoryId, ref });
+      setWatch("idle");
+      targetRef.current = next;
+      setTarget(next);
+    },
+    [leaveQuestion],
+  );
+
+  /**
+   * Go to a view, wiki page or heading at the current selection. Another view
+   * or page detaches the running question, so a late answer never appears
+   * under a page it was not asked about. A heading on the same page keeps it.
+   */
+  const go = useCallback(
+    (next: Place, options: { readonly replace?: boolean } = {}) => {
+      const current = placeRef.current;
+      if (current.view !== next.view || current.page !== next.page) leaveQuestion();
+      placeRef.current = next;
+      writeLocation(targetRef.current, next, !options.replace);
+      setPlace(next);
+    },
+    [leaveQuestion],
+  );
+
+  const navigateWiki = useCallback(
+    (page: string | undefined, anchor?: string, options?: { readonly replace?: boolean }) =>
+      go(
+        {
+          view: "wiki",
+          ...(page !== undefined ? { page } : {}),
+          ...(page !== undefined && anchor !== undefined ? { anchor } : {}),
+        },
+        options,
+      ),
+    [go],
+  );
+
+  const wikiHref = useCallback(
+    (page: string | undefined, anchor?: string) =>
+      hrefOf(targetRef.current, {
+        view: "wiki",
+        ...(page !== undefined ? { page } : {}),
+        ...(page !== undefined && anchor !== undefined ? { anchor } : {}),
+      }),
+    // Recomputed per selection, so links name the selected repository and ref.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    [target],
+  );
 
   // Authorized repositories.
   useEffect(() => {
@@ -393,23 +495,32 @@ function Workspace(props: {
     return () => controller.abort();
   }, [api, choose, lost]);
 
-  // Back and forward move between selections like any other change.
+  // Back and forward move between selections, views and pages like any other change.
   useEffect(() => {
     const onPop = () => {
       const wanted = readLocation();
+      const nextPlace = placeOf(wanted);
+      const currentPlace = placeRef.current;
+      if (nextPlace.view !== currentPlace.view || nextPlace.page !== currentPlace.page) {
+        leaveQuestion();
+      }
+      // A fragment link, such as the skip link, also fires popstate. Outside
+      // the wiki the place stays, so its question and answer stay too.
+      if (nextPlace.view === "wiki" || currentPlace.view === "wiki") {
+        placeRef.current = nextPlace;
+        setPlace(nextPlace);
+      }
       if (repos.status !== "ready") return;
       const repositoryId =
         wanted.repo && repos.ids.includes(wanted.repo) ? wanted.repo : repos.ids[0];
       const ref = wanted.ref ?? "HEAD";
       const current = targetRef.current;
-      // A fragment link, such as the skip link, also fires popstate. The
-      // selection did not change, so its question and answer stay.
       if (current && current.repositoryId === repositoryId && current.ref === ref) return;
       if (repositoryId) choose(repositoryId, ref, false);
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, [repos, choose]);
+  }, [repos, choose, leaveQuestion]);
 
   const repositoryId = target?.repositoryId;
 
@@ -463,6 +574,16 @@ function Workspace(props: {
   const indexState = selection.status === "ready" ? selection.state.index.state : undefined;
   const runnerIndexing = ask.kind === "indexing";
 
+  const onRevisionState = useCallback(
+    (state: RevisionState) =>
+      setSelection((current) =>
+        current.status === "ready" && current.state.revision.id === state.revision.id
+          ? { status: "ready", state }
+          : current,
+      ),
+    [],
+  );
+
   // Follow index readiness with bounded, growing intervals until ready or failed.
   useEffect(() => {
     if (!revisionId || runnerIndexing) return;
@@ -472,12 +593,7 @@ function Workspace(props: {
       api,
       revisionId,
       signal: controller.signal,
-      onState: (state) =>
-        setSelection((current) =>
-          current.status === "ready" && current.state.revision.id === state.revision.id
-            ? { status: "ready", state }
-            : current,
-        ),
+      onState: onRevisionState,
     })
       .then((result) => {
         if (!controller.signal.aborted) setWatch(result === "gave_up" ? "gave_up" : "idle");
@@ -487,7 +603,7 @@ function Workspace(props: {
         setWatch("gave_up");
       });
     return () => controller.abort();
-  }, [api, revisionId, indexState, runnerIndexing, watchNonce, lost]);
+  }, [api, revisionId, indexState, runnerIndexing, watchNonce, lost, onRevisionState]);
 
   // Move focus to the outcome so it is read out and reachable from the keyboard.
   const finished = ask.kind === "result" || ask.kind === "error" || ask.kind === "cancelled";
@@ -503,29 +619,18 @@ function Workspace(props: {
     runnerRef.current?.ask(snapshot);
   }
 
-  function submit(event?: FormEvent) {
-    event?.preventDefault();
-    const text = props.question.trim();
-    if (!text || !ready || active || selection.status !== "ready") return;
+  function submitWith(text: string, page?: AskPage) {
+    if (!text.trim() || !ready || active || selection.status !== "ready") return;
     const { revision } = selection.state;
     start({
-      question: props.question,
+      question: text,
       mode: props.mode,
       repositoryId: revision.repositoryId,
       sha: revision.sha,
       revisionId: revision.id,
       ...(revision.ref !== undefined ? { ref: revision.ref } : {}),
+      ...(page ? { wikiPage: page } : {}),
     });
-  }
-
-  function onQuestionKey(event: KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-      event.preventDefault();
-      submit();
-    } else if (event.key === "Escape" && active) {
-      event.preventDefault();
-      runnerRef.current?.cancel();
-    }
   }
 
   function act(action: Action) {
@@ -576,320 +681,485 @@ function Workspace(props: {
     currentRef === "HEAD" ||
     (listing?.refs.some((ref) => refValue(ref) === currentRef) ?? false) ||
     FULL_SHA.test(currentRef);
-  const answered = ask.kind === "result" && ask.response.status === "answered" ? ask : undefined;
-  // An answer leads with its prose; its outcome follows inside the answer.
-  const status = answered ? undefined : describeAsk(ask);
   const indexInfo = selection.status === "ready" ? describeIndex(selection.state.index) : undefined;
-  const canAsk = ready && !active && props.question.trim() !== "";
 
-  return (
-    <main className="workspace">
-      <h1 className="visually-hidden">Ask Looky about your code</h1>
-      <section className="controls" aria-labelledby="controls-title">
-        <h2 id="controls-title" className="section-title">
-          Source
-        </h2>
-        {repos.status === "error" ? (
-          <p className="field-error" role="alert">
-            {repos.message}
-          </p>
-        ) : repos.status === "ready" && repos.ids.length === 0 ? (
-          <p className="notice notice-warning">
-            No repository is available to this browser client. Ask the Looky operator to allow one.
+  const controls = (
+    <section className="controls" aria-labelledby="controls-title">
+      <h2 id="controls-title" className="section-title">
+        Source
+      </h2>
+      {repos.status === "error" ? (
+        <p className="field-error" role="alert">
+          {repos.message}
+        </p>
+      ) : repos.status === "ready" && repos.ids.length === 0 ? (
+        <p className="notice notice-warning">
+          No repository is available to this browser client. Ask the Looky operator to allow one.
+        </p>
+      ) : null}
+
+      <div className="field">
+        <label htmlFor="repository">Repository</label>
+        <select
+          id="repository"
+          value={repositoryId ?? ""}
+          disabled={repos.status !== "ready" || repos.ids.length === 0}
+          onChange={(event) => choose(event.target.value, "HEAD")}
+        >
+          {repos.status !== "ready" ? <option value="">Loading…</option> : null}
+          {repos.status === "ready"
+            ? repos.ids.map((id) => (
+                <option key={id} value={id}>
+                  {id}
+                </option>
+              ))
+            : null}
+        </select>
+      </div>
+
+      <div className="field">
+        <label htmlFor="revision">Revision</label>
+        <select
+          id="revision"
+          value={currentRef}
+          disabled={!repositoryId || refs.status === "loading"}
+          onChange={(event) => repositoryId && choose(repositoryId, event.target.value)}
+          aria-describedby="revision-help"
+        >
+          <option value="HEAD">{refLabel(listing, "HEAD")}</option>
+          {!knownRef ? <option value={currentRef}>{refLabel(listing, currentRef)}</option> : null}
+          {FULL_SHA.test(currentRef) ? (
+            <option value={currentRef}>Commit {shortSha(currentRef)}</option>
+          ) : null}
+          {listing && listing.refs.some((ref) => ref.kind === "branch") ? (
+            <optgroup label="Branches">
+              {listing.refs
+                .filter((ref) => ref.kind === "branch")
+                .map((ref) => (
+                  <option key={`b:${ref.name}`} value={refValue(ref)}>
+                    {ref.name}
+                  </option>
+                ))}
+            </optgroup>
+          ) : null}
+          {listing && listing.refs.some((ref) => ref.kind === "tag") ? (
+            <optgroup label="Tags">
+              {listing.refs
+                .filter((ref) => ref.kind === "tag")
+                .map((ref) => (
+                  <option key={`t:${ref.name}`} value={refValue(ref)}>
+                    {ref.name}
+                  </option>
+                ))}
+            </optgroup>
+          ) : null}
+        </select>
+        <p id="revision-help" className="hint">
+          {refs.status === "error"
+            ? refs.message
+            : listing?.truncated
+              ? "Only the most recent branches and tags are listed. Enter a commit SHA for others."
+              : "Looky answers from the committed source of the chosen revision."}
+        </p>
+      </div>
+
+      <form className="field sha-form" onSubmit={submitSha}>
+        <label htmlFor="sha">Or a commit SHA</label>
+        <div className="inline-row">
+          <input
+            id="sha"
+            className="mono"
+            inputMode="text"
+            autoComplete="off"
+            spellCheck={false}
+            value={shaInput}
+            onChange={(event) => setShaInput(event.target.value)}
+            aria-invalid={shaError ? true : undefined}
+            aria-describedby={shaError ? "sha-error" : undefined}
+            placeholder="Full 40-character SHA"
+          />
+          <button type="submit" className="button" disabled={!repositoryId}>
+            Use
+          </button>
+        </div>
+        {shaError ? (
+          <p id="sha-error" className="field-error">
+            {shaError}
           </p>
         ) : null}
+      </form>
 
-        <div className="field">
-          <label htmlFor="repository">Repository</label>
-          <select
-            id="repository"
-            value={repositoryId ?? ""}
-            disabled={repos.status !== "ready" || repos.ids.length === 0}
-            onChange={(event) => choose(event.target.value, "HEAD")}
-          >
-            {repos.status !== "ready" ? <option value="">Loading…</option> : null}
-            {repos.status === "ready"
-              ? repos.ids.map((id) => (
-                  <option key={id} value={id}>
-                    {id}
-                  </option>
-                ))
-              : null}
-          </select>
-        </div>
-
-        <div className="field">
-          <label htmlFor="revision">Revision</label>
-          <select
-            id="revision"
-            value={currentRef}
-            disabled={!repositoryId || refs.status === "loading"}
-            onChange={(event) => repositoryId && choose(repositoryId, event.target.value)}
-            aria-describedby="revision-help"
-          >
-            <option value="HEAD">{refLabel(listing, "HEAD")}</option>
-            {!knownRef ? <option value={currentRef}>{refLabel(listing, currentRef)}</option> : null}
-            {FULL_SHA.test(currentRef) ? (
-              <option value={currentRef}>Commit {shortSha(currentRef)}</option>
-            ) : null}
-            {listing && listing.refs.some((ref) => ref.kind === "branch") ? (
-              <optgroup label="Branches">
-                {listing.refs
-                  .filter((ref) => ref.kind === "branch")
-                  .map((ref) => (
-                    <option key={`b:${ref.name}`} value={refValue(ref)}>
-                      {ref.name}
-                    </option>
-                  ))}
-              </optgroup>
-            ) : null}
-            {listing && listing.refs.some((ref) => ref.kind === "tag") ? (
-              <optgroup label="Tags">
-                {listing.refs
-                  .filter((ref) => ref.kind === "tag")
-                  .map((ref) => (
-                    <option key={`t:${ref.name}`} value={refValue(ref)}>
-                      {ref.name}
-                    </option>
-                  ))}
-              </optgroup>
-            ) : null}
-          </select>
-          <p id="revision-help" className="hint">
-            {refs.status === "error"
-              ? refs.message
-              : listing?.truncated
-                ? "Only the most recent branches and tags are listed. Enter a commit SHA for others."
-                : "Looky answers from the committed source of the chosen revision."}
-          </p>
-        </div>
-
-        <form className="field sha-form" onSubmit={submitSha}>
-          <label htmlFor="sha">Or a commit SHA</label>
-          <div className="inline-row">
-            <input
-              id="sha"
-              className="mono"
-              inputMode="text"
-              autoComplete="off"
-              spellCheck={false}
-              value={shaInput}
-              onChange={(event) => setShaInput(event.target.value)}
-              aria-invalid={shaError ? true : undefined}
-              aria-describedby={shaError ? "sha-error" : undefined}
-              placeholder="Full 40-character SHA"
-            />
-            <button type="submit" className="button" disabled={!repositoryId}>
-              Use
+      <div className="selection" aria-live="polite">
+        {selection.status === "resolving" ? (
+          <p className="selection-line">Resolving {refLabel(listing, selection.ref)}…</p>
+        ) : selection.status === "error" ? (
+          <div className="notice notice-danger">
+            <p>{selection.message}</p>
+            <button
+              type="button"
+              className="button"
+              onClick={() => choose(selection.repositoryId, selection.ref, false)}
+            >
+              Try again
             </button>
           </div>
-          {shaError ? (
-            <p id="sha-error" className="field-error">
-              {shaError}
+        ) : selection.status === "ready" ? (
+          <>
+            <p className="selection-line">
+              <span className="selection-label">Pinned to</span>{" "}
+              <code className="sha" title={selection.state.revision.sha}>
+                {shortSha(selection.state.revision.sha)}
+              </code>
+              {selection.state.revision.ref ? (
+                <span className="selection-ref">
+                  {" "}
+                  from {refLabel(listing, selection.state.revision.ref)}
+                </span>
+              ) : null}
             </p>
-          ) : null}
-        </form>
-
-        <div className="selection" aria-live="polite">
-          {selection.status === "resolving" ? (
-            <p className="selection-line">Resolving {refLabel(listing, selection.ref)}…</p>
-          ) : selection.status === "error" ? (
-            <div className="notice notice-danger">
-              <p>{selection.message}</p>
-              <button
-                type="button"
-                className="button"
-                onClick={() => choose(selection.repositoryId, selection.ref, false)}
-              >
-                Try again
-              </button>
-            </div>
-          ) : selection.status === "ready" ? (
-            <>
-              <p className="selection-line">
-                <span className="selection-label">Pinned to</span>{" "}
-                <code className="sha" title={selection.state.revision.sha}>
-                  {shortSha(selection.state.revision.sha)}
-                </code>
-                {selection.state.revision.ref ? (
-                  <span className="selection-ref">
-                    {" "}
-                    from {refLabel(listing, selection.state.revision.ref)}
-                  </span>
-                ) : null}
+            {indexInfo ? (
+              <p className={`index-line tone-${indexInfo.tone}`}>
+                <span className="dot" aria-hidden="true" />
+                {indexInfo.text}
               </p>
-              {indexInfo ? (
-                <p className={`index-line tone-${indexInfo.tone}`}>
-                  <span className="dot" aria-hidden="true" />
-                  {indexInfo.text}
-                </p>
-              ) : null}
-              {selection.state.index.state === "building" &&
-              selection.state.index.active?.progress.filesDone !== undefined &&
-              selection.state.index.active.progress.filesTotal ? (
-                <progress
-                  className="index-progress"
-                  value={selection.state.index.active.progress.filesDone}
-                  max={selection.state.index.active.progress.filesTotal}
-                  aria-label="Indexed files"
-                />
-              ) : null}
-              {watch === "gave_up" ? (
-                <p className="hint">
-                  Stopped checking automatically.{" "}
-                  <button
-                    type="button"
-                    className="link-button"
-                    onClick={() => {
-                      setWatch("idle");
-                      setWatchNonce((value) => value + 1);
-                    }}
-                  >
-                    Check again
-                  </button>
-                </p>
-              ) : null}
-              {ended ? (
-                <p className="field-error">
-                  This selection ended. Re-resolve the revision to ask again.
-                </p>
-              ) : null}
-              <div className="selection-actions">
+            ) : null}
+            {selection.state.index.state === "building" &&
+            selection.state.index.active?.progress.filesDone !== undefined &&
+            selection.state.index.active.progress.filesTotal ? (
+              <progress
+                className="index-progress"
+                value={selection.state.index.active.progress.filesDone}
+                max={selection.state.index.active.progress.filesTotal}
+                aria-label="Indexed files"
+              />
+            ) : null}
+            {watch === "gave_up" ? (
+              <p className="hint">
+                Stopped checking automatically.{" "}
                 <button
                   type="button"
                   className="link-button"
-                  onClick={() => choose(selection.state.revision.repositoryId, currentRef, false)}
-                  title="Resolve the branch or tag again, in case it moved"
+                  onClick={() => {
+                    setWatch("idle");
+                    setWatchNonce((value) => value + 1);
+                  }}
                 >
-                  Re-resolve revision
+                  Check again
                 </button>
-              </div>
-            </>
-          ) : null}
-        </div>
-      </section>
-
-      <section className="ask" aria-labelledby="ask-title">
-        <form className="question-form" onSubmit={submit} aria-busy={active}>
-          <h2 id="ask-title" className="section-title">
-            Question
-          </h2>
-          <div className="field">
-            <label htmlFor="question" className="visually-hidden">
-              Your question about the code
-            </label>
-            <textarea
-              id="question"
-              ref={questionRef}
-              rows={4}
-              dir="auto"
-              value={props.question}
-              onChange={(event) => props.onQuestion(event.target.value)}
-              onKeyDown={onQuestionKey}
-              placeholder="For example: how does a refresh reuse unchanged files from the previous index?"
-              aria-describedby="question-help"
-            />
-            <p id="question-help" className="hint">
-              Ctrl or ⌘ + Enter to ask. Escape cancels a running question.
-            </p>
-          </div>
-
-          <fieldset className="modes">
-            <legend>Mode</legend>
-            <label className="mode">
-              <input
-                type="radio"
-                name="mode"
-                value="fast"
-                checked={props.mode === "fast"}
-                onChange={() => props.onMode("fast")}
-              />
-              <span className="mode-body">
-                <span className="mode-name">Fast</span>
-                <span className="mode-detail">Small research budget, concise answer</span>
-              </span>
-            </label>
-            <label className="mode">
-              <input
-                type="radio"
-                name="mode"
-                value="deep"
-                checked={props.mode === "deep"}
-                onChange={() => props.onMode("deep")}
-              />
-              <span className="mode-body">
-                <span className="mode-name">Deep</span>
-                <span className="mode-detail">Follows code across files, larger budget</span>
-              </span>
-            </label>
-          </fieldset>
-
-          <div className="submit-row">
-            <button type="submit" className="button button-primary" disabled={!canAsk}>
-              Ask in {MODE_LABEL[props.mode]}
-            </button>
-            {active ? (
+              </p>
+            ) : null}
+            {ended ? (
+              <p className="field-error">
+                This selection ended. Re-resolve the revision to ask again.
+              </p>
+            ) : null}
+            <div className="selection-actions">
               <button
                 type="button"
-                className="button"
-                onClick={() => runnerRef.current?.cancel()}
-                disabled={ask.kind === "cancelling"}
+                className="link-button"
+                onClick={() => choose(selection.state.revision.repositoryId, currentRef, false)}
+                title="Resolve the branch or tag again, in case it moved"
               >
-                {ask.kind === "cancelling" ? "Cancelling…" : "Cancel"}
+                Re-resolve revision
               </button>
-            ) : null}
-            {!ready && selection.status !== "resolving" ? (
-              <span className="hint">Choose a revision first.</span>
-            ) : null}
-          </div>
-        </form>
-
-        <p className="visually-hidden" role="status" aria-live="polite">
-          {announce(ask)}
-        </p>
-
-        {status ? (
-          <div className={`status tone-${status.tone}`} aria-busy={status.busy}>
-            <h2 className="status-title" ref={resultRef} tabIndex={-1}>
-              {status.busy ? <span className="spinner" aria-hidden="true" /> : null}
-              {status.title}
-            </h2>
-            {status.detail ? <p className="status-detail">{status.detail}</p> : null}
-            {status.actions.length > 0 ? (
-              <div className="status-actions">
-                {status.actions.map((action) => (
-                  <ActionButton
-                    key={`${askSeq}:${action.kind}`}
-                    action={action}
-                    onAct={act}
-                    disabled={active}
-                  />
-                ))}
-              </div>
-            ) : null}
-          </div>
-        ) : answered ? null : (
-          <div className="empty">
-            <p>
-              Ask how something works in the selected revision. Looky explains it in plain prose and
-              cites the exact files and lines it read.
-            </p>
-          </div>
-        )}
-
-        {answered && answered.response.status === "answered" ? (
-          <AnswerView
-            snapshot={answered.snapshot}
-            response={answered.response}
-            sourceLinks={answered.sourceLinks}
-            titleRef={resultRef}
-            {...(answered.snapshot.mode === "fast"
-              ? { onDeep: () => act({ kind: "deep", label: "Ask in Deep" }) }
-              : {})}
-          />
+            </div>
+          </>
         ) : null}
-      </section>
+      </div>
+    </section>
+  );
+
+  const panel = (options: {
+    readonly page?: AskPage;
+    readonly text: string;
+    readonly onText: (value: string) => void;
+  }) => {
+    // Only the outcome of a question asked here is shown here.
+    const mine =
+      ask.kind !== "idle" &&
+      (options.page
+        ? ask.snapshot.wikiPage?.pageId === options.page.pageId &&
+          ask.snapshot.wikiPage.generationId === options.page.generationId
+        : ask.snapshot.wikiPage === undefined);
+    return (
+      <QuestionPanel
+        page={options.page}
+        question={options.text}
+        onQuestion={options.onText}
+        mode={props.mode}
+        onMode={props.onMode}
+        ask={mine ? ask : { kind: "idle" }}
+        askSeq={askSeq}
+        active={active}
+        ready={ready}
+        resolving={selection.status === "resolving"}
+        questionRef={questionRef}
+        resultRef={resultRef}
+        onSubmit={() => submitWith(options.text, options.page)}
+        onCancel={() => runnerRef.current?.cancel()}
+        onAct={act}
+      />
+    );
+  };
+
+  const selectedState = selection.status === "ready" ? selection.state : undefined;
+
+  return (
+    <main className={`workspace${place.view === "wiki" ? " workspace-wiki" : ""}`}>
+      <h1 className="visually-hidden">
+        {place.view === "wiki" ? "Looky wiki" : "Ask Looky about your code"}
+      </h1>
+      <nav className="views" aria-label="Views">
+        <a
+          href={hrefOf(target, { view: "ask" })}
+          aria-current={place.view === "ask" ? "page" : undefined}
+          onClick={(event) => {
+            if (!plainClick(event)) return;
+            event.preventDefault();
+            if (place.view !== "ask") go({ view: "ask" });
+          }}
+        >
+          Ask
+        </a>
+        <a
+          href={hrefOf(target, { view: "wiki" })}
+          aria-current={place.view === "wiki" ? "page" : undefined}
+          onClick={(event) => {
+            if (!plainClick(event)) return;
+            event.preventDefault();
+            go({ view: "wiki" });
+          }}
+        >
+          Wiki
+        </a>
+      </nav>
+      {place.view === "ask" ? (
+        <>
+          {controls}
+          <section className="ask" aria-labelledby="ask-title">
+            {panel({ text: props.question, onText: props.onQuestion })}
+          </section>
+        </>
+      ) : selectedState ? (
+        <WikiView
+          key={selectedState.revision.id}
+          api={api}
+          state={selectedState}
+          page={place.page}
+          anchor={place.anchor}
+          hrefFor={wikiHref}
+          navigate={navigateWiki}
+          lost={lost}
+          onRevisionState={onRevisionState}
+          onSelectSha={(sha) => repositoryId && choose(repositoryId, sha)}
+          onReselect={() => target && choose(target.repositoryId, target.ref, false)}
+          controls={controls}
+          renderAsk={(page) =>
+            panel({ page, text: props.pageQuestion, onText: props.onPageQuestion })
+          }
+        />
+      ) : (
+        <>
+          <div className="side">{controls}</div>
+          <section className="wiki-main" aria-label="Generated wiki">
+            <p className="hint" role="status">
+              {selection.status === "error"
+                ? "Choose a revision to read its wiki."
+                : "Resolving the revision…"}
+            </p>
+          </section>
+        </>
+      )}
     </main>
+  );
+}
+
+/**
+ * The question form, its live status and its outcome. Used for ordinary
+ * source questions and, with `page`, for questions about one wiki page.
+ */
+function QuestionPanel({
+  questionRef,
+  resultRef,
+  ...props
+}: {
+  readonly page: AskPage | undefined;
+  readonly question: string;
+  readonly onQuestion: (value: string) => void;
+  readonly mode: Mode;
+  readonly onMode: (mode: Mode) => void;
+  readonly ask: AskState;
+  readonly askSeq: number;
+  readonly active: boolean;
+  readonly ready: boolean;
+  readonly resolving: boolean;
+  readonly questionRef: RefObject<HTMLTextAreaElement | null>;
+  readonly resultRef: RefObject<HTMLHeadingElement | null>;
+  readonly onSubmit: () => void;
+  readonly onCancel: () => void;
+  readonly onAct: (action: Action) => void;
+}) {
+  const { ask, page } = props;
+  const prefix = page ? "page-" : "";
+  const answered = ask.kind === "result" && ask.response.status === "answered" ? ask : undefined;
+  // An answer leads with its prose; its outcome follows inside the answer.
+  const status = answered ? undefined : describeAsk(ask);
+  const canAsk = props.ready && !props.active && props.question.trim() !== "";
+
+  function submit(event?: FormEvent) {
+    event?.preventDefault();
+    if (canAsk) props.onSubmit();
+  }
+
+  function onKey(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      submit();
+    } else if (event.key === "Escape" && props.active) {
+      event.preventDefault();
+      props.onCancel();
+    }
+  }
+
+  const body: ReactNode = (
+    <>
+      <form className="question-form" onSubmit={submit} aria-busy={props.active}>
+        <h2 id={`${prefix}ask-title`} className="section-title">
+          {page ? "Ask about this page" : "Question"}
+        </h2>
+        {page ? (
+          <p className="hint" id="page-ask-help">
+            Looky answers from the committed source at this commit, using the page only to know
+            where to look. The page itself is not evidence.
+          </p>
+        ) : null}
+        <div className="field">
+          <label htmlFor={`${prefix}question`} className="visually-hidden">
+            {page ? `Your question about the page ${page.title}` : "Your question about the code"}
+          </label>
+          <textarea
+            id={`${prefix}question`}
+            ref={questionRef}
+            rows={page ? 3 : 4}
+            dir="auto"
+            value={props.question}
+            onChange={(event) => props.onQuestion(event.target.value)}
+            onKeyDown={onKey}
+            placeholder={
+              page
+                ? "For example: which tests cover this, and what happens when it fails?"
+                : "For example: how does a refresh reuse unchanged files from the previous index?"
+            }
+            aria-describedby={`${prefix}question-help`}
+          />
+          <p id={`${prefix}question-help`} className="hint">
+            Ctrl or ⌘ + Enter to ask. Escape cancels a running question.
+          </p>
+        </div>
+
+        <fieldset className="modes">
+          <legend>Mode</legend>
+          <label className="mode">
+            <input
+              type="radio"
+              name={`${prefix}mode`}
+              value="fast"
+              checked={props.mode === "fast"}
+              onChange={() => props.onMode("fast")}
+            />
+            <span className="mode-body">
+              <span className="mode-name">Fast</span>
+              <span className="mode-detail">Small research budget, concise answer</span>
+            </span>
+          </label>
+          <label className="mode">
+            <input
+              type="radio"
+              name={`${prefix}mode`}
+              value="deep"
+              checked={props.mode === "deep"}
+              onChange={() => props.onMode("deep")}
+            />
+            <span className="mode-body">
+              <span className="mode-name">Deep</span>
+              <span className="mode-detail">Follows code across files, larger budget</span>
+            </span>
+          </label>
+        </fieldset>
+
+        <div className="submit-row">
+          <button type="submit" className="button button-primary" disabled={!canAsk}>
+            Ask in {MODE_LABEL[props.mode]}
+          </button>
+          {props.active && ask.kind !== "idle" ? (
+            <button
+              type="button"
+              className="button"
+              onClick={props.onCancel}
+              disabled={ask.kind === "cancelling"}
+            >
+              {ask.kind === "cancelling" ? "Cancelling…" : "Cancel"}
+            </button>
+          ) : null}
+          {!props.ready && !props.resolving ? (
+            <span className="hint">Choose a revision first.</span>
+          ) : null}
+        </div>
+      </form>
+
+      <p className="visually-hidden" role="status" aria-live="polite">
+        {announce(ask)}
+      </p>
+
+      {status ? (
+        <div className={`status tone-${status.tone}`} aria-busy={status.busy}>
+          <h2 className="status-title" ref={resultRef} tabIndex={-1}>
+            {status.busy ? <span className="spinner" aria-hidden="true" /> : null}
+            {status.title}
+          </h2>
+          {status.detail ? <p className="status-detail">{status.detail}</p> : null}
+          {status.actions.length > 0 ? (
+            <div className="status-actions">
+              {status.actions.map((action) => (
+                <ActionButton
+                  key={`${props.askSeq}:${action.kind}`}
+                  action={action}
+                  onAct={props.onAct}
+                  disabled={props.active}
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : answered || page ? null : (
+        <div className="empty">
+          <p>
+            Ask how something works in the selected revision. Looky explains it in plain prose and
+            cites the exact files and lines it read.
+          </p>
+        </div>
+      )}
+
+      {answered && answered.response.status === "answered" ? (
+        <AnswerView
+          snapshot={answered.snapshot}
+          response={answered.response}
+          sourceLinks={answered.sourceLinks}
+          titleRef={resultRef}
+          {...(answered.snapshot.mode === "fast"
+            ? { onDeep: () => props.onAct({ kind: "deep", label: "Ask in Deep" }) }
+            : {})}
+        />
+      ) : null}
+    </>
+  );
+
+  return page ? (
+    <section className="page-ask" aria-labelledby="page-ask-title">
+      {body}
+    </section>
+  ) : (
+    body
   );
 }
 

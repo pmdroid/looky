@@ -4,7 +4,9 @@
  * React escapes every string, and links go through a {@link LinkPolicy}.
  *
  * Supported: paragraphs, headings, bullet and numbered lists, block quotes,
- * fenced code, inline code, bold, italic, backslash escapes and links.
+ * fenced code, thematic breaks, inline code, bold, italic, backslash escapes
+ * and links. A `wiki:` link the policy allows becomes an in-app link marked
+ * with `data-wiki-slug`; the caller handles its clicks.
  */
 import { Fragment, type ReactNode } from "react";
 import type { LinkPolicy } from "./links";
@@ -19,13 +21,15 @@ export type Block =
       readonly items: string[];
     }
   | { readonly type: "quote"; readonly blocks: Block[] }
-  | { readonly type: "code"; readonly text: string };
+  | { readonly type: "code"; readonly text: string }
+  | { readonly type: "rule" };
 
 const FENCE = /^ {0,3}(`{3,}|~{3,})/;
 const HEADING = /^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$/;
 const BULLET = /^ {0,3}[-*+]\s+(.*)$/;
 const NUMBERED = /^ {0,3}(\d{1,9})[.)]\s+(.*)$/;
 const QUOTE = /^ {0,3}>\s?(.*)$/;
+const RULE = /^ {0,3}([-*_])(?: *\1){2,} *$/;
 const MAX_DEPTH = 4;
 
 export function parseBlocks(source: string, depth = 0): Block[] {
@@ -49,6 +53,11 @@ export function parseBlocks(source: string, depth = 0): Block[] {
       }
       index += 1;
       blocks.push({ type: "code", text: body.join("\n") });
+      continue;
+    }
+    if (RULE.test(line)) {
+      blocks.push({ type: "rule" });
+      index += 1;
       continue;
     }
     const heading = HEADING.exec(line);
@@ -100,6 +109,7 @@ export function parseBlocks(source: string, depth = 0): Block[] {
         current.trim() === "" ||
         FENCE.test(current) ||
         HEADING.test(current) ||
+        RULE.test(current) ||
         QUOTE.test(current) ||
         BULLET.test(current) ||
         NUMBERED.test(current)
@@ -116,7 +126,7 @@ export function parseBlocks(source: string, depth = 0): Block[] {
 
 const INLINE = new RegExp(
   [
-    String.raw`\\([\\\x60*_{}\[\]()#+\-.!>|~])`, // 1 escape
+    String.raw`\\([\\\x60*_{}\[\]()#+\-.!<>|~])`, // 1 escape
     String.raw`(\x60+)([^\x60]|[\s\S]*?[^\x60])\2(?!\x60)`, // 2,3 code
     String.raw`\[((?:[^\[\]\n]|\\[\[\]])+)\]\(\s*<?([^()\s<>]+)>?(?:\s+"[^"\n]*")?\s*\)`, // 4,5 link
     String.raw`\*\*(?=\S)([\s\S]+?)\*\*`, // 6 strong
@@ -151,9 +161,14 @@ export function renderInline(
       );
     } else if (linkText !== undefined && href !== undefined) {
       const children = renderInline(linkText, links, depth + 1, false);
-      const target = allowLinks ? links.href(href) : undefined;
+      const internal = allowLinks ? links.internal(href) : undefined;
+      const target = allowLinks && !internal ? links.href(href) : undefined;
       nodes.push(
-        target ? (
+        internal ? (
+          <a key={key} href={internal.href} data-wiki-slug={internal.slug}>
+            {children}
+          </a>
+        ) : target ? (
           <a key={key} href={target} target="_blank" rel="noopener noreferrer nofollow">
             {children}
           </a>
@@ -179,6 +194,8 @@ function renderBlocks(
   blocks: readonly Block[],
   links: LinkPolicy,
   headingBase: number,
+  /** Element id per top-level heading block, by block index. */
+  ids?: ReadonlyMap<number, string>,
 ): ReactNode[] {
   return blocks.map((block, index) => {
     switch (block.type) {
@@ -191,8 +208,9 @@ function renderBlocks(
       case "heading": {
         const level = Math.min(6, headingBase + block.level - 1);
         const Tag = `h${level}` as "h3";
+        const id = ids?.get(index);
         return (
-          <Tag key={index} dir="auto">
+          <Tag key={index} dir="auto" {...(id ? { id, tabIndex: -1 } : {})}>
             {renderInline(block.text, links)}
           </Tag>
         );
@@ -223,8 +241,31 @@ function renderBlocks(
             <code>{block.text}</code>
           </pre>
         );
+      case "rule":
+        return <hr key={index} />;
     }
   });
+}
+
+/**
+ * Element ids for the top-level `##` to `######` headings, in order, from
+ * anchors Looky computed for the same body. Looky splits sections at exactly
+ * those headings, so the n-th one here is its n-th anchor.
+ */
+export function headingIds(
+  blocks: readonly Block[],
+  anchors: readonly string[],
+  idFor: (anchor: string) => string,
+): Map<number, string> {
+  const ids = new Map<number, string>();
+  let next = 0;
+  blocks.forEach((block, index) => {
+    if (block.type !== "heading" || block.level < 2) return;
+    const anchor = anchors[next];
+    next += 1;
+    if (anchor !== undefined) ids.set(index, idFor(anchor));
+  });
+  return ids;
 }
 
 export function Markdown(props: {
@@ -232,6 +273,12 @@ export function Markdown(props: {
   readonly links: LinkPolicy;
   /** Level used for a `#` heading inside the text. */
   readonly headingBase?: number;
+  /** Anchors of the text's `##` and lower headings, in order, and how they become ids. */
+  readonly anchors?: { readonly list: readonly string[]; readonly idFor: (a: string) => string };
 }) {
-  return <>{renderBlocks(parseBlocks(props.text), props.links, props.headingBase ?? 3)}</>;
+  const blocks = parseBlocks(props.text);
+  const ids = props.anchors
+    ? headingIds(blocks, props.anchors.list, props.anchors.idFor)
+    : undefined;
+  return <>{renderBlocks(blocks, props.links, props.headingBase ?? 3, ids)}</>;
 }

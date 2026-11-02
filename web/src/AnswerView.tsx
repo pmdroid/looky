@@ -56,6 +56,12 @@ export function AnswerView({
         <p className="answer-question" dir="auto">
           {snapshot.question}
         </p>
+        {snapshot.wikiPage ? (
+          <p className="answer-page" dir="auto">
+            About the wiki page “{snapshot.wikiPage.title}”, answered from the source at this
+            commit.
+          </p>
+        ) : null}
       </header>
 
       <div className="prose">
