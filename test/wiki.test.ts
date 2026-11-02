@@ -15,7 +15,7 @@ import {
   type WikiPlanLimits,
   wikiGeneratorKey,
 } from "../src/wiki/model";
-import { slugify } from "../src/wiki/planner";
+import { planWiki, slugify } from "../src/wiki/planner";
 import {
   collectWikiGarbage,
   createWikiGeneration,
@@ -627,6 +627,121 @@ describe("generated wiki model", () => {
     expect(idOf(await plan(svc, movedSha), "modules/invoicing")).toBe(
       idOf(before, "modules/billing")!,
     );
+  });
+
+  test("a published slug stays with its page when a new concept sorts before it", async () => {
+    const db = database();
+    const svc = service(db);
+    const before = await plan(svc);
+    const first = generateAll(db, createWikiGeneration(db, before, GENERATOR).generation.id);
+    const storageId = before.pages.find((page) => page.slug === "modules/storage")!.pageId;
+
+    // module:apps/storage sorts before module:src/storage and prefers the same slug.
+    write(repo, "apps/storage/disk.ts", "export const disk = 1;\n");
+    const nextSha = commitAll(repo, "apps storage");
+    const after = await plan(svc, nextSha);
+    const bySlug = new Map(after.pages.map((page) => [page.slug, page]));
+    expect(bySlug.get("modules/storage")).toMatchObject({
+      pageId: storageId,
+      conceptKey: "module:src/storage",
+    });
+    expect(bySlug.get("modules/storage-2")!.conceptKey).toBe("module:apps/storage");
+    const second = generateAll(db, createWikiGeneration(db, after, GENERATOR).generation.id);
+    expect(
+      resolveWikiSlug(db, {
+        repositoryId: "pilot",
+        generationId: second.id,
+        slug: "modules/storage",
+      }),
+    ).toMatchObject({ outcome: "page", page: { pageId: storageId } });
+
+    // A plan made without the history would hand the slug to the newcomer; storage refuses it.
+    const unaware = planWiki(db, after.indexBuildId, { limits: LIMITS });
+    expect(unaware.pages.find((page) => page.slug === "modules/storage")!.conceptKey).toBe(
+      "module:apps/storage",
+    );
+    write(repo, "apps/storage/more.ts", "export const more = 2;\n");
+    const thirdSha = commitAll(repo, "more");
+    const stale = planWiki(db, (await plan(svc, thirdSha)).indexBuildId, { limits: LIMITS });
+    expect(() => createWikiGeneration(db, stale, GENERATOR)).toThrow(
+      "was published for another page",
+    );
+    expect(wikiStatus(db, scopeOf(before)).ready?.id).toBe(first.id);
+  });
+
+  test("a retired page identity never passes to an unrelated concept", async () => {
+    initRepo(otherRepo);
+    write(otherRepo, "src/alpha/one.ts", "export const one = 1;\n");
+    write(otherRepo, "src/alpha/two.ts", "export const two = 2;\n");
+    write(otherRepo, "src/keep/keep.ts", "export const keep = 0;\n");
+    const firstSha = commitAll(otherRepo, "alpha");
+    const db = database();
+    const svc = service(db);
+    const publish = async (scopeSha: string) => {
+      const p = await plan(svc, scopeSha, LIMITS, "other");
+      return {
+        plan: p,
+        generation: generateAll(db, createWikiGeneration(db, p, GENERATOR).generation.id),
+      };
+    };
+    const idOf = (p: WikiPlan, slug: string) => p.pages.find((page) => page.slug === slug)?.pageId;
+    const first = await publish(firstSha);
+    const alphaId = idOf(first.plan, "modules/alpha")!;
+
+    // Alpha moves to beta with identical files and keeps its identity.
+    git(otherRepo, "mv", "src/alpha", "src/beta");
+    const moved = await publish(commitAll(otherRepo, "move"));
+    expect(idOf(moved.plan, "modules/beta")).toBe(alphaId);
+
+    // Beta is deleted and unrelated code appears under the old alpha path.
+    git(otherRepo, "rm", "-r", "--quiet", "src/beta");
+    write(otherRepo, "src/alpha/fresh.ts", "export function unrelated() { return 42; }\n");
+    const replaced = await publish(commitAll(otherRepo, "replace"));
+    const fresh = replaced.plan.pages.find((page) => page.conceptKey === "module:src/alpha")!;
+    expect(fresh.pageId).not.toBe(alphaId);
+    expect(fresh.slug).toBe("modules/alpha-2");
+    const resolve = (slug: string) =>
+      resolveWikiSlug(db, { repositoryId: "other", generationId: replaced.generation.id, slug });
+    expect(resolve("modules/beta")).toMatchObject({ outcome: "removed", pageId: alphaId });
+    expect(resolve("modules/alpha")).toMatchObject({ outcome: "removed", pageId: alphaId });
+    expect(resolve("modules/alpha-2")).toMatchObject({
+      outcome: "page",
+      page: { pageId: fresh.pageId },
+    });
+  });
+
+  test("a concept that returns after an absence reclaims its id and slug", async () => {
+    const db = database();
+    const svc = service(db);
+    const before = await plan(svc);
+    generateAll(db, createWikiGeneration(db, before, GENERATOR).generation.id);
+    const billingId = before.pages.find((page) => page.slug === "modules/billing")!.pageId;
+
+    git(repo, "rm", "-r", "--quiet", "src/billing");
+    const without = await plan(svc, commitAll(repo, "drop billing"));
+    expect(without.pages.some((page) => page.pageId === billingId)).toBe(false);
+    generateAll(db, createWikiGeneration(db, without, GENERATOR).generation.id);
+
+    git(repo, "checkout", "--quiet", sha, "--", "src/billing");
+    const restored = await plan(svc, commitAll(repo, "restore billing"));
+    expect(restored.pages.find((page) => page.conceptKey === "module:src/billing")).toMatchObject({
+      pageId: billingId,
+      slug: "modules/billing",
+    });
+  });
+
+  test("the overview of a repository with only root-level code is planned from that code", async () => {
+    initRepo(otherRepo);
+    write(otherRepo, "main.py", "def main():\n    return 0\n");
+    const otherSha = commitAll(otherRepo, "script");
+    const db = database();
+    const p = await plan(service(db), otherSha, LIMITS, "other");
+    const overview = p.pages.find((page) => page.slug === "overview")!;
+    expect(overview.state).toBe("queued");
+    expect(overview.sources.map((source) => source.path)).toEqual(["main.py"]);
+    expect(
+      p.pages.filter((page) => page.state === "queued").every((page) => page.sources.length > 0),
+    ).toBe(true);
   });
 
   test("retention retires old wiki generations and keeps slug history", async () => {

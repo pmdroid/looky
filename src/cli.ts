@@ -59,6 +59,7 @@ import { planWiki } from "./wiki/planner";
 import {
   listWikiGenerations,
   priorWikiPages,
+  wikiHistory,
   resolveWikiSlug,
   wikiIndex,
   wikiPage,
@@ -533,6 +534,7 @@ function wiki(
         planWiki(db, build.id, {
           limits: loadWikiConfig().limits,
           prior: priorWikiPages(db, repositoryId),
+          history: wikiHistory(db, repositoryId),
         }),
       );
       return 0;

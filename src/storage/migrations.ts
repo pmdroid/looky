@@ -288,6 +288,7 @@ export const migrations: readonly Migration[] = [
       repository_id TEXT NOT NULL,
       slug TEXT NOT NULL,
       page_id TEXT NOT NULL,
+      concept_key TEXT NOT NULL,
       title TEXT NOT NULL,
       generation_id TEXT NOT NULL,
       recorded_at TEXT NOT NULL,

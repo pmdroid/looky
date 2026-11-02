@@ -49,10 +49,25 @@ export interface PriorWikiPage {
   readonly blobOids: readonly string[];
 }
 
+/**
+ * Every slug and page id the repository ever published. Historical slugs stay
+ * reserved for the page that owned them, and historical page ids are never
+ * given to a different concept, so an old link resolves to the same page or
+ * to an explicit removed outcome, never to unrelated content.
+ */
+export interface WikiHistory {
+  /** Published slug → the page id that owned it. */
+  readonly slugOwners: ReadonlyMap<string, string>;
+  /** Published page id → the concept key it was last published under. */
+  readonly pageConcepts: ReadonlyMap<string, string>;
+}
+
 export interface PlanWikiOptions {
   readonly limits: WikiPlanLimits;
   /** Pages of the repository's previous generation, for stable identities across renames. */
   readonly prior?: readonly PriorWikiPage[];
+  /** The repository's published slugs and page ids, which the plan must not reassign. */
+  readonly history?: WikiHistory;
   /** Most uncovered paths listed in the report. Counts are always complete. */
   readonly uncoveredListLimit?: number;
 }
@@ -209,7 +224,11 @@ export function planWiki(db: Database, buildId: string, options: PlanWikiOptions
   }
 
   // ---- Pages --------------------------------------------------------------
-  const ids = new IdAssigner(options.prior ?? []);
+  const history: WikiHistory = options.history ?? {
+    slugOwners: new Map(),
+    pageConcepts: new Map(),
+  };
+  const ids = new IdAssigner(options.prior ?? [], history);
   const disclosures: WikiDisclosure[] = [];
   const drafts: Draft[] = [];
   const pick = (candidatesForPage: readonly IndexedFile[]) =>
@@ -250,6 +269,9 @@ export function planWiki(db: Database, buildId: string, options: PlanWikiOptions
       ...manifests,
       ...docsFiles.slice(0, 3),
       ...plannedModules.map((module) => topOf(module.members)),
+      // Repositories without documents or modules, such as root-level scripts.
+      ...rankWithin(rootFiles.filter((file) => file.kind === "code")),
+      ...rankWithin(files),
     ]),
     links: [],
   };
@@ -403,6 +425,13 @@ export function planWiki(db: Database, buildId: string, options: PlanWikiOptions
     workflowDrafts.push(draft);
   }
 
+  // A page is only generated from evidence: without sources it is disclosed instead.
+  for (const draft of drafts) {
+    if (draft.unavailableReason === null && draft.sources.length === 0) {
+      draft.unavailableReason = "No indexed source supports this page.";
+    }
+  }
+
   // Cross links among the fixed pages, only to pages with content.
   const available = (draft: Draft) => draft.unavailableReason === null;
   for (const target of [architecture, modulesSection, workflowsSection]) {
@@ -455,7 +484,7 @@ export function planWiki(db: Database, buildId: string, options: PlanWikiOptions
     });
   }
 
-  const pages = finalize(drafts, ids);
+  const pages = finalize(drafts, ids, history);
 
   // ---- Coverage -----------------------------------------------------------
   const planned = new Set(pages.flatMap((page) => page.sources.map((source) => source.path)));
@@ -516,15 +545,15 @@ interface Draft {
   readonly scopePath: string | null;
   /** Module directory or workflow root file, shown when two titles would be equal. */
   readonly origin?: string;
-  readonly unavailableReason: string | null;
+  unavailableReason: string | null;
   sources: readonly IndexedFile[];
   readonly links: { to: Draft; relation: PlannedLink["relation"] }[];
 }
 
 /** Assign ids and unique slugs, and order pages so parents precede children. */
-function finalize(drafts: readonly Draft[], ids: IdAssigner): PlannedPage[] {
+function finalize(drafts: readonly Draft[], ids: IdAssigner, history: WikiHistory): PlannedPage[] {
   const pageIds = ids.assign(drafts);
-  const slugs = uniqueSlugs(drafts);
+  const slugs = uniqueSlugs(drafts, pageIds, history.slugOwners);
   const children = new Map<Draft | null, Draft[]>();
   for (const draft of drafts) {
     children.set(draft.parent, [...(children.get(draft.parent) ?? []), draft]);
@@ -571,18 +600,40 @@ function finalize(drafts: readonly Draft[], ids: IdAssigner): PlannedPage[] {
   return pages;
 }
 
-function uniqueSlugs(drafts: readonly Draft[]): Map<Draft, string> {
+/**
+ * Unique slugs. A page whose preferred slug it already published keeps it
+ * first. Every other page takes its preferred slug or the first free numbered
+ * variant, in a fixed order, skipping slugs used in this plan and slugs the
+ * repository published for a different page id.
+ */
+function uniqueSlugs(
+  drafts: readonly Draft[],
+  pageIds: ReadonlyMap<Draft, string>,
+  owners: ReadonlyMap<string, string>,
+): Map<Draft, string> {
   const result = new Map<Draft, string>();
   const used = new Set<string>();
-  // Fixed pages keep their slugs; others are deduplicated in concept order.
-  const ordered = [...drafts].sort(
-    (a, b) =>
-      Number(a.kind === "module" || a.kind === "workflow") -
-        Number(b.kind === "module" || b.kind === "workflow") || compare(a.conceptKey, b.conceptKey),
-  );
+  for (const draft of drafts) {
+    if (owners.get(draft.slug) === pageIds.get(draft)) {
+      used.add(draft.slug);
+      result.set(draft, draft.slug);
+    }
+  }
+  const free = (slug: string, pageId: string) =>
+    !used.has(slug) && (owners.get(slug) ?? pageId) === pageId;
+  // Fixed pages first; others in concept order.
+  const ordered = drafts
+    .filter((draft) => !result.has(draft))
+    .sort(
+      (a, b) =>
+        Number(a.kind === "module" || a.kind === "workflow") -
+          Number(b.kind === "module" || b.kind === "workflow") ||
+        compare(a.conceptKey, b.conceptKey),
+    );
   for (const draft of ordered) {
+    const pageId = pageIds.get(draft)!;
     let slug = draft.slug;
-    for (let suffix = 2; used.has(slug); suffix += 1) slug = `${draft.slug}-${suffix}`;
+    for (let suffix = 2; !free(slug, pageId); suffix += 1) slug = `${draft.slug}-${suffix}`;
     used.add(slug);
     result.set(draft, slug);
   }
@@ -590,14 +641,25 @@ function uniqueSlugs(drafts: readonly Draft[]): Map<Draft, string> {
 }
 
 /**
- * Stable page identities. A concept keeps the id it had in the prior
- * generation. A module or workflow whose concept key is new takes over the id
- * of a prior page of the same kind that disappeared, when at least half of
- * their source blobs are identical (a rename or move). Otherwise the id is
- * derived from the concept key, so it is the same on every planning run.
+ * Stable page identities, in this order:
+ *
+ * 1. A concept keeps the id it had in the prior generation.
+ * 2. A module or workflow whose concept key is new takes over the id of a
+ *    prior page of the same kind that disappeared, when at least half of
+ *    their source blobs are identical (a rename or move).
+ * 3. A concept that returns after an absence reclaims the historical id it
+ *    was last published under.
+ * 4. Otherwise the id is derived from the concept key, skipping any id the
+ *    repository ever published, so a retired identity never passes to an
+ *    unrelated concept.
+ *
+ * Given the same prior pages and history, the result is always the same.
  */
 class IdAssigner {
-  constructor(private readonly prior: readonly PriorWikiPage[]) {}
+  constructor(
+    private readonly prior: readonly PriorWikiPage[],
+    private readonly history: WikiHistory,
+  ) {}
 
   assign(drafts: readonly Draft[]): Map<Draft, string> {
     const result = new Map<Draft, string>();
@@ -632,8 +694,18 @@ class IdAssigner {
           continue;
         }
       }
+      const returning = [...this.history.pageConcepts]
+        .filter(([pageId, concept]) => concept === draft.conceptKey && !taken.has(pageId))
+        .map(([pageId]) => pageId)
+        .sort(compare)[0];
+      if (returning !== undefined) {
+        result.set(draft, returning);
+        taken.add(returning);
+        continue;
+      }
+      const unavailable = (id: string) => taken.has(id) || this.history.pageConcepts.has(id);
       let id = `pg_${shortHash(draft.conceptKey)}`;
-      for (let n = 2; taken.has(id); n += 1) id = `pg_${shortHash(`${draft.conceptKey}#${n}`)}`;
+      for (let n = 2; unavailable(id); n += 1) id = `pg_${shortHash(`${draft.conceptKey}#${n}`)}`;
       result.set(draft, id);
       taken.add(id);
     }

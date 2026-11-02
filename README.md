@@ -751,23 +751,24 @@ repository the caller is authorized for and refuses another repository's generat
 paths, blob ids, line counts, symbols and import lines. It calls no model and stores
 nothing, so the same index, limits and history always give the same plan.
 
-| Depth | Pages                                                                            |
-| ----- | -------------------------------------------------------------------------------- |
-| 0     | Overview, from the README, root documents, manifests and each module's main file |
-| 1     | Architecture, which needs at least two code modules                              |
-| 1     | Modules, which needs at least one code module                                    |
-| 2     | One page per major module, the modules with the most code files first            |
-| 3     | Submodule pages for large modules, only when `maxDepth` is at least 3            |
-| 1     | Workflows, which needs an import flow that crosses two or more modules           |
-| 2     | One page per key workflow, the flows that reach the most modules first           |
+| Depth | Pages                                                                                             |
+| ----- | ------------------------------------------------------------------------------------------------- |
+| 0     | Overview, from the README, root documents, manifests, each module's main file and root-level code |
+| 1     | Architecture, which needs at least two code modules                                               |
+| 1     | Modules, which needs at least one code module                                                     |
+| 2     | One page per major module, the modules with the most code files first                             |
+| 3     | Submodule pages for large modules, only when `maxDepth` is at least 3                             |
+| 1     | Workflows, which needs an import flow that crosses two or more modules                            |
+| 2     | One page per key workflow, the flows that reach the most modules first                            |
 
 A module is the first directory below a source root such as `src/`, a package such
 as `packages/api`, or a top-level directory. A workflow starts at a code file that no
 other code file imports and follows its imports up to four levels deep. Imports are
 resolved for relative JavaScript and TypeScript paths and for Python modules.
 
-A section without evidence is planned as `unavailable` with its reason. It never gets
-sources or a body. The plan also reports coverage: which indexed files a page covers,
+A section without evidence is planned as `unavailable` with its reason. So is any page
+for which no indexed source was selected. An unavailable page never gets sources or a
+body. The plan also reports coverage: which indexed files a page covers,
 which are uncovered and why, and what the index excluded. Modules and workflows cut by
 a limit are disclosed rather than silently dropped.
 
@@ -819,6 +820,13 @@ commit or configuration is returned separately as stale, with the reason.
 Page ids follow concepts, such as `module:src/billing`, and are kept across
 regenerations. When a module or workflow moves, its new concept takes over the old
 page id if at least half of their source blobs are identical. Slugs can then change.
+A concept that returns after an absence reclaims the id it was last published under.
+
+Published slugs and page ids are permanent history. The planner reads that history,
+and a slug the repository published stays reserved for its page. A newcomer that
+wants the same slug gets a numbered variant such as `modules/api-2`. A new concept
+never receives a page id that was published for another concept. Creating or
+publishing a generation that would reuse a published slug for another page fails.
 
 A slug resolves within one generation in this order:
 

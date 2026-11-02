@@ -28,7 +28,7 @@ import {
   type WikiPlanReport,
   type WikiSourceRef,
 } from "./model";
-import type { PriorWikiPage } from "./planner";
+import type { PriorWikiPage, WikiHistory } from "./planner";
 
 export class WikiStateError extends Error {
   override readonly name = "WikiStateError";
@@ -270,6 +270,31 @@ function sourceProblems(slug: string, source: WikiSourceRef): string[] {
 // ---------------------------------------------------------------------------
 // Generations
 
+/**
+ * Slugs that the repository already published for a different page id. A
+ * published slug belongs to its page for good, so reusing it would silently
+ * send old links to unrelated content.
+ */
+function slugConflicts(
+  db: Database,
+  repositoryId: string,
+  pages: readonly ({ readonly slug: string } & (
+    | { readonly pageId: string }
+    | { readonly page_id: string }
+  ))[],
+): string[] {
+  const owner = db.query<{ page_id: string }, [string, string]>(
+    "SELECT page_id FROM wiki_slug_aliases WHERE repository_id = ? AND slug = ?",
+  );
+  return pages.flatMap((page) => {
+    const pageId = "pageId" in page ? page.pageId : page.page_id;
+    const published = owner.get(repositoryId, page.slug)?.page_id;
+    return published !== undefined && published !== pageId
+      ? [`slug ${page.slug} was published for another page, ${published}`]
+      : [];
+  });
+}
+
 export function getWikiGeneration(db: Database, id: string): WikiGenerationRecord | undefined {
   const row = db
     .query<GenerationRow, [string]>("SELECT * FROM wiki_generations WHERE id = ?")
@@ -336,6 +361,8 @@ export function createWikiGeneration(
     .transaction(() => {
       const active = findActiveWikiGeneration(db, scope);
       if (active) return { created: false, generation: active };
+      const conflicts = slugConflicts(db, scope.repositoryId, plan.pages);
+      if (conflicts.length > 0) throw new WikiIntegrityError(conflicts);
       const id = `wiki_${crypto.randomUUID()}`;
       const timestamp = now();
       const report: WikiPlanReport = { coverage: plan.coverage, disclosures: plan.disclosures };
@@ -650,6 +677,7 @@ export function wikiIntegrityProblems(db: Database, generationId: string): strin
        FROM wiki_pages p WHERE p.generation_id = ?`,
     )
     .all(generationId);
+  problems.push(...slugConflicts(db, generation.repositoryId, pages));
   if (pages.length !== generation.pageCount) {
     problems.push(`${pages.length} pages stored, ${generation.pageCount} planned`);
   }
@@ -713,12 +741,14 @@ export function publishWikiGeneration(db: Database, generationId: string): WikiG
         generation.generatorKey,
       );
       db.query(
-        `INSERT INTO wiki_slug_aliases (repository_id, slug, page_id, title, generation_id,
-           recorded_at)
-         SELECT ?1, slug, page_id, title, generation_id, ?2 FROM wiki_pages WHERE generation_id = ?3
+        `INSERT INTO wiki_slug_aliases (repository_id, slug, page_id, concept_key, title,
+           generation_id, recorded_at)
+         SELECT ?1, slug, page_id, concept_key, title, generation_id, ?2
+         FROM wiki_pages WHERE generation_id = ?3
          ON CONFLICT (repository_id, slug) DO UPDATE SET
-           page_id = excluded.page_id, title = excluded.title,
-           generation_id = excluded.generation_id, recorded_at = excluded.recorded_at`,
+           concept_key = excluded.concept_key, title = excluded.title,
+           generation_id = excluded.generation_id, recorded_at = excluded.recorded_at
+         WHERE wiki_slug_aliases.page_id = excluded.page_id`,
       ).run(generation.repositoryId, timestamp, generationId);
       return transitionGeneration(db, generationId, "ready", ", finished_at = ?", [timestamp]);
     })
@@ -1023,6 +1053,27 @@ export function priorWikiPages(db: Database, repositoryId: string): PriorWikiPag
     kind: page.kind,
     blobOids: blobs.filter((row) => row.page_id === page.page_id).map((row) => row.blob_oid),
   }));
+}
+
+/**
+ * Every slug and page id the repository published, for the planner. Slug
+ * history survives retention, so it outlives deleted generations.
+ */
+export function wikiHistory(db: Database, repositoryId: string): WikiHistory {
+  const rows = db
+    .query<{ slug: string; page_id: string; concept_key: string }, [string]>(
+      `SELECT slug, page_id, concept_key FROM wiki_slug_aliases WHERE repository_id = ?
+       ORDER BY recorded_at, slug`,
+    )
+    .all(repositoryId);
+  const slugOwners = new Map<string, string>();
+  const pageConcepts = new Map<string, string>();
+  for (const row of rows) {
+    slugOwners.set(row.slug, row.page_id);
+    // Rows are in publication order, so the latest concept of a page wins.
+    pageConcepts.set(row.page_id, row.concept_key);
+  }
+  return { slugOwners, pageConcepts };
 }
 
 // ---------------------------------------------------------------------------

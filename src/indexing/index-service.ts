@@ -8,7 +8,12 @@ import { commitExists, repositoryAccessible } from "./git-snapshot";
 import { runIndexBuild } from "./ingest";
 import type { WikiPlan, WikiPlanLimits } from "../wiki/model";
 import { planWiki } from "../wiki/planner";
-import { collectWikiGarbage, failInterruptedWikiGenerations, priorWikiPages } from "../wiki/store";
+import {
+  collectWikiGarbage,
+  failInterruptedWikiGenerations,
+  priorWikiPages,
+  wikiHistory,
+} from "../wiki/store";
 import { DEFAULT_INDEX_LIMITS, indexKey, type IndexLimits, validateLimits } from "./policy";
 import {
   acquireLease,
@@ -508,6 +513,7 @@ export class IndexService implements IndexCatalog {
     return planWiki(this.db, ready.id, {
       limits,
       prior: priorWikiPages(this.db, scope.repositoryId),
+      history: wikiHistory(this.db, scope.repositoryId),
     });
   }
 
