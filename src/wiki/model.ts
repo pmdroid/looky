@@ -166,6 +166,60 @@ export function wikiGeneratorKey(config: WikiGeneratorConfig): string {
 }
 
 // ---------------------------------------------------------------------------
+// Usage
+
+/**
+ * What a page or generation spent. Token counts are the providers' reported
+ * numbers where they reported them; `estimatedCalls` and `unknownCalls` say
+ * how many calls were counted by Looky's estimate instead, so totals are
+ * never presented as more exact than they are.
+ */
+export interface WikiUsage {
+  readonly modelCalls: number;
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+  /** Calls whose provider reported both token counts. */
+  readonly reportedCalls: number;
+  /** Calls whose provider omitted usage; Looky charged a conservative estimate. */
+  readonly estimatedCalls: number;
+  /** Calls whose provider did not say whether its counts were reported. */
+  readonly unknownCalls: number;
+  readonly retrievalPasses: number;
+  readonly sourceReads: number;
+  readonly sourceBytes: number;
+  readonly elapsedMs: number;
+  /** Pages written by a model in this generation. */
+  readonly pagesWritten: number;
+  /** Pages taken from a validated earlier draft without a model call. */
+  readonly pagesReused: number;
+  readonly pagesFailed: number;
+}
+
+export const EMPTY_WIKI_USAGE: WikiUsage = {
+  modelCalls: 0,
+  inputTokens: 0,
+  outputTokens: 0,
+  reportedCalls: 0,
+  estimatedCalls: 0,
+  unknownCalls: 0,
+  retrievalPasses: 0,
+  sourceReads: 0,
+  sourceBytes: 0,
+  elapsedMs: 0,
+  pagesWritten: 0,
+  pagesReused: 0,
+  pagesFailed: 0,
+};
+
+export function addWikiUsage(a: WikiUsage, b: Partial<WikiUsage>): WikiUsage {
+  const result: Record<keyof WikiUsage, number> = { ...a };
+  for (const key of Object.keys(EMPTY_WIKI_USAGE) as (keyof WikiUsage)[]) {
+    result[key] += b[key] ?? 0;
+  }
+  return result;
+}
+
+// ---------------------------------------------------------------------------
 // Plans
 
 export interface WikiSourceRef {

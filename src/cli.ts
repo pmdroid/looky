@@ -11,6 +11,7 @@
  *   bun run looky ask --repo <git-dir> --sha <commit> [--id <id>] [--mode fast|deep] <question…>
  *   bun run looky cancel <build-id>
  *   bun run looky wiki plan --repo <git-dir> --sha <commit> [--id <repository-id>]
+ *   bun run looky wiki generate --repo <git-dir> --sha <commit> [--id <repository-id>]
  *   bun run looky wiki status --id <repository-id> [--sha <commit>]
  *   bun run looky wiki index <generation-id> --id <repository-id>
  *   bun run looky wiki page <generation-id> <slug> --id <repository-id>
@@ -35,7 +36,7 @@ import {
 import type { LookyRequestContext } from "./contract/context";
 import { DEFAULT_MODE, isMode } from "./contract/input";
 import { LookyUnavailableError } from "./contract/ports";
-import { createConfiguredProvider } from "./providers/config";
+import { createConfiguredProvider, loadProviderConfig, providerIdentity } from "./providers/config";
 import { IndexService, progressOf, type StartBuildResult } from "./indexing/index-service";
 import { indexKey } from "./indexing/policy";
 import {
@@ -55,6 +56,7 @@ import { startHttpServer } from "./mcp/http";
 import { lookyToolHost, McpConnection } from "./mcp/protocol";
 import { serveStdio } from "./mcp/stdio";
 import { createLookyService, dataDirFrom, localPrincipal } from "./service/bootstrap";
+import { WikiGenerator } from "./wiki/generator";
 import { planWiki } from "./wiki/planner";
 import {
   listWikiGenerations,
@@ -77,6 +79,7 @@ const USAGE = `Usage:
   looky ask --repo <git-dir> --sha <commit> [--id <id>] [--mode fast|deep] <question>
   looky cancel <build-id>
   looky wiki plan --repo <git-dir> --sha <commit> [--id <repository-id>]
+  looky wiki generate --repo <git-dir> --sha <commit> [--id <repository-id>]
   looky wiki status --id <repository-id> [--sha <commit>]
   looky wiki index <generation-id> --id <repository-id>
   looky wiki page <generation-id> <slug> --id <repository-id>
@@ -176,7 +179,7 @@ async function main(argv: string[]): Promise<number> {
       case "ask":
         return await ask(db, values, rest.join(" "));
       case "wiki":
-        return wiki(db, rest, values);
+        return await wiki(db, rest, values);
       case "cancel": {
         const buildId = rest[0];
         if (!buildId) return fail("cancel needs a build id");
@@ -512,13 +515,15 @@ async function mcpStdio(values: {
  * coverage and disclosures for a ready index without storing anything or
  * calling a model; the other subcommands read stored generations.
  */
-function wiki(
+async function wiki(
   db: ReturnType<typeof openDatabase>,
   args: readonly string[],
   values: { repo?: string | undefined; id?: string | undefined; sha?: string | undefined },
-): number {
+): Promise<number> {
   const [subcommand, ...rest] = args;
   switch (subcommand) {
+    case "generate":
+      return await generateWiki(db, values);
     case "plan": {
       if (!values.repo || !values.sha) return fail("wiki plan needs --repo and --sha");
       const repositoryId = values.id ?? basename(resolve(values.repo));
@@ -579,6 +584,107 @@ function wiki(
     }
     default:
       return fail(`Unknown wiki command ${subcommand ?? "(missing)"}\n${USAGE}`);
+  }
+}
+
+/**
+ * Generate and publish the wiki of one commit with the configured provider,
+ * indexing the commit first when needed. A published wiki of the same scope
+ * is returned without model calls; pages finished by an earlier failed or
+ * interrupted attempt are reused. Ctrl-C cancels the generation.
+ */
+async function generateWiki(
+  db: ReturnType<typeof openDatabase>,
+  values: { repo?: string | undefined; id?: string | undefined; sha?: string | undefined },
+): Promise<number> {
+  if (!values.repo || !values.sha) return fail("wiki generate needs --repo and --sha");
+  const directory = resolve(values.repo);
+  const repositoryId = values.id ?? basename(directory);
+  const sha = values.sha;
+  const repositories = (id: string) => (id === repositoryId ? directory : undefined);
+  const provider = createConfiguredProvider();
+  if (!provider) return fail("wiki generate needs a model provider; set LOOKY_PROVIDER");
+  const providers = loadProviderConfig();
+  const config = loadWikiConfig();
+  const index = openService(db, repositories);
+  const generator = new WikiGenerator({
+    db,
+    index,
+    repositories,
+    retriever: new IndexRetriever({ db, repositories }),
+    sourceReader: new GitSourceReader(repositories),
+    provider,
+    modelIdentity: providers ? providerIdentity(providers) : `${provider.id}:model-unknown`,
+    limits: config.limits,
+    settings: config.generation,
+    ...(config.sourceLink ? { sourceLink: config.sourceLink } : {}),
+    ...(config.sourceLinkTemplate ? { sourceLinkTemplate: config.sourceLinkTemplate } : {}),
+  });
+  let current: string | undefined;
+  let building: string | undefined;
+  const interrupted = new AbortController();
+  // Ctrl-C cancels whatever is running: the generation, or the index build
+  // before it, so no generation and no model call starts afterwards.
+  const interrupt = () => {
+    interrupted.abort(new Error("Interrupted"));
+    if (current) generator.cancel(current);
+    else if (building) index.cancel(building);
+  };
+  const stopped = () => {
+    console.error("looky: interrupted; no wiki generation was started");
+    return 130;
+  };
+  process.once("SIGINT", interrupt);
+  try {
+    for (;;) {
+      if (interrupted.signal.aborted) return stopped();
+      const started = await generator.start({ repositoryId, sha });
+      if (started.state === "indexing") {
+        console.error(`looky: indexing ${repositoryId}@${sha} (${started.progress.phase})`);
+        building = started.buildId;
+        if (interrupted.signal.aborted) {
+          index.cancel(building);
+          return stopped();
+        }
+        try {
+          await index.waitForBuild(started.buildId, interrupted.signal);
+        } catch (error) {
+          if (interrupted.signal.aborted) return stopped();
+          throw error;
+        }
+        building = undefined;
+        continue;
+      }
+      if (started.state === "unsupported_revision") return fail(started.message);
+      if (started.state === "index_failed") {
+        print(started.build);
+        return 1;
+      }
+      current = started.generation.id;
+      // An interrupt that arrived while start() was planning cancels the new generation.
+      if (interrupted.signal.aborted && started.state !== "ready") generator.cancel(current);
+      if (started.state !== "ready") {
+        console.error(`looky: writing wiki generation ${current}`);
+      }
+      const generation = await generator.wait(current);
+      const status = generator.status({ repositoryId, sha });
+      const pages = wikiIndex(db, { repositoryId, generationId: generation.id })?.pages ?? [];
+      print({
+        generation,
+        published: status.state === "ready" && status.ready?.id === generation.id,
+        pages: pages.map((page) => ({
+          slug: page.slug,
+          state: page.state,
+          ...(page.errorMessage ? { error: page.errorMessage } : {}),
+          ...(page.usage ? { usage: page.usage } : {}),
+        })),
+      });
+      return generation.state === "ready" ? 0 : 1;
+    }
+  } finally {
+    process.off("SIGINT", interrupt);
+    await generator.close();
+    await index.close();
   }
 }
 

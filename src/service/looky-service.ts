@@ -27,8 +27,10 @@ import { askProject, type AskProjectServices } from "../ask/ask-project";
 import {
   loadAnswerConfig,
   loadResearchConfig,
+  loadWikiConfig,
   type LookyAskConfig,
   type LookyIndexConfig,
+  type LookyWikiConfig,
 } from "../config";
 import type { BudgetOverrides } from "../contract/budgets";
 import type { LookyRequestContext } from "../contract/context";
@@ -54,6 +56,8 @@ import { IndexService, progressOf } from "../indexing/index-service";
 import { getBuild, type BuildRecord, type ScopeStatus } from "../indexing/store";
 import { IndexRetriever } from "../retrieval/index-retriever";
 import { GitSourceReader } from "../source/git-source-reader";
+import { WikiGenerator, type WikiStartResult } from "../wiki/generator";
+import { getWikiGeneration, type WikiGenerationRecord, type WikiStatus } from "../wiki/store";
 import { Admission } from "./admission";
 import {
   clientMayUse,
@@ -101,8 +105,15 @@ export interface LookyServiceOptions {
   readonly ask: LookyAskConfig;
   readonly index: LookyIndexConfig;
   readonly capacity: CapacityConfig;
+  /** Generated wiki limits and generation budgets. Default: from the environment. */
+  readonly wiki?: LookyWikiConfig;
   /** Configured model provider. Without one, questions that need a model are unavailable. */
   readonly provider?: ModelProvider;
+  /**
+   * Provider ids, kinds and models in fallback order, for the wiki generator
+   * fingerprint. Without it, only the provider id is known.
+   */
+  readonly modelIdentity?: string;
   readonly engine?: AnswerEngine;
   readonly executor?: "worker" | "inline";
   readonly now?: () => number;
@@ -178,6 +189,8 @@ const missingProvider: ModelProvider = {
 
 export class LookyService {
   readonly index: IndexService;
+  /** Background wiki generation for authorized repositories. */
+  readonly wiki: WikiGenerator;
   readonly sessions: SessionStore;
   readonly #options: LookyServiceOptions;
   readonly #now: () => number;
@@ -204,6 +217,24 @@ export class LookyService {
       retention: options.index.retention,
       ...(options.executor ? { executor: options.executor } : {}),
     });
+    const retriever = new IndexRetriever({ db: options.db, repositories: directory });
+    const sourceReader = new GitSourceReader(directory);
+    const wiki = options.wiki ?? loadWikiConfig();
+    this.wiki = new WikiGenerator({
+      db: options.db,
+      index: this.index,
+      repositories: directory,
+      retriever,
+      sourceReader,
+      ...(options.provider ? { provider: options.provider } : {}),
+      modelIdentity:
+        options.modelIdentity ?? `${options.provider?.id ?? "unconfigured"}:model-unknown`,
+      limits: wiki.limits,
+      settings: wiki.generation,
+      ...(wiki.sourceLink ? { sourceLink: wiki.sourceLink } : {}),
+      ...(wiki.sourceLinkTemplate ? { sourceLinkTemplate: wiki.sourceLinkTemplate } : {}),
+      now: this.#now,
+    });
     this.sessions = new SessionStore(options.db, this.#now);
     this.#admission = new Admission(
       options.capacity.maxConcurrentAsks,
@@ -212,8 +243,8 @@ export class LookyService {
     this.#askServices = {
       config: options.ask,
       catalog: this.index,
-      retriever: new IndexRetriever({ db: options.db, repositories: directory }),
-      sourceReader: new GitSourceReader(directory),
+      retriever,
+      sourceReader,
       provider: options.provider ?? missingProvider,
       engine:
         options.engine ??
@@ -829,6 +860,69 @@ export class LookyService {
     };
   }
 
+  // -------------------------------------------------------------------------
+  // Generated wiki
+
+  #ownWikiGeneration(client: ClientConfig, generationId: string): WikiGenerationRecord {
+    const generation = getWikiGeneration(this.#options.db, generationId);
+    // An unauthorized generation is reported as missing so its existence does not leak.
+    if (
+      !generation ||
+      !this.#options.repositories.has(generation.repositoryId) ||
+      !clientMayUse(client, generation.repositoryId)
+    ) {
+      throw new OperationError("not_found", `Unknown wiki generation ${generationId}`);
+    }
+    return generation;
+  }
+
+  wikiStatus(
+    client: ClientConfig,
+    scope: { readonly repositoryId: string; readonly sha: string },
+  ): WikiStatus {
+    this.#allowed(client, scope.repositoryId);
+    return this.wiki.status(scope);
+  }
+
+  /**
+   * Return the published wiki of this commit, join its running generation or
+   * queue a new one. Returns at once; pages are written in the background.
+   */
+  async wikiGenerate(
+    client: ClientConfig,
+    scope: { readonly repositoryId: string; readonly sha: string },
+  ): Promise<WikiStartResult> {
+    this.#allowed(client, scope.repositoryId);
+    const started = await this.wiki.start(scope);
+    if (started.state === "unsupported_revision") {
+      throw new OperationError("invalid", started.message);
+    }
+    if (started.state === "indexing") this.#operatorBuilds.add(started.buildId);
+    return started;
+  }
+
+  /** Start a new attempt after a failed or cancelled generation, reusing finished pages. */
+  async wikiRetry(client: ClientConfig, generationId: string): Promise<WikiStartResult> {
+    const generation = this.#ownWikiGeneration(client, generationId);
+    if (generation.state !== "failed" && generation.state !== "cancelled") {
+      throw new OperationError("invalid", `Wiki generation ${generationId} is ${generation.state}`);
+    }
+    return this.wikiGenerate(client, {
+      repositoryId: generation.repositoryId,
+      sha: generation.sha,
+    });
+  }
+
+  wikiCancel(client: ClientConfig, generationId: string) {
+    const generation = this.#ownWikiGeneration(client, generationId);
+    const cancelled = this.wiki.cancel(generationId);
+    return {
+      generationId,
+      cancelled,
+      wiki: this.wiki.status({ repositoryId: generation.repositoryId, sha: generation.sha }),
+    };
+  }
+
   #location() {
     return {
       host: hostname(),
@@ -869,6 +963,7 @@ export class LookyService {
     for (const work of pending) work.controller.abort(new Error("The Looky service is stopping"));
     await Promise.allSettled(pending.map((work) => work.promise));
     try {
+      await this.wiki.close();
       await this.index.close();
     } finally {
       this.#options.db.close();
