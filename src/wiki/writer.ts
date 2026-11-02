@@ -452,10 +452,21 @@ export function evidenceVocabulary(
 export function nameIsSupported(span: string, vocabulary: EvidenceVocabulary): boolean {
   if (span.length < 3 || !NAME_SPAN.test(span) || LITERALS.has(span)) return true;
   const name = span.replace(/\(\)$/, "").replace(/^\.\//, "").replace(/\/+$/, "");
-  if (name.length === 0 || vocabulary.paths.has(name) || vocabulary.text.includes(name))
-    return true;
-  // A path that is neither inspected, planned nor quoted in the evidence is unknown.
-  if (name.includes("/")) return false;
+  if (name.length === 0 || vocabulary.paths.has(name)) return true;
+  if (name.includes("/")) {
+    // A path is known only as an inspected or planned file or directory, or as an
+    // import specifier the evidence uses for one. Being mentioned in source text is
+    // not enough: repository text can name any path.
+    const stem = name.replace(/^(?:\.{1,2}\/)+/, "").replace(/\.[A-Za-z0-9]+$/, "");
+    return (
+      vocabulary.text.includes(name) &&
+      [...vocabulary.paths].some((path) => {
+        const bare = path.replace(/\.[A-Za-z0-9]+$/, "");
+        return bare === stem || bare.endsWith(`/${stem}`);
+      })
+    );
+  }
+  if (vocabulary.text.includes(name)) return true;
   const segments = name.match(WORD) ?? [];
   return segments.length > 0 && segments.every((segment) => vocabulary.words.has(segment));
 }
