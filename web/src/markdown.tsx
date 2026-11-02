@@ -13,7 +13,13 @@ import type { LinkPolicy } from "./links";
 
 export type Block =
   | { readonly type: "paragraph"; readonly text: string }
-  | { readonly type: "heading"; readonly level: number; readonly text: string }
+  | {
+      readonly type: "heading";
+      readonly level: number;
+      readonly text: string;
+      /** Line of the heading in the parsed text, from 0. */
+      readonly line: number;
+    }
   | {
       readonly type: "list";
       readonly ordered: boolean;
@@ -62,7 +68,7 @@ export function parseBlocks(source: string, depth = 0): Block[] {
     }
     const heading = HEADING.exec(line);
     if (heading) {
-      blocks.push({ type: "heading", level: heading[1]!.length, text: heading[2]! });
+      blocks.push({ type: "heading", level: heading[1]!.length, text: heading[2]!, line: index });
       index += 1;
       continue;
     }
@@ -91,7 +97,14 @@ export function parseBlocks(source: string, depth = 0): Block[] {
         const match = pattern.exec(current);
         if (match) {
           items.push(ordered ? match[2]! : match[1]!);
-        } else if (current.trim() !== "" && /^\s+/.test(current) && items.length > 0) {
+        } else if (
+          current.trim() !== "" &&
+          /^\s+/.test(current) &&
+          items.length > 0 &&
+          // A heading or fence ends the list, as it ends a section for Looky.
+          !HEADING.test(current) &&
+          !FENCE.test(current)
+        ) {
           // An indented continuation line belongs to the previous item.
           items[items.length - 1] += ` ${current.trim()}`;
         } else {
@@ -247,22 +260,57 @@ function renderBlocks(
   });
 }
 
+/** A heading Looky splits page sections at: `##` to `######`, outside fenced code. */
+const SECTION_HEADING = /^ {0,3}(#{2,6})\s+(.*?)\s*#*\s*$/;
+
 /**
- * Element ids for the top-level `##` to `######` headings, in order, from
- * anchors Looky computed for the same body. Looky splits sections at exactly
- * those headings, so the n-th one here is its n-th anchor.
+ * Lines of the headings Looky gave anchors to, in order, found exactly as
+ * Looky finds them (`wikiSections`): every `##` to `######` line outside
+ * fenced code. Looky's sanitizer keeps every line in place, so these are the
+ * same lines in the served body as in the stored one.
+ */
+export function sectionHeadingLines(source: string): number[] {
+  const lines: number[] = [];
+  let fence: string | undefined;
+  source
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .forEach((line, at) => {
+      if (fence) {
+        if (line.trimStart().startsWith(fence)) fence = undefined;
+        return;
+      }
+      const opened = FENCE.exec(line);
+      if (opened) {
+        fence = opened[1]!;
+        return;
+      }
+      if (SECTION_HEADING.test(line)) lines.push(at);
+    });
+  return lines;
+}
+
+/**
+ * Element ids for top-level heading blocks, from anchors Looky computed for
+ * the same body. Each anchor belongs to a source line, never to a position
+ * among rendered headings, so a heading this renderer reads differently can
+ * at most go without an id; it never takes another heading's anchor.
  */
 export function headingIds(
   blocks: readonly Block[],
+  source: string,
   anchors: readonly string[],
   idFor: (anchor: string) => string,
 ): Map<number, string> {
+  const byLine = new Map<number, string>();
+  sectionHeadingLines(source).forEach((line, at) => {
+    const anchor = anchors[at];
+    if (anchor !== undefined) byLine.set(line, anchor);
+  });
   const ids = new Map<number, string>();
-  let next = 0;
   blocks.forEach((block, index) => {
-    if (block.type !== "heading" || block.level < 2) return;
-    const anchor = anchors[next];
-    next += 1;
+    if (block.type !== "heading") return;
+    const anchor = byLine.get(block.line);
     if (anchor !== undefined) ids.set(index, idFor(anchor));
   });
   return ids;
@@ -278,7 +326,7 @@ export function Markdown(props: {
 }) {
   const blocks = parseBlocks(props.text);
   const ids = props.anchors
-    ? headingIds(blocks, props.anchors.list, props.anchors.idFor)
+    ? headingIds(blocks, props.text, props.anchors.list, props.anchors.idFor)
     : undefined;
   return <>{renderBlocks(blocks, props.links, props.headingBase ?? 3, ids)}</>;
 }

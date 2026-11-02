@@ -148,6 +148,39 @@ describe("page bodies", () => {
     expect(html).toContain('<h2 dir="auto" id="wiki-h-how-totals-work-2" tabindex="-1">');
   });
 
+  test("each heading gets the anchor of its own line, however the renderer reads the lines", () => {
+    const tricky = [
+      "Intro.",
+      "",
+      "- an item",
+      "  ### Nested",
+      "## After",
+      "",
+      "```",
+      "## not a heading inside code",
+      "```",
+      "",
+      "> ## quoted, not a section",
+      "",
+      "## Last",
+    ].join("\n");
+    const safe = safeWikiMarkdown(tricky, { ready: new Map() }, new Set());
+    const anchors = wikiHeadings(tricky).map((heading) => heading.anchor);
+    expect(anchors).toEqual(["nested", "after", "last"]);
+    const html = renderToStaticMarkup(
+      <Markdown
+        text={safe.markdown}
+        links={LinkPolicy.none()}
+        headingBase={1}
+        anchors={{ list: anchors, idFor: headingId }}
+      />,
+    );
+    expect(html).toContain('id="wiki-h-nested" tabindex="-1">Nested<');
+    expect(html).toContain('id="wiki-h-after" tabindex="-1">After<');
+    expect(html).toContain('id="wiki-h-last" tabindex="-1">Last<');
+    expect(html.match(/id="wiki-h-/g)).toHaveLength(3);
+  });
+
   test("a wiki link is allowed only to a listed, well-formed slug", () => {
     const links = new LinkPolicy([], { slugs: new Set(["overview"]), href: (s) => `/wiki/${s}` });
     expect(links.internal("wiki:overview")).toEqual({ slug: "overview", href: "/wiki/overview" });
