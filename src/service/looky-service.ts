@@ -57,7 +57,19 @@ import { getBuild, type BuildRecord, type ScopeStatus } from "../indexing/store"
 import { IndexRetriever } from "../retrieval/index-retriever";
 import { GitSourceReader } from "../source/git-source-reader";
 import { WikiGenerator, type WikiStartResult } from "../wiki/generator";
-import { getWikiGeneration, type WikiGenerationRecord, type WikiStatus } from "../wiki/store";
+import { searchWiki, type WikiSearchPage } from "../wiki/search";
+import {
+  getWikiGeneration,
+  resolveWikiSlug,
+  type SlugResolution,
+  type WikiGenerationRecord,
+  type WikiIndex,
+  wikiIndex,
+  wikiPage,
+  type WikiPageContent,
+  wikiPageCounts,
+  type WikiStatus,
+} from "../wiki/store";
 import { Admission } from "./admission";
 import {
   clientMayUse,
@@ -911,6 +923,64 @@ export class LookyService {
       repositoryId: generation.repositoryId,
       sha: generation.sha,
     });
+  }
+
+  /** A generation of a repository the client may use; others are reported as missing. */
+  wikiGeneration(client: ClientConfig, generationId: string): WikiGenerationRecord {
+    return this.#ownWikiGeneration(client, generationId);
+  }
+
+  /** Pages of a generation per state, for progress. */
+  wikiPageCounts(client: ClientConfig, generationId: string) {
+    this.#ownWikiGeneration(client, generationId);
+    return wikiPageCounts(this.#options.db, generationId);
+  }
+
+  /** Navigation of a generation: table of contents, links and plan report. No bodies. */
+  wikiIndex(client: ClientConfig, generationId: string): WikiIndex | undefined {
+    const generation = this.#ownWikiGeneration(client, generationId);
+    return wikiIndex(this.#options.db, { repositoryId: generation.repositoryId, generationId });
+  }
+
+  /** Resolve a slug within a generation: the page, a redirect to the same page, or removed. */
+  wikiResolveSlug(client: ClientConfig, generationId: string, slug: string): SlugResolution {
+    const generation = this.#ownWikiGeneration(client, generationId);
+    return resolveWikiSlug(this.#options.db, {
+      repositoryId: generation.repositoryId,
+      generationId,
+      slug,
+    });
+  }
+
+  wikiPage(
+    client: ClientConfig,
+    generationId: string,
+    pageId: string,
+  ): WikiPageContent | undefined {
+    const generation = this.#ownWikiGeneration(client, generationId);
+    return wikiPage(this.#options.db, {
+      repositoryId: generation.repositoryId,
+      generationId,
+      pageId,
+    });
+  }
+
+  /** Documentation search within one published generation. `expression` comes from `parseSearchQuery`. */
+  wikiSearch(
+    client: ClientConfig,
+    generationId: string,
+    request: { readonly expression: string; readonly limit: number; readonly offset: number },
+  ): WikiSearchPage {
+    const generation = this.#ownWikiGeneration(client, generationId);
+    if (generation.state !== "ready") {
+      throw new OperationError("invalid", `Wiki generation ${generationId} is not published`);
+    }
+    return searchWiki(this.#options.db, { generationId, ...request });
+  }
+
+  /** Longest question `ask` accepts, for callers that add context to a question. */
+  get maxQuestionChars(): number {
+    return this.#options.ask.maxQuestionChars;
   }
 
   wikiCancel(client: ClientConfig, generationId: string) {

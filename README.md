@@ -443,6 +443,47 @@ session may run 4 questions at once and keep 32. It may hold 8 revision selectio
 least recently used selection ends beyond that. Finished results are kept for 10
 minutes.
 
+### Wiki browsing, docs search and page questions
+
+The generated wiki of a selected revision is served under
+`/browser/v1/revisions/:id/wiki`. Every route re-checks the selection and the browser
+client's repository access.
+
+| Route                                     | Purpose                                                              |
+| ----------------------------------------- | -------------------------------------------------------------------- |
+| `GET …/wiki`                              | Wiki status of exactly this commit, with any stale wiki disclosed    |
+| `POST …/wiki/generate`                    | Start or join generation; costs model calls, so only on request      |
+| `POST …/wiki/generations/:gid/cancel`     | Cancel a queued or running generation                                |
+| `POST …/wiki/generations/:gid/retry`      | New attempt after a failed or cancelled generation                   |
+| `GET …/wiki/generations/:gid`             | Table of contents, page metadata and links of a published generation |
+| `GET …/wiki/generations/:gid/pages/:slug` | One page; a renamed slug returns the same page with `redirectedFrom` |
+| `GET …/wiki/generations/:gid/search?q=`   | Docs search; `limit` 1 to 25 (default 10), `offset` up to 200        |
+
+A generation of another repository is `404`. A generation of another commit than the
+selection is `409 wiki_revision_mismatch`, with its commit in `error.details`, so the
+app can select that commit explicitly instead of mixing revisions. An unpublished
+generation is `409 wiki_not_ready`, and a slug whose page was removed is
+`410 page_removed`.
+
+Page bodies are Markdown without HTML. Only `wiki:` links to ready pages of the same
+generation and source links Looky built for the page's citations survive. Other inline
+links and all images keep their text only. Every other `[`, `]`, `<` and `>` is
+backslash-escaped, so reference-style links, link definitions, autolinks and raw HTML
+cannot form in any CommonMark renderer. Code is left as written unless it holds
+something link-like. A search result's `nextOffset` is only offered while it stays
+within the accepted offset bound.
+
+Docs search uses SQLite FTS5 over the sections of one published generation. It returns
+page and heading links with plain-text snippets. It searches generated documentation,
+not source; ask a question for source evidence.
+
+To ask about a page, add `wikiPage: { generationId, pageId }` to `POST
+/browser/v1/questions`. Looky resolves the page itself and refuses a page of another
+commit before any model call. The question runs in the requested mode on the
+selection's SHA, with hints from the page's title, kind and source paths. The page's
+prose is never sent as evidence. The question view carries `wikiPage` with the page's
+SHA, which always equals the answer's.
+
 ### The browser app
 
 `web/` holds a single React screen for people. It uses the browser API above and has no

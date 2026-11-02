@@ -14,6 +14,29 @@
  *   GET    /browser/v1/questions/:id?waitMs=   the question, waiting up to `waitMs` for its result
  *   POST   /browser/v1/questions/:id/cancel    cancel this browser's question
  *
+ * Generated wiki of a selected revision (all under `/browser/v1/revisions/:id/wiki`):
+ *
+ *   GET    …/wiki                              wiki status of exactly this commit
+ *   POST   …/wiki/generate                     start or join generation (paid; explicit only)
+ *   POST   …/wiki/generations/:gid/cancel      cancel a queued or running generation
+ *   POST   …/wiki/generations/:gid/retry       new attempt after a failed or cancelled one
+ *   GET    …/wiki/generations/:gid             navigation index of a published generation
+ *   GET    …/wiki/generations/:gid/pages/:slug a page by slug; renamed slugs redirect in-body
+ *   GET    …/wiki/generations/:gid/search?q=&limit=&offset=   documentation search
+ *
+ * A question about a page is an ordinary question with
+ * `wikiPage: { generationId, pageId }`. Looky resolves the page and its
+ * generation itself, refuses a page of another commit with
+ * `wiki_revision_mismatch`, and asks the existing Fast or Deep pipeline about
+ * the revision's own SHA with bounded hints from the page's metadata. The
+ * page's prose is never sent as evidence.
+ *
+ * Wiki reads, search and generation controls re-check the revision selection
+ * and the client's repository access on every request. A generation of
+ * another repository is reported as missing; one of another commit than the
+ * selection is a typed `wiki_revision_mismatch` naming its commit, so the
+ * browser can select that commit explicitly instead of mixing revisions.
+ *
  * Boundary:
  * - The browser acts as one configured client (`LOOKY_BROWSER_CLIENT`) and
  *   sees only that client's repositories. It sends repository ids and ref
@@ -49,7 +72,27 @@ import {
 import { OperationError, type LookyService, type Principal } from "../service/looky-service";
 import { RegistrationError } from "../service/sessions";
 import { listRefs, resolveRevision } from "./revisions";
+import { LookyUnavailableError } from "../contract/ports";
+import { IndexAccessDeniedError } from "../indexing/index-service";
+import type { WikiStartResult } from "../wiki/generator";
+import {
+  DEFAULT_SEARCH_LIMIT,
+  MAX_SEARCH_LIMIT,
+  MAX_SEARCH_OFFSET,
+  parseSearchQuery,
+} from "../wiki/search";
+import type { WikiGenerationRecord, WikiPageRecord } from "../wiki/store";
 import { browserIndex, browserResponse } from "./sanitize";
+import {
+  composePageQuestion,
+  generationView,
+  type PageTargets,
+  pageHints,
+  wikiIndexView,
+  wikiPageView,
+  wikiSearchView,
+  wikiStatusView,
+} from "./wiki";
 
 export const BROWSER_PREFIX = "/browser/v1/";
 export const CSRF_HEADER = "x-looky-csrf";
@@ -95,6 +138,18 @@ export interface BrowserAdapterOptions {
   readonly now?: () => number;
   /** Code host links for cited ranges, from `LOOKY_SOURCE_LINK_TEMPLATE`. */
   readonly sourceLink?: SourceLinkBuilder;
+  /** Longest question the service accepts. Default: the service's own limit. */
+  readonly maxQuestionChars?: number;
+}
+
+/** The wiki page a question is about, resolved by Looky, never by the browser. */
+interface PageContext {
+  readonly generationId: string;
+  readonly pageId: string;
+  readonly slug: string;
+  readonly title: string;
+  readonly repositoryId: string;
+  readonly sha: string;
 }
 
 interface BrowserRevision {
@@ -120,6 +175,7 @@ interface BrowserQuestion {
   readonly controller: AbortController;
   readonly submittedAt: number;
   readonly settled: Promise<void>;
+  readonly page?: PageContext;
   lastSeenAt: number;
   watchers: number;
   result?: AskProjectResponse;
@@ -146,6 +202,8 @@ class BrowserError extends Error {
     readonly status: number,
     readonly code: string,
     message: string,
+    /** Typed, browser-safe fields that let the app act, such as the other commit. */
+    readonly details?: Readonly<Record<string, unknown>>,
   ) {
     super(message);
   }
@@ -157,6 +215,10 @@ const MAX_BODY_BYTES = 64 * 1024;
 const CLIENT_REQUEST_ID = /^[A-Za-z0-9_-]{8,100}$/;
 const REPOSITORY_ID = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const CANCEL_WAIT_MS = 5_000;
+const GENERATION_ID = /^wiki_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const PAGE_ID = /^[A-Za-z0-9_:.-]{1,200}$/;
+const WIKI_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*$/;
+const MAX_SLUG_CHARS = 200;
 
 const SECURITY_HEADERS: Record<string, string> = {
   "cache-control": "no-store",
@@ -173,6 +235,7 @@ export class BrowserAdapter {
   readonly #limits: BrowserLimits;
   readonly #now: () => number;
   readonly #sourceLink: SourceLinkBuilder | undefined;
+  readonly #maxQuestionChars: number;
   readonly #origins: ReadonlySet<string>;
   readonly #secureCookie: boolean;
   readonly #sessions = new Map<string, BrowserSession>();
@@ -187,6 +250,7 @@ export class BrowserAdapter {
     this.#limits = { ...DEFAULT_BROWSER_LIMITS, ...options.limits };
     this.#now = options.now ?? Date.now;
     this.#sourceLink = options.sourceLink;
+    this.#maxQuestionChars = options.maxQuestionChars ?? options.service.maxQuestionChars;
     this.#origins = new Set([...options.config.origins, ...options.localOrigins]);
     this.#secureCookie = options.config.origins.some((origin) => origin.startsWith("https:"));
     const interval = Math.max(50, Math.min(5_000, Math.floor(this.#limits.abandonAfterMs / 3)));
@@ -324,6 +388,9 @@ export class BrowserAdapter {
     if (resource === "revisions" && id && parts.length === 2 && method === "GET") {
       const revision = this.#revision(session, id);
       return Response.json(this.#revisionState(revision));
+    }
+    if (resource === "revisions" && id && action === "wiki") {
+      return await this.#wikiRoute(session, id, parts.slice(3), request, url);
     }
     if (resource === "questions" && parts.length === 1 && method === "POST") {
       return await this.#submit(session, request);
@@ -611,8 +678,14 @@ export class BrowserAdapter {
   }
 
   async #submit(session: BrowserSession, request: Request): Promise<Response> {
-    const body = await this.#body(request, ["revisionId", "question", "mode", "clientRequestId"]);
-    const { revisionId, question, mode, clientRequestId } = body;
+    const body = await this.#body(request, [
+      "revisionId",
+      "question",
+      "mode",
+      "clientRequestId",
+      "wikiPage",
+    ]);
+    const { revisionId, question, mode, clientRequestId, wikiPage } = body;
     if (typeof clientRequestId !== "string" || !CLIENT_REQUEST_ID.test(clientRequestId)) {
       throw new BrowserError(
         400,
@@ -629,7 +702,10 @@ export class BrowserAdapter {
     if (typeof revisionId !== "string") {
       throw new BrowserError(400, "invalid_request", "revisionId is required");
     }
-    const fingerprint = `${revisionId}\n${mode}\n${question}`;
+    const pageRef = parsePageRef(wikiPage);
+    const fingerprint =
+      `${revisionId}\n${mode}\n${question}` +
+      (pageRef ? `\nwiki\n${pageRef.generationId}\n${pageRef.pageId}` : "");
     // A repeated delivery returns the same question; nothing is researched twice.
     for (const existing of session.questions.values()) {
       if (existing.clientRequestId !== clientRequestId) continue;
@@ -644,6 +720,24 @@ export class BrowserAdapter {
       return Response.json(this.#questionView(existing));
     }
     const revision = this.#revision(session, revisionId);
+    // The page and its generation are resolved here, against this selection's
+    // repository and commit; a page of another commit is refused, not mixed in.
+    let page: PageContext | undefined;
+    let asked = question;
+    if (pageRef) {
+      const resolved = this.#pageContext(revision, pageRef);
+      page = resolved.page;
+      const composed = composePageQuestion(question, resolved.hints, this.#maxQuestionChars);
+      if (question.trim().length > 0 && composed === undefined) {
+        throw new BrowserError(
+          400,
+          "question_too_long",
+          "The question is too long to ask together with its page context",
+        );
+      }
+      // An empty question stays empty so the service rejects it as such.
+      if (question.trim().length > 0) asked = composed!;
+    }
     this.#prune(session);
     const running = [...session.questions.values()].filter((item) => !item.result).length;
     if (running >= this.#limits.maxRunningPerSession) {
@@ -663,7 +757,7 @@ export class BrowserAdapter {
     const settled = this.#service
       .ask(
         revision.principal,
-        { question, mode },
+        { question: asked, mode },
         {
           signal: controller.signal,
           // Scoped by the service to this revision's Looky session.
@@ -684,7 +778,7 @@ export class BrowserAdapter {
         };
       })
       .then((response) => {
-        entry.result = browserResponse(response);
+        entry.result = browserResponse(page ? samePageRevision(response, page) : response);
         entry.completedAt = this.#now();
       });
     entry = {
@@ -698,6 +792,7 @@ export class BrowserAdapter {
       controller,
       submittedAt: now,
       settled,
+      ...(page ? { page } : {}),
       lastSeenAt: now,
       watchers: 0,
     };
@@ -755,6 +850,17 @@ export class BrowserAdapter {
       repositoryId: question.repositoryId,
       sha: question.sha,
       mode: question.mode,
+      ...(question.page
+        ? {
+            wikiPage: {
+              generationId: question.page.generationId,
+              pageId: question.page.pageId,
+              slug: question.page.slug,
+              title: question.page.title,
+              sha: question.page.sha,
+            },
+          }
+        : {}),
       state: question.result ? "completed" : "running",
       submittedAt: new Date(question.submittedAt).toISOString(),
       ...(question.completedAt !== undefined
@@ -772,28 +878,356 @@ export class BrowserAdapter {
    * http and https links from the configured template are offered.
    */
   #links(response: Extract<AskProjectResponse, { status: "answered" }>): (string | null)[] {
-    return response.evidence.map((ref) => {
-      if (!this.#sourceLink) return null;
-      let url: string | undefined;
-      try {
-        url = this.#sourceLink({
-          repositoryId: response.revision.repositoryId,
-          sha: response.revision.sha,
-          path: ref.path,
-          startLine: ref.startLine,
-          endLine: ref.endLine,
+    return response.evidence.map((ref) =>
+      this.#link(response.revision.repositoryId, response.revision.sha, ref),
+    );
+  }
+
+  #link(
+    repositoryId: string,
+    sha: string,
+    ref: { readonly path: string; readonly startLine: number; readonly endLine: number },
+  ): string | null {
+    if (!this.#sourceLink) return null;
+    let url: string | undefined;
+    try {
+      url = this.#sourceLink({
+        repositoryId,
+        sha,
+        path: ref.path,
+        startLine: ref.startLine,
+        endLine: ref.endLine,
+      });
+    } catch {
+      return null;
+    }
+    if (!url) return null;
+    try {
+      const parsed = new URL(url);
+      return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed.href : null;
+    } catch {
+      return null;
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Generated wiki
+
+  async #wikiRoute(
+    session: BrowserSession,
+    revisionId: string,
+    rest: readonly string[],
+    request: Request,
+    url: URL,
+  ): Promise<Response> {
+    const method = request.method;
+    const revision = this.#revision(session, revisionId);
+    this.#reauthorize(revision);
+    const [sub, generationId, action, ...slugParts] = rest;
+    if (rest.length === 0 && method === "GET") return Response.json(this.#wikiStatus(revision));
+    if (sub === "generate" && rest.length === 1 && method === "POST") {
+      await this.#body(request, []);
+      return await this.#wikiStart(revision, () =>
+        this.#service.wikiGenerate(this.#client, {
+          repositoryId: revision.repositoryId,
+          sha: revision.sha,
+        }),
+      );
+    }
+    if (sub === "generations" && generationId) {
+      if (rest.length === 2 && method === "GET") {
+        const generation = this.#wikiGeneration(revision, generationId, true);
+        const index = this.#wikiCall(() => this.#service.wikiIndex(this.#client, generation.id));
+        if (!index) throw new BrowserError(404, "wiki_generation_not_found", "No such wiki");
+        return Response.json({
+          revisionId: revision.id,
+          ...wikiIndexView(index, this.#isCurrent(revision, generation)),
         });
-      } catch {
-        return null;
       }
-      if (!url) return null;
-      try {
-        const parsed = new URL(url);
-        return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed.href : null;
-      } catch {
-        return null;
+      if (action === "cancel" && rest.length === 3 && method === "POST") {
+        await this.#body(request, []);
+        const generation = this.#wikiGeneration(revision, generationId, false);
+        const result = this.#wikiCall(() => this.#service.wikiCancel(this.#client, generation.id));
+        return Response.json({
+          generationId: generation.id,
+          cancelled: result.cancelled,
+          wiki: this.#wikiStatus(revision),
+        });
       }
+      if (action === "retry" && rest.length === 3 && method === "POST") {
+        await this.#body(request, []);
+        const generation = this.#wikiGeneration(revision, generationId, false);
+        if (generation.state !== "failed" && generation.state !== "cancelled") {
+          throw new BrowserError(
+            409,
+            "wiki_not_retryable",
+            "Only a failed or cancelled wiki generation can be retried",
+            { state: generation.state },
+          );
+        }
+        return await this.#wikiStart(revision, () =>
+          this.#service.wikiRetry(this.#client, generation.id),
+        );
+      }
+      if (action === "pages" && slugParts.length > 0 && method === "GET") {
+        return this.#wikiPage(revision, generationId, slugParts.join("/"));
+      }
+      if (action === "search" && rest.length === 3 && method === "GET") {
+        return this.#wikiSearch(revision, generationId, url);
+      }
+    }
+    throw new BrowserError(404, "not_found", "No such browser route");
+  }
+
+  /** The selection must still be live and its repository still configured for this client. */
+  #reauthorize(revision: BrowserRevision): void {
+    if (!revision.principal.authorize().allowed) {
+      throw new BrowserError(
+        403,
+        "revision_inactive",
+        "This revision selection ended; choose the revision again",
+      );
+    }
+    this.#repository(revision.repositoryId);
+  }
+
+  /** Run a service wiki call, mapping its typed failures to browser errors with fixed messages. */
+  #wikiCall<T>(call: () => T): T {
+    try {
+      return call();
+    } catch (error) {
+      throw wikiFailure(error);
+    }
+  }
+
+  #wikiStatus(revision: BrowserRevision) {
+    const status = this.#wikiCall(() =>
+      this.#service.wikiStatus(this.#client, {
+        repositoryId: revision.repositoryId,
+        sha: revision.sha,
+      }),
+    );
+    return {
+      revisionId: revision.id,
+      ...wikiStatusView(status, (id) =>
+        this.#wikiCall(() => this.#service.wikiPageCounts(this.#client, id)),
+      ),
+    };
+  }
+
+  async #wikiStart(
+    revision: BrowserRevision,
+    start: () => Promise<WikiStartResult>,
+  ): Promise<Response> {
+    let started: WikiStartResult;
+    try {
+      started = await start();
+    } catch (error) {
+      throw wikiFailure(error);
+    }
+    // Delivery re-checks the selection, as answers do.
+    this.#reauthorize(revision);
+    const view = (() => {
+      switch (started.state) {
+        case "ready":
+          return { state: "ready", generation: generationView(started.generation) };
+        case "queued":
+        case "running":
+          return {
+            state: started.state,
+            created: started.created,
+            generation: generationView(started.generation),
+          };
+        case "indexing":
+          return {
+            state: "indexing",
+            index: { buildId: started.buildId, progress: started.progress },
+          };
+        case "index_failed":
+          return {
+            state: "index_failed",
+            index: {
+              buildId: started.build.id,
+              code: started.build.errorCode,
+              retryable: started.build.retryable ?? false,
+            },
+          };
+        case "unsupported_revision":
+          return { state: "unsupported_revision" };
+      }
+    })();
+    const status = started.state === "queued" ? 202 : 200;
+    return Response.json(
+      { revisionId: revision.id, ...view, wiki: this.#wikiStatus(revision) },
+      { status },
+    );
+  }
+
+  /**
+   * A generation this selection may read: same repository (otherwise missing)
+   * and same commit (otherwise a typed mismatch naming the other commit).
+   */
+  #wikiGeneration(
+    revision: BrowserRevision,
+    generationId: string,
+    published: boolean,
+  ): WikiGenerationRecord {
+    if (!GENERATION_ID.test(generationId)) {
+      throw new BrowserError(404, "wiki_generation_not_found", "No such wiki generation");
+    }
+    let generation: WikiGenerationRecord;
+    try {
+      generation = this.#service.wikiGeneration(this.#client, generationId);
+    } catch (error) {
+      throw wikiFailure(error);
+    }
+    if (generation.repositoryId !== revision.repositoryId) {
+      throw new BrowserError(404, "wiki_generation_not_found", "No such wiki generation");
+    }
+    if (generation.sha !== revision.sha) {
+      throw new BrowserError(
+        409,
+        "wiki_revision_mismatch",
+        "This wiki was generated for another commit; select that commit to read it",
+        { generationId: generation.id, generationSha: generation.sha, revisionSha: revision.sha },
+      );
+    }
+    if (published && generation.state !== "ready") {
+      throw new BrowserError(409, "wiki_not_ready", "This wiki generation is not published", {
+        state: generation.state,
+      });
+    }
+    return generation;
+  }
+
+  /** Whether the generation is the one served now for its commit, rather than a retired one. */
+  #isCurrent(revision: BrowserRevision, generation: WikiGenerationRecord): boolean {
+    try {
+      const status = this.#service.wikiStatus(this.#client, {
+        repositoryId: revision.repositoryId,
+        sha: revision.sha,
+      });
+      return status.ready?.id === generation.id;
+    } catch {
+      return false;
+    }
+  }
+
+  #targets(generationId: string): {
+    readonly targets: PageTargets;
+    readonly pages: ReadonlyMap<string, WikiPageRecord>;
+  } {
+    const index = this.#wikiCall(() => this.#service.wikiIndex(this.#client, generationId));
+    const pages = new Map((index?.pages ?? []).map((page) => [page.pageId, page]));
+    const ready = new Map(
+      [...pages.values()]
+        .filter((page) => page.state === "ready")
+        .map((page) => [page.slug, { pageId: page.pageId, title: page.title }]),
+    );
+    return { targets: { ready }, pages };
+  }
+
+  #wikiPage(revision: BrowserRevision, generationId: string, slug: string): Response {
+    const generation = this.#wikiGeneration(revision, generationId, true);
+    if (slug.length > MAX_SLUG_CHARS || !WIKI_SLUG.test(slug)) {
+      throw new BrowserError(404, "page_not_found", "No such wiki page");
+    }
+    const resolution = this.#wikiCall(() =>
+      this.#service.wikiResolveSlug(this.#client, generation.id, slug),
+    );
+    if (resolution.outcome === "not_found") {
+      throw new BrowserError(404, "page_not_found", "No such wiki page");
+    }
+    if (resolution.outcome === "removed") {
+      throw new BrowserError(410, "page_removed", "This page is not part of this wiki any more", {
+        slug: resolution.slug,
+        lastTitle: resolution.lastTitle,
+      });
+    }
+    const content = this.#wikiCall(() =>
+      this.#service.wikiPage(this.#client, generation.id, resolution.page.pageId),
+    );
+    if (!content) throw new BrowserError(404, "page_not_found", "No such wiki page");
+    const { targets } = this.#targets(generation.id);
+    return Response.json({
+      revisionId: revision.id,
+      ...wikiPageView(content, generation, {
+        current: this.#isCurrent(revision, generation),
+        targets,
+        link: (ref) => this.#link(generation.repositoryId, generation.sha, ref),
+        // A renamed slug is answered with the same page and its new slug; never another page.
+        ...(resolution.outcome === "redirect" ? { redirectedFrom: resolution.fromSlug } : {}),
+      }),
     });
+  }
+
+  #wikiSearch(revision: BrowserRevision, generationId: string, url: URL): Response {
+    const generation = this.#wikiGeneration(revision, generationId, true);
+    const query = url.searchParams.get("q") ?? "";
+    const parsed = parseSearchQuery(query);
+    if (!parsed.ok) {
+      throw new BrowserError(
+        400,
+        parsed.code,
+        parsed.code === "query_empty"
+          ? "Enter at least one word to search for"
+          : "The search text is too long",
+      );
+    }
+    const limit = boundedInteger(
+      url.searchParams.get("limit"),
+      DEFAULT_SEARCH_LIMIT,
+      1,
+      MAX_SEARCH_LIMIT,
+    );
+    const offset = boundedInteger(url.searchParams.get("offset"), 0, 0, MAX_SEARCH_OFFSET);
+    const result = this.#wikiCall(() =>
+      this.#service.wikiSearch(this.#client, generation.id, {
+        expression: parsed.expression,
+        limit,
+        offset,
+      }),
+    );
+    const { pages } = this.#targets(generation.id);
+    return Response.json({
+      revisionId: revision.id,
+      ...wikiSearchView(
+        result,
+        generation,
+        pages,
+        { query, limit, offset },
+        this.#isCurrent(revision, generation),
+      ),
+    });
+  }
+
+  /** Resolve a page question's page against the selection; refuse anything that would mix commits. */
+  #pageContext(
+    revision: BrowserRevision,
+    ref: { readonly generationId: string; readonly pageId: string },
+  ): { readonly page: PageContext; readonly hints: string } {
+    this.#reauthorize(revision);
+    const generation = this.#wikiGeneration(revision, ref.generationId, true);
+    const content = this.#wikiCall(() =>
+      this.#service.wikiPage(this.#client, generation.id, ref.pageId),
+    );
+    if (!content) throw new BrowserError(404, "page_not_found", "No such wiki page");
+    if (content.page.state !== "ready") {
+      throw new BrowserError(409, "page_unavailable", "This page has no generated content", {
+        state: content.page.state,
+      });
+    }
+    return {
+      page: {
+        generationId: generation.id,
+        pageId: content.page.pageId,
+        slug: content.page.slug,
+        title: content.page.title,
+        repositoryId: generation.repositoryId,
+        sha: generation.sha,
+      },
+      hints: pageHints(content),
+    };
   }
 
   // -------------------------------------------------------------------------
@@ -866,6 +1300,97 @@ export class BrowserAdapter {
   }
 }
 
+/** `{ generationId, pageId }` of a page question, or undefined when absent. */
+function parsePageRef(
+  value: unknown,
+): { readonly generationId: string; readonly pageId: string } | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "object" || Array.isArray(value)) {
+    throw new BrowserError(400, "invalid_request", "wikiPage must be an object");
+  }
+  const record = value as Record<string, unknown>;
+  const extra = Object.keys(record).filter((key) => key !== "generationId" && key !== "pageId");
+  if (extra.length > 0) {
+    throw new BrowserError(400, "invalid_request", "wikiPage takes only generationId and pageId");
+  }
+  const { generationId, pageId } = record;
+  if (typeof generationId !== "string" || !GENERATION_ID.test(generationId)) {
+    throw new BrowserError(
+      400,
+      "invalid_request",
+      "wikiPage.generationId is not a wiki generation id",
+    );
+  }
+  if (typeof pageId !== "string" || !PAGE_ID.test(pageId)) {
+    throw new BrowserError(400, "invalid_request", "wikiPage.pageId is not a page id");
+  }
+  return { generationId, pageId };
+}
+
+/**
+ * A page question's answer must be about the page's own repository and
+ * commit. The selection pins both, so this never fires unless a defect mixed
+ * revisions; then the answer is withheld rather than shown against the page.
+ */
+function samePageRevision(response: AskProjectResponse, page: PageContext): AskProjectResponse {
+  if (response.status !== "answered") return response;
+  if (
+    response.revision.repositoryId === page.repositoryId &&
+    response.revision.sha === page.sha &&
+    response.index.sha === page.sha
+  ) {
+    return response;
+  }
+  return {
+    status: "failed",
+    requestId: response.requestId,
+    mode: response.mode,
+    limitations: [],
+    stage: "context",
+    code: "revision_mismatch",
+    message: "",
+    retryable: false,
+  };
+}
+
+function boundedInteger(raw: string | null, fallback: number, min: number, max: number): number {
+  if (raw === null || raw === "") return fallback;
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value < min || value > max) {
+    throw new BrowserError(400, "invalid_request", `Expected an integer from ${min} to ${max}`);
+  }
+  return value;
+}
+
+/** Typed service failures of wiki calls as browser errors with fixed messages. */
+function wikiFailure(error: unknown): unknown {
+  if (error instanceof BrowserError) return error;
+  if (error instanceof OperationError) {
+    if (error.code === "forbidden") {
+      return new BrowserError(403, "repository_not_permitted", "This repository is not available");
+    }
+    if (error.code === "not_found") {
+      return new BrowserError(404, "wiki_generation_not_found", "No such wiki generation");
+    }
+    return new BrowserError(
+      409,
+      "wiki_invalid_state",
+      "The wiki cannot do that in its current state",
+    );
+  }
+  if (error instanceof IndexAccessDeniedError) {
+    return new BrowserError(403, "repository_not_permitted", "This repository is not available");
+  }
+  if (error instanceof LookyUnavailableError) {
+    return new BrowserError(
+      503,
+      "wiki_unavailable",
+      "Wiki generation is not available on this Looky service now",
+    );
+  }
+  return error;
+}
+
 function digest(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }
@@ -895,7 +1420,13 @@ function withHeaders(response: Response): Response {
 function errorResponse(failure: unknown): Response {
   if (failure instanceof BrowserError) {
     return Response.json(
-      { error: { code: failure.code, message: failure.message } },
+      {
+        error: {
+          code: failure.code,
+          message: failure.message,
+          ...(failure.details ? { details: failure.details } : {}),
+        },
+      },
       { status: failure.status },
     );
   }

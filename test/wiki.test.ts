@@ -178,6 +178,13 @@ describe("generated wiki model", () => {
       "wiki_page_links",
       "wiki_page_sources",
       "wiki_pages",
+      "wiki_search_fts",
+      "wiki_search_fts_config",
+      "wiki_search_fts_content",
+      "wiki_search_fts_data",
+      "wiki_search_fts_docsize",
+      "wiki_search_fts_idx",
+      "wiki_search_generations",
       "wiki_slug_aliases",
     ]);
     migrate(upgraded);
