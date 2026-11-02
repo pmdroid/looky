@@ -8,7 +8,12 @@ import {
 } from "./contract/budgets";
 import type { AnswerEngineOptions } from "./answer/engine";
 import { DEFAULT_FOLLOW_UP_LIMITS } from "./answer/engine";
-import { sourceLinkFromTemplate } from "./answer/citations";
+import { type SourceLinkBuilder, sourceLinkFromTemplate } from "./answer/citations";
+import {
+  DEFAULT_WIKI_GENERATION_SETTINGS,
+  validateWikiGenerationSettings,
+  type WikiGenerationSettings,
+} from "./wiki/generator";
 import { DEFAULT_MAX_QUESTION_CHARS, MODES } from "./contract/input";
 import { DEFAULT_INDEX_RETENTION, type IndexRetention } from "./indexing/index-service";
 import { DEFAULT_INDEX_LIMITS, type IndexLimits, validateLimits } from "./indexing/policy";
@@ -140,9 +145,9 @@ export function wikiLimitEnvName(field: keyof WikiPlanLimits): string {
  * documented defaults. `LOOKY_WIKI_MAX_MODULES` and `LOOKY_WIKI_MAX_WORKFLOWS`
  * accept 0 to plan no pages of that kind.
  */
-export function loadWikiConfig(env: Record<string, string | undefined> = process.env): {
-  readonly limits: WikiPlanLimits;
-} {
+export function loadWikiConfig(
+  env: Record<string, string | undefined> = process.env,
+): LookyWikiConfig {
   const limits: Record<string, number> = { ...DEFAULT_WIKI_PLAN_LIMITS };
   for (const field of Object.keys(DEFAULT_WIKI_PLAN_LIMITS) as (keyof WikiPlanLimits)[]) {
     const name = wikiLimitEnvName(field);
@@ -155,7 +160,48 @@ export function loadWikiConfig(env: Record<string, string | undefined> = process
   }
   const result = limits as unknown as WikiPlanLimits;
   validateWikiPlanLimits(result);
-  return { limits: result };
+
+  const defaults = DEFAULT_WIKI_GENERATION_SETTINGS;
+  const group = <T extends object>(prefix: string, base: T): T => {
+    const values: Record<string, number> = { ...(base as Record<string, number>) };
+    for (const field of Object.keys(base)) {
+      const value = readPositiveInt(env, wikiSettingEnvName(prefix, field));
+      if (value !== undefined) values[field] = value;
+    }
+    return values as T;
+  };
+  const generation: WikiGenerationSettings = {
+    maxConcurrentGenerations:
+      readPositiveInt(env, "LOOKY_WIKI_MAX_CONCURRENT_GENERATIONS") ??
+      defaults.maxConcurrentGenerations,
+    maxConcurrentPages:
+      readPositiveInt(env, "LOOKY_WIKI_MAX_CONCURRENT_PAGES") ?? defaults.maxConcurrentPages,
+    page: group("PAGE", defaults.page),
+    research: group("RESEARCH", defaults.research),
+    totals: group("TOTAL", defaults.totals),
+  };
+  validateWikiGenerationSettings(generation);
+  const template = env.LOOKY_SOURCE_LINK_TEMPLATE?.trim();
+  return {
+    limits: result,
+    generation,
+    ...(template
+      ? { sourceLinkTemplate: template, sourceLink: sourceLinkFromTemplate(template) }
+      : {}),
+  };
+}
+
+export interface LookyWikiConfig {
+  readonly limits: WikiPlanLimits;
+  readonly generation: WikiGenerationSettings;
+  /** Template for citation links in generated pages; part of the generator fingerprint. */
+  readonly sourceLinkTemplate?: string;
+  readonly sourceLink?: SourceLinkBuilder;
+}
+
+/** `LOOKY_WIKI_<GROUP>_<FIELD>`, such as `LOOKY_WIKI_PAGE_MAX_MODEL_CALLS` or `LOOKY_WIKI_TOTAL_MAX_ELAPSED_MS`. */
+export function wikiSettingEnvName(group: string, field: string): string {
+  return `LOOKY_WIKI_${group}_${field.replace(/[A-Z]/g, (letter) => `_${letter}`).toUpperCase()}`;
 }
 
 /** Environment variable for one research limit, such as `LOOKY_DEEP_RESEARCH_MAX_PASSES`. */

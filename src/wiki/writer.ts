@@ -371,6 +371,44 @@ interface Checked {
   readonly invalidLinks: number;
 }
 
+/** `path:12` or `path:12-20`, optionally in backticks, including absolute and extensionless paths. */
+const PATH_REF =
+  /(?<![\w/:.@-])(`?)((?:\.{1,2}\/|\/)?(?:[\w.-]+\/)*[\w.-]+):(\d+)(?:-(\d+))?\1(?![\w/])/g;
+
+/**
+ * Turn every path-and-line reference into an evidence marker when it lies
+ * inside inspected evidence, and strip the line numbers when it does not.
+ * Citation validation alone only recognizes paths with a file extension, so
+ * a reference like `/etc/passwd:1` or `src/Makefile:3` would otherwise stay
+ * in the text looking like a verified citation. Bare words such as
+ * `localhost:8080` are left alone.
+ */
+function pathReferences(
+  value: string,
+  evidence: readonly Evidence[],
+): { readonly text: string; readonly invalid: number } {
+  let invalid = 0;
+  const text = value.replace(
+    PATH_REF,
+    (whole, _tick: string, path: string, startRaw: string, endRaw?: string) => {
+      if (!path.includes("/") && !/\.[A-Za-z][A-Za-z0-9]*$/.test(path)) return whole;
+      const start = Number(startRaw);
+      const end = endRaw === undefined ? start : Number(endRaw);
+      const item = evidence.find(
+        (candidate) =>
+          candidate.path === path &&
+          start <= end &&
+          start >= candidate.startLine &&
+          end <= candidate.endLine,
+      );
+      if (item) return `[${item.id}:${start}-${end}]`;
+      invalid += 1;
+      return `\`${path}\``;
+    },
+  );
+  return { text, invalid };
+}
+
 function check(
   raw: string,
   evidence: readonly Evidence[],
@@ -379,12 +417,13 @@ function check(
   link: SourceLinkBuilder | undefined,
 ): Checked {
   const scrubbed = scrub(raw, allowed);
-  const cited = validateCitations(scrubbed.text, evidence, link);
+  const refs = pathReferences(scrubbed.text, evidence);
+  const cited = validateCitations(refs.text, evidence, link);
   return {
     text: restoreLinks(cited.text, scrubbed.links, titles),
     evidence: cited.evidence,
     citedIds: cited.citedIds,
-    invalid: cited.invalid.length,
+    invalid: cited.invalid.length + refs.invalid,
     removed: scrubbed.removed,
     invalidLinks: scrubbed.invalidLinks,
   };

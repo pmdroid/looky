@@ -174,6 +174,7 @@ describe("generated wiki model", () => {
     expect(tables).toEqual([
       "wiki_generations",
       "wiki_page_bodies",
+      "wiki_page_drafts",
       "wiki_page_links",
       "wiki_page_sources",
       "wiki_pages",

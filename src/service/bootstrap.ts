@@ -4,10 +4,14 @@
  */
 import { resolve } from "node:path";
 import { userInfo } from "node:os";
-import { loadAskConfig, loadIndexConfig } from "../config";
+import { loadAskConfig, loadIndexConfig, loadWikiConfig } from "../config";
 import type { LookyRequestContext } from "../contract/context";
 import { runGit } from "../indexing/git-snapshot";
-import { createConfiguredProvider } from "../providers/config";
+import {
+  createConfiguredProvider,
+  loadProviderConfig,
+  providerIdentity,
+} from "../providers/config";
 import { openDatabase } from "../storage/database";
 import type { CapacityConfig, RepositoryConfig } from "./config";
 import { LookyService, type Principal } from "./looky-service";
@@ -30,7 +34,9 @@ export function createLookyService(options: {
   // Validate everything before opening storage, so a bad setting changes nothing.
   const ask = loadAskConfig(env);
   const index = loadIndexConfig(env);
+  const wiki = loadWikiConfig(env);
   const provider = createConfiguredProvider(env);
+  const providers = loadProviderConfig(env);
   const db = openDatabase({ dataDir });
   try {
     return new LookyService({
@@ -39,8 +45,10 @@ export function createLookyService(options: {
       repositories: options.repositories,
       ask,
       index,
+      wiki,
       capacity: options.capacity,
       ...(provider ? { provider } : {}),
+      ...(providers ? { modelIdentity: providerIdentity(providers) } : {}),
     });
   } catch (error) {
     db.close();

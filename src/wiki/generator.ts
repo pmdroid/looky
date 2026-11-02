@@ -143,6 +143,8 @@ export const DEFAULT_WIKI_GENERATION_SETTINGS: WikiGenerationSettings = {
   },
 };
 
+const TIME_LIMIT_MESSAGE = "The wiki generation reached its time limit (maxElapsedMs)";
+
 /** A page is not started with less than this left in the generation's totals. */
 const MIN_PAGE_INPUT_TOKENS = 1_000;
 const MIN_PAGE_OUTPUT_TOKENS = 100;
@@ -574,13 +576,19 @@ export class WikiGenerator {
 
       await pool(toWrite, settings.maxConcurrentPages, async ({ page, input, draftKey }) => {
         if (controller.signal.aborted || stop) return;
-        const remainingMs = settings.totals.maxElapsedMs - (this.#now() - startedAt);
-        const budget = ledger.reserve(remainingMs);
+        const remainingMs = () => settings.totals.maxElapsedMs - (this.#now() - startedAt);
+        const budget = await ledger.reserve(remainingMs);
+        if (controller.signal.aborted || stop) {
+          if (budget) ledger.settle(budget, EMPTY_WIKI_USAGE);
+          return;
+        }
         if (!budget) {
           stop ??= {
             code: "budget_exhausted",
             message:
-              "The generation's model call, token or read totals ran out before every page was written",
+              remainingMs() < 1
+                ? TIME_LIMIT_MESSAGE
+                : "The generation's model call, token or read totals ran out before every page was written",
             retryable: true,
           };
           return;
@@ -722,12 +730,7 @@ export class WikiGenerator {
 
   #aborted(id: string, kind: AbortKind | undefined): void {
     if (kind === "timeout") {
-      this.#fail(
-        id,
-        "budget_exhausted",
-        "The wiki generation reached its time limit (maxElapsedMs)",
-        true,
-      );
+      this.#fail(id, "budget_exhausted", TIME_LIMIT_MESSAGE, true);
       return;
     }
     finishWikiGenerationUnsuccessfully(this.#db, id, {
@@ -812,13 +815,29 @@ const SPEND_FIELDS = [
 class Ledger {
   readonly #spent: Spend = zeroSpend();
   readonly #reserved: Spend = zeroSpend();
+  #inFlight = 0;
+  #waiters: (() => void)[] = [];
 
   constructor(
     private readonly totals: WikiGenerationTotals,
     private readonly page: ModeBudget,
   ) {}
 
-  reserve(remainingMs: number): ModeBudget | undefined {
+  /**
+   * Reserve a page budget. When the totals cannot cover a page while other
+   * pages hold reservations, wait for one of them to settle and try again,
+   * since a page usually spends less than it reserved. Undefined once nothing
+   * is in flight and the totals still cannot cover a page.
+   */
+  async reserve(remainingMs: () => number): Promise<ModeBudget | undefined> {
+    for (;;) {
+      const grant = this.#tryReserve(remainingMs());
+      if (grant || this.#inFlight === 0) return grant;
+      await new Promise<void>((resolve) => this.#waiters.push(resolve));
+    }
+  }
+
+  #tryReserve(remainingMs: number): ModeBudget | undefined {
     const grant = {} as Spend;
     for (const field of SPEND_FIELDS) {
       grant[field] = Math.min(
@@ -837,16 +856,19 @@ class Ledger {
       return undefined;
     }
     for (const field of SPEND_FIELDS) this.#reserved[field] += grant[field];
+    this.#inFlight += 1;
     return { ...this.page, ...grant, maxElapsedMs: Math.min(this.page.maxElapsedMs, remainingMs) };
   }
 
   settle(grant: ModeBudget, used: WikiUsage): void {
+    this.#inFlight -= 1;
     for (const field of SPEND_FIELDS) this.#reserved[field] -= grant[field];
     this.#spent.maxModelCalls += used.modelCalls;
     this.#spent.maxInputTokens += used.inputTokens;
     this.#spent.maxOutputTokens += used.outputTokens;
     this.#spent.maxSourceReads += used.sourceReads;
     this.#spent.maxSourceBytes += used.sourceBytes;
+    for (const waiter of this.#waiters.splice(0)) waiter();
   }
 }
 

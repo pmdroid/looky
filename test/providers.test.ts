@@ -58,7 +58,12 @@ describe("HTTP providers", () => {
       ),
     });
     const result = await provider.complete(request, signal());
-    expect(result).toEqual({ text: "The answer.", inputTokens: 12, outputTokens: 3 });
+    expect(result).toEqual({
+      text: "The answer.",
+      inputTokens: 12,
+      outputTokens: 3,
+      usageReported: true,
+    });
     expect(captured[0]!.url).toBe("http://127.0.0.1:11434/v1/chat/completions");
     expect(captured[0]!.headers.authorization).toBeUndefined();
     expect(captured[0]!.body).toEqual({
@@ -121,6 +126,8 @@ describe("HTTP providers", () => {
     const result = await provider.complete(request, signal());
     expect(result.outputTokens).toBe(300);
     expect(result.inputTokens).toBeGreaterThan(0);
+    // The counts are an estimate, and the result says so.
+    expect(result.usageReported).toBe(false);
   });
 
   test("errors are typed for fallback and never echo credentials or bodies", async () => {
@@ -385,6 +392,7 @@ describe("provider configuration", () => {
       inputTokens: 1,
       outputTokens: 1,
       providerId: "p",
+      usageReported: true,
     });
   });
 });

@@ -128,6 +128,23 @@ export function loadProviderConfig(env: Env = process.env): ProviderConfig | und
   return { providers, policy: { selected, ...(fallback.length > 0 ? { fallback } : {}) } };
 }
 
+/**
+ * What changes generated output about the configured providers: id, kind,
+ * model and reasoning effort of the selected provider and its fallbacks, in
+ * order. Never credentials or endpoints.
+ */
+export function providerIdentity(config: ProviderConfig): string {
+  const byId = new Map(config.providers.map((provider) => [provider.id, provider]));
+  return [config.policy.selected, ...(config.policy.fallback ?? [])]
+    .map((id) => {
+      const provider = byId.get(id);
+      if (!provider) return id;
+      const effort = provider.reasoningEffort ? `:${provider.reasoningEffort}` : "";
+      return `${provider.id}:${provider.kind}:${provider.model}${effort}`;
+    })
+    .join(",");
+}
+
 /** Build the configured router, or undefined when no provider is selected. */
 export function createConfiguredProvider(
   env: Env = process.env,
