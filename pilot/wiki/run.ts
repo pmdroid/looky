@@ -736,8 +736,11 @@ const report = [
   "",
   "## Review",
   "",
-  "To be completed by the reviewer: overview, architecture, two module pages and two workflow",
-  "pages, each claim checked against `citations.json` at the pinned commit.",
+  "**Status: not reviewed.** Automatic checks prove citations, links, refresh and restart, not",
+  "that the prose is true. This run is not acceptance evidence until a reviewer reads the",
+  "overview, architecture, two module pages and two workflow pages, checks each substantive",
+  "claim against `citations.json` at the pinned commit, records supported, qualified or",
+  "unsupported per claim here, and changes the status line.",
   "",
 ].join("\n");
 writeFileSync(join(out, "report.md"), report);
