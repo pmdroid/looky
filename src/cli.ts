@@ -59,10 +59,10 @@ import { serveStdio } from "./mcp/stdio";
 import { createLookyService, dataDirFrom, localPrincipal } from "./service/bootstrap";
 import { WikiGenerator } from "./wiki/generator";
 import { planWiki } from "./wiki/planner";
+import { DEFAULT_SEARCH_LIMIT, parseSearchQuery, searchWiki } from "./wiki/search";
 import {
   authorizedGeneration,
   listWikiGenerations,
-  searchWiki,
   wikiCurrency,
   priorWikiPages,
   wikiHistory,
@@ -606,15 +606,28 @@ async function wiki(
       }
       const generation = authorizedGeneration(db, values.id, generationId);
       if (!generation) return fail(`Unknown wiki generation ${generationId}`);
+      if (generation.state !== "ready") {
+        return fail(`Wiki generation ${generationId} is ${generation.state}, not published`);
+      }
+      const query = parseSearchQuery(words.join(" "));
+      if (!query.ok) return fail(`Invalid search query: ${query.code}`);
+      const slugs = new Map(
+        (wikiIndex(db, { repositoryId: values.id, generationId })?.pages ?? []).map((page) => [
+          page.pageId,
+          page.slug,
+        ]),
+      );
+      const found = searchWiki(db, {
+        generationId,
+        expression: query.expression,
+        limit: values.limit ? Number(values.limit) : DEFAULT_SEARCH_LIMIT,
+        offset: 0,
+      });
       print({
         sha: generation.sha,
         currency: wikiCurrency(generation),
-        hits: searchWiki(db, {
-          repositoryId: values.id,
-          generationId,
-          query: words.join(" "),
-          limit: values.limit ? Number(values.limit) : 10,
-        }),
+        total: found.total,
+        hits: found.hits.map((hit) => ({ slug: slugs.get(hit.pageId), ...hit })),
       });
       return 0;
     }

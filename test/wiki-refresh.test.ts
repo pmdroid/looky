@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DEFAULT_WIKI_PLAN_LIMITS } from "../src/wiki/model";
 import { diffManifests, relabelWikiBody } from "../src/wiki/refresh";
+import { parseSearchQuery, searchWiki } from "../src/wiki/search";
 import {
   acquireWikiLease,
   collectWikiGarbage,
@@ -13,7 +14,6 @@ import {
   publishWikiGeneration,
   releaseWikiLease,
   resolveWikiSlug,
-  searchWiki,
   setWikiPageState,
   startWikiGeneration,
   storeWikiPageBody,
@@ -170,19 +170,26 @@ describe("wiki refresh across commits", () => {
       }
       for (const slug of wikiBodyLinks(body)) expect(ready.has(slug)).toBe(true);
     }
-    // Search entries: exactly the ready pages of this generation.
-    const entries = h.db
-      .query<{ page_id: string }, [string]>(
-        "SELECT page_id FROM wiki_search_entries WHERE generation_id = ?",
-      )
-      .all(generation.id);
-    expect(entries.length).toBe(ready.size);
+    // Search entries, written when the generation published: exactly its ready pages.
+    const indexed = new Set(
+      h.db
+        .query<{ page_id: string }, [string]>(
+          "SELECT DISTINCT page_id FROM wiki_search_fts WHERE generation_id = ?",
+        )
+        .all(generation.id)
+        .map((row) => row.page_id),
+    );
+    const readyIds = pages
+      .filter((content) => content.page.state === "ready")
+      .map((content) => content.page.pageId);
+    expect([...indexed].sort()).toEqual(readyIds.sort());
   }
 
+  /** Search rows that do not name a ready page of a published generation. */
   function orphanSearchEntries(h: WikiHarness): number {
     return h.db
       .query<{ n: number }, []>(
-        `SELECT COUNT(*) AS n FROM wiki_search_entries e WHERE NOT EXISTS (
+        `SELECT COUNT(*) AS n FROM wiki_search_fts e WHERE NOT EXISTS (
            SELECT 1 FROM wiki_pages p JOIN wiki_generations g ON g.id = p.generation_id
            WHERE p.generation_id = e.generation_id AND p.page_id = e.page_id
              AND p.state = 'ready' AND g.state = 'ready')`,
@@ -190,8 +197,30 @@ describe("wiki refresh across commits", () => {
       .get()!.n;
   }
 
-  function ftsRows(h: WikiHarness): number {
-    return h.db.query<{ n: number }, []>("SELECT COUNT(*) AS n FROM wiki_search_fts").get()!.n;
+  function searchRows(h: WikiHarness, generationId: string): number {
+    return h.db
+      .query<{ n: number }, [string]>(
+        "SELECT COUNT(*) AS n FROM wiki_search_fts WHERE generation_id = ?",
+      )
+      .get(generationId)!.n;
+  }
+
+  /** Docs search of one generation, with each hit's slug. */
+  function search(h: WikiHarness, generationId: string, text: string, limit = 25) {
+    const query = parseSearchQuery(text);
+    if (!query.ok) throw new Error(query.code);
+    const slugs = new Map(
+      wikiIndex(h.db, { repositoryId: REPO_ID, generationId })!.pages.map((page) => [
+        page.pageId,
+        page.slug,
+      ]),
+    );
+    return searchWiki(h.db, {
+      generationId,
+      expression: query.expression,
+      limit,
+      offset: 0,
+    }).hits.map((hit) => ({ ...hit, slug: slugs.get(hit.pageId) }));
   }
 
   beforeEach(() => {
@@ -310,27 +339,12 @@ describe("wiki refresh across commits", () => {
     });
     expect(removed.outcome).toBe("removed");
     expect(
-      searchWiki(h.db, {
-        repositoryId: REPO_ID,
-        generationId: second.id,
-        query: "Worker",
-        limit: 20,
-      }).every((hit) => pages.get(hit.slug)?.page.state === "ready"),
+      search(h, second.id, "Worker").every(
+        (hit) => hit.slug !== undefined && pages.get(hit.slug)?.page.state === "ready",
+      ),
     ).toBe(true);
-    expect(
-      searchWiki(h.db, {
-        repositoryId: REPO_ID,
-        generationId: second.id,
-        query: "Billing",
-        limit: 5,
-      }).map((hit) => hit.slug),
-    ).toContain("modules/billing");
-    for (const hit of searchWiki(h.db, {
-      repositoryId: REPO_ID,
-      generationId: second.id,
-      query: "Worker supervisor",
-      limit: 50,
-    })) {
+    expect(search(h, second.id, "Billing").map((hit) => hit.slug)).toContain("modules/billing");
+    for (const hit of search(h, second.id, "Worker supervisor")) {
       expect(hit.pageId).not.toBe(firstPages.get("modules/worker")!.page.pageId);
     }
 
@@ -389,18 +403,15 @@ describe("wiki refresh across commits", () => {
     });
     expect(collected.deleted).toBe(1);
     expect(getWikiGeneration(h.db, first.id)).toBeUndefined();
+    expect(searchRows(h, first.id)).toBe(0);
+    expect(orphanSearchEntries(h)).toBe(0);
     expect(
       h.db
         .query<{ n: number }, [string]>(
-          "SELECT COUNT(*) AS n FROM wiki_search_entries WHERE generation_id = ?",
+          "SELECT COUNT(*) AS n FROM wiki_search_generations WHERE generation_id = ?",
         )
         .get(first.id)!.n,
     ).toBe(0);
-    expect(orphanSearchEntries(h)).toBe(0);
-    const entries = h.db
-      .query<{ n: number }, []>("SELECT COUNT(*) AS n FROM wiki_search_entries")
-      .get()!.n;
-    expect(ftsRows(h)).toBe(entries);
     // Old links still explain themselves after the generation is gone.
     expect(
       resolveWikiSlug(h.db, {
@@ -596,13 +607,7 @@ describe("wiki refresh across commits", () => {
       expect(String(error)).toContain("from another commit");
     }
     expect(getWikiGeneration(h.db, generation.id)!.state).toBe("running");
-    expect(
-      h.db
-        .query<{ n: number }, [string]>(
-          "SELECT COUNT(*) AS n FROM wiki_search_entries WHERE generation_id = ?",
-        )
-        .get(generation.id)!.n,
-    ).toBe(0);
+    expect(searchRows(h, generation.id)).toBe(0);
   });
 });
 

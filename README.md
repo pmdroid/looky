@@ -773,20 +773,20 @@ records the index build it was planned from as provenance.
 
 Migration 5 adds these tables:
 
-| Table                   | Holds                                                                             |
-| ----------------------- | --------------------------------------------------------------------------------- |
-| `wiki_generations`      | Scope, state, plan coverage and disclosures, generator configuration, timestamps  |
-| `wiki_pages`            | Navigation only: stable page id, slug, title, kind, parent, depth, sibling order  |
-| `wiki_page_bodies`      | Natural-language body, its hash, generation time and provenance                   |
-| `wiki_page_sources`     | Planned sources and cited source ranges, each with path, blob id and lines        |
-| `wiki_page_links`       | Internal links between pages of the same generation                               |
-| `wiki_slug_aliases`     | Every slug a repository published, for redirects and removed pages                |
-| `wiki_page_drafts`      | Validated page drafts kept for reuse, with the blobs they read (migration 6)      |
-| `wiki_generation_files` | The indexed paths and blobs a generation was planned from (migration 7)           |
-| `wiki_search_entries`   | Full-text search entries of published pages, with `wiki_search_fts` (migration 7) |
-| `wiki_leases`           | Reader leases that keep a generation from being collected (migration 7)           |
+| Table                   | Holds                                                                            |
+| ----------------------- | -------------------------------------------------------------------------------- |
+| `wiki_generations`      | Scope, state, plan coverage and disclosures, generator configuration, timestamps |
+| `wiki_pages`            | Navigation only: stable page id, slug, title, kind, parent, depth, sibling order |
+| `wiki_page_bodies`      | Natural-language body, its hash, generation time and provenance                  |
+| `wiki_page_sources`     | Planned sources and cited source ranges, each with path, blob id and lines       |
+| `wiki_page_links`       | Internal links between pages of the same generation                              |
+| `wiki_slug_aliases`     | Every slug a repository published, for redirects and removed pages               |
+| `wiki_page_drafts`      | Validated page drafts kept for reuse, with the blobs they read (migration 6)     |
+| `wiki_search_fts`       | Documentation search sections of published pages (migration 7)                   |
+| `wiki_generation_files` | The indexed paths and blobs a generation was planned from (migration 8)          |
+| `wiki_leases`           | Reader leases that keep a generation from being collected (migration 8)          |
 
-Migration 6 also adds the budget and usage of each generation and page. Migration 7 adds
+Migration 6 also adds the budget and usage of each generation and page. Migration 8 adds
 each generation's base generation and refresh report, and each page's input key,
 inspected blobs, dependencies and refresh reason.
 
@@ -1042,9 +1042,10 @@ inspected blobs differ from the blobs indexed at its commit, or whose page prove
 names another commit. Body links must reach ready pages of the same generation.
 
 **Atomic publication.** Pages, table of contents, links, slug history for redirects and
-removed pages, and search entries become visible in one transaction. Search entries
-exist only for ready pages of a published generation and are deleted with it, so search
-never returns a page that is gone. A slug of a page the new generation dropped resolves
+removed pages, and documentation search sections become visible in one transaction.
+Search sections exist only for ready pages of a published generation and are deleted
+with it, so search never returns a page that is gone. Generations published before
+search existed are indexed on their first search. A slug of a page the new generation dropped resolves
 to `removed` with its last title.
 
 **Failure, cancellation and retry.** A refresh that fails, is cancelled or is
@@ -1073,8 +1074,9 @@ pages, file manifest and search entries. Slug history is kept, so old links stil
 resolve to a redirect or to `removed`.
 
 `pinnedWikiPage` reads a page for a named commit. It refuses a generation of another
-commit and marks the result `current` or `historical`. `searchWiki` searches one
-published generation.
+commit and marks the result `current` or `historical`. Documentation search over one
+published generation is described in
+[Wiki browsing, docs search and page questions](#wiki-browsing-docs-search-and-page-questions).
 
 ### Commands
 
