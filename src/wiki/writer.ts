@@ -33,7 +33,7 @@ import { type WikiNeighbour, wikiPagePrompt, wikiSystemPrompt } from "./prompts"
 import type { InspectedBlob } from "./store";
 
 /** Bump when the writer's research, validation or rendering changes generated pages. */
-export const WIKI_WRITER_VERSION = 1;
+export const WIKI_WRITER_VERSION = 2;
 
 /** Research limits for one page. Inside the page budget, so synthesis keeps its share. */
 export const DEFAULT_WIKI_RESEARCH_LIMITS: ResearchLimits = {
@@ -62,6 +62,8 @@ export interface WikiPageInput {
 export interface WikiPageValidation {
   /** Citation markers or path references that matched no inspected evidence. */
   readonly invalidCitations: number;
+  /** Backticked functions, types or paths that appear nowhere in the inspected evidence. */
+  readonly unknownNames: number;
   /** Sections removed because no verified citation or explanatory prose supported them. */
   readonly droppedSections: number;
   /** `[[slug]]` links to pages outside this page's neighbourhood. */
@@ -369,6 +371,7 @@ interface Checked {
   readonly evidence: readonly EvidenceRef[];
   readonly citedIds: ReadonlySet<string>;
   readonly invalid: number;
+  readonly unknownNames: number;
   readonly removed: number;
   readonly invalidLinks: number;
 }
@@ -411,21 +414,89 @@ function pathReferences(
   return { text, invalid };
 }
 
+/** What the model was shown: every word, path and directory of the included evidence. */
+export interface EvidenceVocabulary {
+  readonly words: ReadonlySet<string>;
+  readonly paths: ReadonlySet<string>;
+  readonly text: string;
+}
+
+const WORD = /[A-Za-z_$][\w$]*/g;
+/** A code span that names something: an identifier, member, call or path, without spaces. */
+const NAME_SPAN = /^[A-Za-z_$./][\w$./-]*(?:\(\))?$/;
+/** Language literals a page may name without the evidence spelling them out. */
+const LITERALS = new Set(["true", "false", "null", "undefined", "None", "nil", "NaN"]);
+export const NOT_FOUND_LABEL = "(not found in the inspected source)";
+
+export function evidenceVocabulary(
+  evidence: readonly Evidence[],
+  extraPaths: readonly string[] = [],
+): EvidenceVocabulary {
+  const words = new Set<string>();
+  const paths = new Set<string>();
+  for (const item of evidence) {
+    for (const match of item.text.matchAll(WORD)) words.add(match[0]);
+    for (const symbol of item.symbols)
+      for (const match of symbol.matchAll(WORD)) words.add(match[0]);
+  }
+  for (const path of [...evidence.map((item) => item.path), ...extraPaths]) {
+    const parts = path.split("/");
+    paths.add(path);
+    paths.add(parts.at(-1)!);
+    for (let end = 1; end < parts.length; end += 1) paths.add(parts.slice(0, end).join("/"));
+  }
+  return { words, paths, text: evidence.map((item) => item.text).join("\n") };
+}
+
+/** Whether a backticked name is something the evidence shows. Unclassifiable spans pass. */
+export function nameIsSupported(span: string, vocabulary: EvidenceVocabulary): boolean {
+  if (span.length < 3 || !NAME_SPAN.test(span) || LITERALS.has(span)) return true;
+  const name = span.replace(/\(\)$/, "").replace(/^\.\//, "").replace(/\/+$/, "");
+  if (name.length === 0 || vocabulary.paths.has(name) || vocabulary.text.includes(name))
+    return true;
+  // A path that is neither inspected, planned nor quoted in the evidence is unknown.
+  if (name.includes("/")) return false;
+  const segments = name.match(WORD) ?? [];
+  return segments.length > 0 && segments.every((segment) => vocabulary.words.has(segment));
+}
+
+/**
+ * Citation markers prove a range exists, not that the prose about it is
+ * true. A function, type or file named in backticks that appears nowhere in
+ * the evidence the model was shown is invented or unverified: it is marked
+ * as not found instead of being stated as fact.
+ */
+function unknownNames(
+  value: string,
+  vocabulary: EvidenceVocabulary,
+): { readonly text: string; readonly unknown: number } {
+  let unknown = 0;
+  const text = value.replace(/`([^`\n]{1,200})`(?! \(not found)/g, (whole, span: string) => {
+    if (nameIsSupported(span.trim(), vocabulary)) return whole;
+    unknown += 1;
+    return `${whole} ${NOT_FOUND_LABEL}`;
+  });
+  return { text, unknown };
+}
+
 function check(
   raw: string,
   evidence: readonly Evidence[],
   allowed: ReadonlySet<string>,
   titles: ReadonlyMap<string, string>,
   link: SourceLinkBuilder | undefined,
+  vocabulary: EvidenceVocabulary,
 ): Checked {
   const scrubbed = scrub(raw, allowed);
   const refs = pathReferences(scrubbed.text, evidence);
-  const cited = validateCitations(refs.text, evidence, link);
+  const names = unknownNames(refs.text, vocabulary);
+  const cited = validateCitations(names.text, evidence, link);
   return {
     text: restoreLinks(cited.text, scrubbed.links, titles),
     evidence: cited.evidence,
     citedIds: cited.citedIds,
     invalid: cited.invalid.length + refs.invalid,
+    unknownNames: names.unknown,
     removed: scrubbed.removed,
     invalidLinks: scrubbed.invalidLinks,
   };
@@ -448,14 +519,21 @@ function render(
   const titles = new Map(input.neighbours.map((n) => [n.slug, n.title]));
   const evidence = context.included;
   const docsIds = new Set(evidence.filter((item) => item.kind === "docs").map((item) => item.id));
-  const run = (raw: string) => check(raw, evidence, allowed, titles, context.sourceLink);
+  const vocabulary = evidenceVocabulary(evidence, [
+    ...input.sources.map((source) => source.path),
+    ...(input.scopePath ? [input.scopePath] : []),
+  ]);
+  const run = (raw: string) =>
+    check(raw, evidence, allowed, titles, context.sourceLink, vocabulary);
 
   let invalid = 0;
+  let unknown = 0;
   let removed = 0;
   let invalidLinks = 0;
   const refs: EvidenceRef[] = [];
   const tally = (checked: Checked) => {
     invalid += checked.invalid;
+    unknown += checked.unknownNames;
     removed += checked.removed;
     invalidLinks += checked.invalidLinks;
   };
@@ -552,6 +630,13 @@ function render(
         `${invalid === 1 ? "was" : "were"} removed.`,
     );
   }
+  if (unknown > 0) {
+    caveats.push(
+      `${unknown} name${unknown === 1 ? "" : "s"} in the draft did not appear in the inspected ` +
+        `source and ${unknown === 1 ? "is" : "are"} marked as not found; treat ` +
+        `${unknown === 1 ? "it" : "them"} as unverified.`,
+    );
+  }
   if (dropped > 0) {
     caveats.push(
       `${dropped} drafted section${dropped === 1 ? " was" : "s were"} left out because ` +
@@ -589,6 +674,7 @@ function render(
     inspected: inspectedOf(evidence, input.sources),
     validation: {
       invalidCitations: invalid,
+      unknownNames: unknown,
       droppedSections: dropped,
       invalidLinks,
       removedMarkup: removed,
