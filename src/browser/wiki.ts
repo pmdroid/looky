@@ -16,6 +16,7 @@
 import type { WikiPageKind, WikiSourceRef } from "../wiki/model";
 import {
   isControl,
+  MAX_SEARCH_OFFSET,
   plainText,
   type WikiHeading,
   wikiHeadings,
@@ -153,9 +154,29 @@ export interface PageTargets {
   readonly ready: ReadonlyMap<string, { readonly pageId: string; readonly title: string }>;
 }
 
+/** Private-use markers around a kept link while the rest of the line is escaped. */
+const KEEP_OPEN = "\uE002";
+const KEEP_CLOSE = "\uE003";
+const FENCE = /^ {0,3}(`{3,}|~{3,})/;
 /**
- * Markdown restricted to links this page may show. Raw HTML stays text for a
- * renderer without an HTML path; control characters are removed.
+ * Text that could form a link, image, reference definition, autolink or HTML
+ * if a renderer disagreed with Looky about where code starts or ends.
+ */
+const LINK_LIKE = /\]\s*[([:]|</;
+
+/** Backslash-escape everything that can start a link, image, reference, autolink or HTML. */
+function escapeMarkup(text: string): string {
+  return text.replace(/[\\[\]<>]/g, (char) => `\\${char}`);
+}
+
+/**
+ * Markdown restricted to links this page may show, by construction: kept
+ * links are taken out first, then every remaining `[`, `]`, `<`, `>` and
+ * backslash is escaped, so no other inline link, image, reference-style link,
+ * link reference definition, autolink or raw HTML can form in any CommonMark
+ * renderer. Code is left as written only when it holds nothing link-like, so
+ * a renderer that disagrees about code boundaries cannot uncover a link.
+ * Control characters are removed.
  */
 export function safeWikiMarkdown(
   body: string,
@@ -163,25 +184,57 @@ export function safeWikiMarkdown(
   allowedUrls: ReadonlySet<string>,
 ): { readonly markdown: string; readonly pageLinks: readonly string[] } {
   const linked = new Set<string>();
-  const cleaned = body
-    .slice(0, MAX_BODY_CHARS)
-    .replace(/./gsu, (char) => (isControl(char) ? "" : char))
-    // Images never load: keep their alt text only.
-    .replace(/!\[([^\]]*)\]\([^)]*\)/g, (_, alt: string) => alt)
-    .replace(/\[([^\]]*)\]\(([^)\s]*)(?:\s+"[^"]*")?\)/g, (_, text: string, target: string) => {
-      if (target.startsWith("wiki:")) {
-        const slug = target.slice("wiki:".length);
-        if (targets.ready.has(slug)) {
-          linked.add(slug);
-          return `[${text}](wiki:${slug})`;
+  const kept: string[] = [];
+  const keepLinks = (text: string): string =>
+    text
+      // Images never load: keep their alt text only.
+      .replace(/!\[([^\]]*)\]\([^)]*\)/g, (_, alt: string) => alt)
+      .replace(/\[([^\]]*)\]\(([^)\s]*)(?:\s+"[^"]*")?\)/g, (_, label: string, target: string) => {
+        let destination: string | undefined;
+        if (target.startsWith("wiki:")) {
+          const slug = target.slice("wiki:".length);
+          if (targets.ready.has(slug)) {
+            linked.add(slug);
+            destination = `wiki:${slug}`;
+          }
+        } else if (allowedUrls.has(target)) {
+          destination = target;
         }
-        return text;
+        if (destination === undefined) return label;
+        kept.push(`[${escapeMarkup(label)}](${destination})`);
+        return `${KEEP_OPEN}${kept.length - 1}${KEEP_CLOSE}`;
+      });
+  const prose = (text: string): string =>
+    escapeMarkup(keepLinks(text)).replace(
+      new RegExp(`${KEEP_OPEN}(\\d+)${KEEP_CLOSE}`, "g"),
+      (_, index: string) => kept[Number(index)]!,
+    );
+  const code = (text: string): string => (LINK_LIKE.test(text) ? escapeMarkup(text) : text);
+
+  let fence: string | undefined;
+  const lines = body
+    .slice(0, MAX_BODY_CHARS)
+    .replace(/./gsu, (char) =>
+      isControl(char) || char === KEEP_OPEN || char === KEEP_CLOSE ? "" : char,
+    )
+    .split("\n")
+    .map((line) => {
+      if (fence !== undefined) {
+        if (line.trimStart().startsWith(fence)) fence = undefined;
+        return code(line);
       }
-      return allowedUrls.has(target) ? `[${text}](${target})` : text;
-    })
-    // Autolinks would be followed by some renderers; keep them as plain text.
-    .replace(/<((?:https?|ftp|mailto|javascript|data):[^>\s]*)>/gi, "$1");
-  return { markdown: cleaned, pageLinks: [...linked] };
+      const opened = FENCE.exec(line);
+      if (opened) {
+        fence = opened[1]!;
+        return code(line);
+      }
+      // Inline code spans stay as written unless they hold something link-like.
+      return line
+        .split(/(`+[^`]*?`+)/)
+        .map((part, index) => (index % 2 === 1 ? code(part) : prose(part)))
+        .join("");
+    });
+  return { markdown: lines.join("\n"), pageLinks: [...linked] };
 }
 
 export function safeHttpUrl(raw: string | null | undefined): string | null {
@@ -219,7 +272,8 @@ export function wikiPageView(
     content.page.state === "ready" && content.body
       ? safeWikiMarkdown(content.body.text, options.targets, allowed)
       : undefined;
-  const headings: WikiHeading[] = body ? wikiHeadings(body.markdown) : [];
+  // From the stored body, as the search index does, so search anchors and page anchors agree.
+  const headings: WikiHeading[] = body && content.body ? wikiHeadings(content.body.text) : [];
   return {
     generation: generationView(generation, { current: options.current }),
     notice: DOCS_NOTICE,
@@ -281,7 +335,10 @@ export function wikiSearchView(
     total: result.total,
     totalCapped: result.totalCapped,
     hits,
-    ...(next < result.total && result.hits.length === request.limit ? { nextOffset: next } : {}),
+    // Only offsets the endpoint accepts are offered; beyond that, refine the query.
+    ...(next < result.total && result.hits.length === request.limit && next <= MAX_SEARCH_OFFSET
+      ? { nextOffset: next }
+      : {}),
   };
 }
 

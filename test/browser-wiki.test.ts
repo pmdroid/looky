@@ -7,6 +7,8 @@ import { startHttpServer, type RunningHttpServer } from "../src/mcp/http";
 import { hashToken, type ClientConfig, type RepositoryConfig } from "../src/service/config";
 import type { LookyService } from "../src/service/looky-service";
 import { openDatabase } from "../src/storage/database";
+import { safeWikiMarkdown, wikiSearchView } from "../src/browser/wiki";
+import type { WikiGenerationRecord, WikiPageRecord } from "../src/wiki/store";
 import { parseSearchQuery, wikiSections } from "../src/wiki/search";
 import { commitAll, write } from "./support/git-fixture";
 import { buildPilotRepo } from "./support/pilot-fixture";
@@ -322,7 +324,8 @@ describe("browser wiki: browsing", () => {
     expect(markdown).not.toContain("javascript:");
     expect(markdown).not.toContain("data:text");
     expect(markdown).not.toContain("](https://evil.example");
-    expect(markdown).not.toContain("<https://evil.example");
+    // Autolinks and HTML are escaped, so no renderer can turn them into live markup.
+    expect(markdown).not.toMatch(/(?<!\\)</);
     expect(markdown).not.toContain("wiki:does-not-exist");
     expect(markdown).not.toContain("\u0007");
     expect(markdown).toContain("click");
@@ -749,5 +752,109 @@ describe("wiki search units", () => {
     );
     expect(sections.map((s) => s.heading?.anchor ?? null)).toEqual([null, "a-b", "a-b-2"]);
     expect(sections[1]!.text).toContain("## not a heading");
+  });
+
+  test("heading anchors stay unique when a heading already looks like a suffixed one", () => {
+    const anchors = wikiSections("## Foo\na\n## Foo\nb\n## Foo-2\nc\n## Foo 2\nd").map(
+      (section) => section.heading?.anchor,
+    );
+    expect(anchors).toEqual(["foo", "foo-2", "foo-2-2", "foo-2-3"]);
+    expect(new Set(anchors).size).toBe(anchors.length);
+  });
+});
+
+/** `[` not preceded by a backslash: where a link, image or reference could start. */
+const UNESCAPED_BRACKET = /(?<!\\)\[/g;
+
+describe("wiki Markdown sanitizing", () => {
+  const targets = { ready: new Map([["guide", { pageId: "pg_guide", title: "Guide" }]]) };
+  const allowed = new Set(["https://code.example/pilot/blob/abc/src/a.ts#L1-L2"]);
+
+  test("reference-style links, images and definitions cannot form", () => {
+    const body = [
+      "![tracker][x] and [click][x] and [shortcut] and [collapsed][]",
+      "",
+      "[x]: //evil.example/pixel",
+      "   [shortcut]: javascript:alert(1)",
+      '[collapsed]: <https://evil.example> "title"',
+      "[angle](<//evil.example/a b>) [titled](//evil.example 'single')",
+      "[nested](//evil.example/(x)) <img src=//evil.example/p> <//evil.example>",
+    ].join("\n");
+    const { markdown, pageLinks } = safeWikiMarkdown(body, targets, allowed);
+    expect(markdown.match(UNESCAPED_BRACKET)).toBeNull();
+    expect(markdown).not.toMatch(/(?<!\\)</);
+    expect(pageLinks).toEqual([]);
+  });
+
+  test("only kept links survive, with their text escaped", () => {
+    const body =
+      "See [the guide](wiki:guide), [code](https://code.example/pilot/blob/abc/src/a.ts#L1-L2) " +
+      "and [gone](wiki:missing), [x](https://code.example/other).";
+    const { markdown, pageLinks } = safeWikiMarkdown(body, targets, allowed);
+    expect(pageLinks).toEqual(["guide"]);
+    expect(markdown).toContain("[code](https://code.example/pilot/blob/abc/src/a.ts#L1-L2)");
+    expect(markdown).not.toContain("wiki:missing");
+    expect(markdown).not.toContain("code.example/other");
+    expect(markdown).toContain("[the guide](wiki:guide)");
+    // Exactly the two kept links start with an unescaped bracket.
+    expect(markdown.match(UNESCAPED_BRACKET)?.length).toBe(2);
+  });
+
+  test("code stays readable unless it holds something link-like", () => {
+    const body = [
+      "Index with `items[0]` here.",
+      "```ts",
+      "const first = items[0];",
+      "[x]: //evil.example/pixel",
+      "```",
+      "Escaped tick \\`[x](//evil.example)` trick.",
+    ].join("\n");
+    const { markdown } = safeWikiMarkdown(body, targets, allowed);
+    expect(markdown).toContain("`items[0]`");
+    expect(markdown).toContain("const first = items[0];");
+    expect(markdown).toContain("\\[x\\]: //evil.example/pixel");
+    expect(markdown).not.toContain("[x](//evil.example)");
+  });
+});
+
+describe("wiki search pagination", () => {
+  test("nextOffset is never beyond the largest accepted offset", () => {
+    const page = {
+      pageId: "pg_a",
+      slug: "a",
+      title: "A",
+      kind: "module",
+      state: "ready",
+    } as unknown as WikiPageRecord;
+    const generation = {
+      id: "wiki_x",
+      repositoryId: "pilot",
+      sha: "a".repeat(40),
+      state: "ready",
+      pageCount: 1,
+      retiredAt: null,
+      errorCode: null,
+      retryable: null,
+      createdAt: "",
+      startedAt: null,
+      finishedAt: null,
+      usage: null,
+    } as unknown as WikiGenerationRecord;
+    const hits = Array.from({ length: 25 }, () => ({
+      pageId: "pg_a",
+      anchor: null,
+      heading: null,
+      snippet: [],
+    }));
+    const view = (offset: number) =>
+      wikiSearchView(
+        { hits, total: 500, totalCapped: false },
+        generation,
+        new Map([["pg_a", page]]),
+        { query: "x", limit: 25, offset },
+        true,
+      );
+    expect(view(175).nextOffset).toBe(200);
+    expect(view(200).nextOffset).toBeUndefined();
   });
 });

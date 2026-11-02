@@ -77,7 +77,7 @@ export function headingAnchor(text: string): string {
 /** Split a page body at its level 2 to 6 headings, outside fenced code. */
 export function wikiSections(body: string): WikiSection[] {
   const sections: WikiSection[] = [];
-  const used = new Map<string, number>();
+  const used = new Set<string>();
   let heading: WikiHeading | null = null;
   let lines: string[] = [];
   let fence: string | undefined;
@@ -104,10 +104,13 @@ export function wikiSections(body: string): WikiSection[] {
     }
     flush();
     const text = plainText(match[2]!);
+    // Unique against every anchor already allocated, including suffixed ones,
+    // so `Foo`, `Foo` and `Foo-2` get `foo`, `foo-2` and `foo-2-2`.
     const base = headingAnchor(text);
-    const count = (used.get(base) ?? 0) + 1;
-    used.set(base, count);
-    heading = { level: match[1]!.length, text, anchor: count === 1 ? base : `${base}-${count}` };
+    let anchor = base;
+    for (let n = 2; used.has(anchor); n += 1) anchor = `${base}-${n}`;
+    used.add(anchor);
+    heading = { level: match[1]!.length, text, anchor };
     lines = [];
   }
   flush();

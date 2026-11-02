@@ -466,8 +466,12 @@ generation is `409 wiki_not_ready`, and a slug whose page was removed is
 `410 page_removed`.
 
 Page bodies are Markdown without HTML. Only `wiki:` links to ready pages of the same
-generation and source links Looky built for the page's citations survive. Other links
-and all images keep their text only.
+generation and source links Looky built for the page's citations survive. Other inline
+links and all images keep their text only. Every other `[`, `]`, `<` and `>` is
+backslash-escaped, so reference-style links, link definitions, autolinks and raw HTML
+cannot form in any CommonMark renderer. Code is left as written unless it holds
+something link-like. A search result's `nextOffset` is only offered while it stays
+within the accepted offset bound.
 
 Docs search uses SQLite FTS5 over the sections of one published generation. It returns
 page and heading links with plain-text snippets. It searches generated documentation,
