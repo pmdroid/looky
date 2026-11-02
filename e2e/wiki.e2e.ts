@@ -13,7 +13,7 @@
  */
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { commitAll, git } from "../test/support/git-fixture";
+import { commitAll, git, write } from "../test/support/git-fixture";
 import {
   answer,
   launchBrowser,
@@ -246,7 +246,8 @@ describe("reading", () => {
       await sidebar(page).getByRole("link", { name: "Recovery", exact: true }).click();
       await pageTitle(page, "Recovery");
       expect(path(page)).toBe("/wiki/modules/recovery");
-      expect(new URL(page.url()).search).toBe("?repo=pilot&ref=HEAD");
+      // The address names the commit HEAD resolved to, not HEAD, so it never moves.
+      expect(new URL(page.url()).search).toBe(`?repo=pilot&ref=${repos.pilotSha}`);
       const crumbs = page.getByRole("navigation", { name: "Breadcrumb" });
       expect(await crumbs.getByRole("link").allInnerTexts()).toEqual(["Overview", "Modules"]);
       expect(
@@ -491,7 +492,7 @@ describe("asking about a page", () => {
       await staysWithoutAnswer(page);
       // The same page address at the new revision, which has no wiki yet.
       expect(path(page)).toBe("/wiki/modules/storage");
-      expect(new URL(page.url()).searchParams.get("ref")).toBe("refs/heads/feature");
+      expect(new URL(page.url()).searchParams.get("ref")).toBe(repos.featureSha);
       await page.getByRole("heading", { name: "No wiki for this commit yet" }).waitFor();
       expect(await page.locator("#wiki-page-title").count()).toBe(0);
     },
@@ -561,6 +562,68 @@ describe("revisions", () => {
       await page.getByRole("heading", { name: "No such page" }).waitFor();
 
       // The same addresses at main still show the pages that exist there.
+      await page.goto(`${looky.url}/wiki/modules/worker?repo=pilot&ref=HEAD`);
+      await pageTitle(page, "Worker");
+    },
+    LONG,
+  );
+
+  test(
+    "a wiki address keeps its commit after the branch it was opened from moves",
+    async () => {
+      const { page } = main;
+      const selections: string[] = [];
+      const onRequest = (request: { method(): string; url(): string }) => {
+        if (request.method() === "POST" && request.url().endsWith("/browser/v1/revisions")) {
+          selections.push(request.url());
+        }
+      };
+      page.on("request", onRequest);
+      try {
+        await page.goto(`${looky.url}/wiki/modules/storage?repo=pilot&ref=refs%2Fheads%2Fslim`);
+        await pageTitle(page, "Storage");
+        await page.waitForURL((url) => url.searchParams.get("ref") === slimSha);
+        await page
+          .getByRole("navigation", { name: "On this page" })
+          .getByRole("link", { name: "How the parts connect" })
+          .click();
+        await waitFocused(page, "wiki-h-how-the-parts-connect");
+        const url = new URL(page.url());
+        expect(url.searchParams.get("ref")).toBe(slimSha);
+        expect(url.hash).toBe("#how-the-parts-connect");
+        expect(
+          await page.locator(".wiki-prose a[data-wiki-slug]").first().getAttribute("href"),
+        ).toContain(`ref=${slimSha}`);
+
+        // Back and Forward between pages of the pinned commit keep the same selection.
+        const before = selections.length;
+        await page.goBack();
+        await page.goForward();
+        await waitFocused(page, "wiki-h-how-the-parts-connect");
+        expect(selections.length).toBe(before);
+
+        // The branch moves on. The address still shows the commit it was opened at.
+        git(repos.pilot, "checkout", "--quiet", "slim");
+        write(repos.pilot, "src/storage/notes.md", "Checkpoints are kept per run.\n");
+        const advanced = commitAll(repos.pilot, "advance slim");
+        git(repos.pilot, "checkout", "--quiet", "main");
+        expect(advanced).not.toBe(slimSha);
+        await page.reload();
+        await waitPinned(page, slimSha);
+        await pageTitle(page, "Storage");
+        await waitFocused(page, "wiki-h-how-the-parts-connect");
+        expect(await page.locator(".wiki-provenance code.sha").nth(1).getAttribute("title")).toBe(
+          slimSha,
+        );
+
+        // The branch itself now names the new commit, which has no wiki yet.
+        await page.goto(`${looky.url}/wiki/modules/storage?repo=pilot&ref=refs%2Fheads%2Fslim`);
+        await waitPinned(page, advanced);
+        await page.getByRole("heading", { name: "No wiki for this commit yet" }).waitFor();
+        expect(new URL(page.url()).searchParams.get("ref")).toBe(advanced);
+      } finally {
+        page.off("request", onRequest);
+      }
       await page.goto(`${looky.url}/wiki/modules/worker?repo=pilot&ref=HEAD`);
       await pageTitle(page, "Worker");
     },

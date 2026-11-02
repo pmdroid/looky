@@ -291,15 +291,34 @@ function placeOf(route: Route): Place {
   };
 }
 
-function hrefOf(target: Target | undefined, place: Place): string {
+/** The commit a choice resolved to; `nonce` names the choice. */
+interface Pinned {
+  readonly nonce: number;
+  readonly sha: string;
+}
+
+/**
+ * The URL for a place at a choice. A wiki address names the exact commit the
+ * choice resolved to, never a branch or tag that can move: reloading or
+ * sharing it shows the same documentation. Until the choice resolves, and on
+ * the code question screen, it names the ref as chosen.
+ */
+function hrefOf(target: Target | undefined, place: Place, pinned: Pinned | undefined): string {
+  const sha =
+    place.view === "wiki" && pinned && pinned.nonce === target?.nonce ? pinned.sha : undefined;
   return routeHref({
     ...place,
-    ...(target ? { repo: target.repositoryId, ref: target.ref } : {}),
+    ...(target ? { repo: target.repositoryId, ref: sha ?? target.ref } : {}),
   });
 }
 
-function writeLocation(target: Target | undefined, place: Place, push: boolean): void {
-  const next = hrefOf(target, place);
+function writeLocation(
+  target: Target | undefined,
+  place: Place,
+  push: boolean,
+  pinned: Pinned | undefined,
+): void {
+  const next = hrefOf(target, place, pinned);
   const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
   if (next === current) return;
   if (push) window.history.pushState(null, "", next);
@@ -348,6 +367,9 @@ function Workspace(props: {
   // The latest choice and place, for history events that arrive between renders.
   const targetRef = useRef<Target | undefined>(undefined);
   const placeRef = useRef<Place>(place);
+  // The commit the current choice resolved to, for addresses that must not move.
+  const [pinned, setPinned] = useState<Pinned | undefined>();
+  const pinnedRef = useRef<Pinned | undefined>(undefined);
 
   useEffect(() => onView(place.view), [place.view, onView]);
 
@@ -412,7 +434,7 @@ function Workspace(props: {
       leaveQuestion();
       nonce.current += 1;
       const next = { repositoryId, ref, nonce: nonce.current };
-      writeLocation(next, placeRef.current, push);
+      writeLocation(next, placeRef.current, push, undefined);
       setRefs((current) =>
         current.status !== "idle" && current.repositoryId === repositoryId
           ? current
@@ -436,7 +458,7 @@ function Workspace(props: {
       const current = placeRef.current;
       if (current.view !== next.view || current.page !== next.page) leaveQuestion();
       placeRef.current = next;
-      writeLocation(targetRef.current, next, !options.replace);
+      writeLocation(targetRef.current, next, !options.replace, pinnedRef.current);
       setPlace(next);
     },
     [leaveQuestion],
@@ -457,14 +479,16 @@ function Workspace(props: {
 
   const wikiHref = useCallback(
     (page: string | undefined, anchor?: string) =>
-      hrefOf(targetRef.current, {
-        view: "wiki",
-        ...(page !== undefined ? { page } : {}),
-        ...(page !== undefined && anchor !== undefined ? { anchor } : {}),
-      }),
-    // Recomputed per selection, so links name the selected repository and ref.
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
-    [target],
+      hrefOf(
+        target,
+        {
+          view: "wiki",
+          ...(page !== undefined ? { page } : {}),
+          ...(page !== undefined && anchor !== undefined ? { anchor } : {}),
+        },
+        pinned,
+      ),
+    [target, pinned],
   );
 
   // Authorized repositories.
@@ -515,7 +539,15 @@ function Workspace(props: {
         wanted.repo && repos.ids.includes(wanted.repo) ? wanted.repo : repos.ids[0];
       const ref = wanted.ref ?? "HEAD";
       const current = targetRef.current;
-      if (current && current.repositoryId === repositoryId && current.ref === ref) return;
+      // A wiki address names the commit the current choice resolved to: the same choice.
+      const sha = pinnedRef.current?.nonce === current?.nonce ? pinnedRef.current?.sha : undefined;
+      if (
+        current &&
+        current.repositoryId === repositoryId &&
+        (current.ref === ref || sha === ref)
+      ) {
+        return;
+      }
       if (repositoryId) choose(repositoryId, ref, false);
     };
     window.addEventListener("popstate", onPop);
@@ -556,6 +588,13 @@ function Workspace(props: {
         if (controller.signal.aborted || state.revision.repositoryId !== target.repositoryId)
           return;
         setSelection({ status: "ready", state });
+        const resolved = { nonce: target.nonce, sha: state.revision.sha };
+        pinnedRef.current = resolved;
+        setPinned(resolved);
+        // A wiki address now names the exact commit, so a reload shows the same wiki.
+        if (targetRef.current === target) {
+          writeLocation(target, placeRef.current, false, resolved);
+        }
       })
       .catch((error: unknown) => {
         if (isAbort(error) || lost(error)) return;
@@ -911,7 +950,7 @@ function Workspace(props: {
       </h1>
       <nav className="views" aria-label="Views">
         <a
-          href={hrefOf(target, { view: "ask" })}
+          href={hrefOf(target, { view: "ask" }, pinned)}
           aria-current={place.view === "ask" ? "page" : undefined}
           onClick={(event) => {
             if (!plainClick(event)) return;
@@ -922,7 +961,7 @@ function Workspace(props: {
           Ask
         </a>
         <a
-          href={hrefOf(target, { view: "wiki" })}
+          href={hrefOf(target, { view: "wiki" }, pinned)}
           aria-current={place.view === "wiki" ? "page" : undefined}
           onClick={(event) => {
             if (!plainClick(event)) return;

@@ -535,8 +535,10 @@ and runs `bun run serve` with `LOOKY_BROWSER_ASSETS_DIR` pointing there. Every o
 #### The wiki reader
 
 - **Addresses.** `/wiki?repo=…&ref=…` opens the wiki of a revision at its overview.
-  `/wiki/<slug>?repo=…&ref=…#<heading>` opens one page at one heading. Reload, shared
-  links and Back/Forward return to the same page and heading. Changing the revision keeps
+  `/wiki/<slug>?repo=…&ref=…#<heading>` opens one page at one heading. Once a branch,
+  tag or `HEAD` resolves, the wiki address names the exact commit instead, so reload,
+  shared links and Back/Forward return to the same page, heading and documentation even
+  after the branch moves. Changing the revision keeps
   the page address, so the same page can be read at another commit. A renamed slug
   shows the page under its new slug and replaces the address. A removed page and an
   unknown address each get their own message with a way back to the overview.
