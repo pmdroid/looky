@@ -30,24 +30,25 @@ development dependency, bundled into the [browser app](#the-browser-app) at buil
 
 ## Development commands
 
-| Command                | Operation                                                                         |
-| ---------------------- | --------------------------------------------------------------------------------- |
-| `bun run check`        | Format check, lint, TypeScript check, and tests, without rewriting files          |
-| `bun run format:check` | Check formatting with oxfmt                                                       |
-| `bun run format:fix`   | Rewrite formatting with oxfmt                                                     |
-| `bun run lint`         | Check with oxlint and reject warnings                                             |
-| `bun run lint:fix`     | Apply oxlint's automatic fixes                                                    |
-| `bun run typecheck`    | Check TypeScript without emitting files                                           |
-| `bun test`             | Run isolated database and entrypoint tests                                        |
-| `bun test --watch`     | Rerun tests during development                                                    |
-| `bun run e2e:install`  | Download the headless Chromium the [browser tests](#browser-tests) use            |
-| `bun run test:e2e`     | Run the [browser tests](#browser-tests) against the production app build          |
-| `bun start`            | Open storage, verify FTS5, migrate, report readiness, and close                   |
-| `bun run serve`        | Run the [MCP service](#mcp-service) over HTTP                                     |
-| `bun run web:build`    | Build the [browser app](#the-browser-app) into `dist/web`                         |
-| `bun run web:dev`      | Rebuild the browser app on change and run `serve` with it                         |
-| `bun run looky …`      | Build, inspect and search codebase indexes; see [Codebase index](#codebase-index) |
-| `bun run pilot`        | Run the real-codebase pilot on paws-app; see [pilot/README.md](pilot/README.md)   |
+| Command                | Operation                                                                              |
+| ---------------------- | -------------------------------------------------------------------------------------- |
+| `bun run check`        | Format check, lint, TypeScript check, and tests, without rewriting files               |
+| `bun run format:check` | Check formatting with oxfmt                                                            |
+| `bun run format:fix`   | Rewrite formatting with oxfmt                                                          |
+| `bun run lint`         | Check with oxlint and reject warnings                                                  |
+| `bun run lint:fix`     | Apply oxlint's automatic fixes                                                         |
+| `bun run typecheck`    | Check TypeScript without emitting files                                                |
+| `bun test`             | Run isolated database and entrypoint tests                                             |
+| `bun test --watch`     | Rerun tests during development                                                         |
+| `bun run e2e:install`  | Download the headless Chromium the [browser tests](#browser-tests) use                 |
+| `bun run test:e2e`     | Run the [browser tests](#browser-tests) against the production app build               |
+| `bun start`            | Open storage, verify FTS5, migrate, report readiness, and close                        |
+| `bun run serve`        | Run the [MCP service](#mcp-service) over HTTP                                          |
+| `bun run web:build`    | Build the [browser app](#the-browser-app) into `dist/web`                              |
+| `bun run web:dev`      | Rebuild the browser app on change and run `serve` with it                              |
+| `bun run looky …`      | Build, inspect and search codebase indexes; see [Codebase index](#codebase-index)      |
+| `bun run looky wiki …` | Plan and inspect the generated wiki; see [Generated wiki model](#generated-wiki-model) |
+| `bun run pilot`        | Run the real-codebase pilot on paws-app; see [pilot/README.md](pilot/README.md)        |
 
 Tool configurations exclude dependencies, build output, coverage, and local
 database/index directories. The formatter also excludes the generated lockfile.
@@ -712,6 +713,132 @@ shrink on its own.
 except that `chunkOverlapLines` may be 0. `chunkBytes` must be at least `maxLineBytes`
 and the overlap must be below `chunkLines`. `maxFiles` and `maxIndexedBytes` also
 bound the disk one generation uses; retention bounds how many generations are kept.
+
+## Generated wiki model
+
+The generated wiki is planned from the [codebase index](#codebase-index). It is not a
+second code index and not a list of files. This part stores the document model and
+derives a bounded page plan. Page prose is written by a later generation step; until
+then a plan has no bodies. The code lives in `src/wiki/`, and `IndexService` plans
+wikis for authorized repositories.
+
+### Scope and storage
+
+A **wiki generation** is one immutable page set for exactly one repository, commit,
+index key and generator fingerprint. The fingerprint hashes the plan limits and the
+generator's own settings, such as provider, model and prompt version. A generation
+records the index build it was planned from as provenance.
+
+Migration 5 adds these tables:
+
+| Table               | Holds                                                                            |
+| ------------------- | -------------------------------------------------------------------------------- |
+| `wiki_generations`  | Scope, state, plan coverage and disclosures, generator configuration, timestamps |
+| `wiki_pages`        | Navigation only: stable page id, slug, title, kind, parent, depth, sibling order |
+| `wiki_page_bodies`  | Natural-language body, its hash, generation time and provenance                  |
+| `wiki_page_sources` | Planned sources and cited source ranges, each with path, blob id and lines       |
+| `wiki_page_links`   | Internal links between pages of the same generation                              |
+| `wiki_slug_aliases` | Every slug a repository published, for redirects and removed pages               |
+
+Composite foreign keys keep every parent, link, body and source inside its own
+generation, so the database refuses dangling entries. Each generation has exactly one
+root page, and slugs and concept keys are unique within it. Every read takes the
+repository the caller is authorized for and refuses another repository's generation.
+
+### Page plan
+
+`looky wiki plan` prints the plan for a ready index. The planner reads only indexed
+paths, blob ids, line counts, symbols and import lines. It calls no model and stores
+nothing, so the same index, limits and history always give the same plan.
+
+| Depth | Pages                                                                            |
+| ----- | -------------------------------------------------------------------------------- |
+| 0     | Overview, from the README, root documents, manifests and each module's main file |
+| 1     | Architecture, which needs at least two code modules                              |
+| 1     | Modules, which needs at least one code module                                    |
+| 2     | One page per major module, the modules with the most code files first            |
+| 3     | Submodule pages for large modules, only when `maxDepth` is at least 3            |
+| 1     | Workflows, which needs an import flow that crosses two or more modules           |
+| 2     | One page per key workflow, the flows that reach the most modules first           |
+
+A module is the first directory below a source root such as `src/`, a package such
+as `packages/api`, or a top-level directory. A workflow starts at a code file that no
+other code file imports and follows its imports up to four levels deep. Imports are
+resolved for relative JavaScript and TypeScript paths and for Python modules.
+
+A section without evidence is planned as `unavailable` with its reason. It never gets
+sources or a body. The plan also reports coverage: which indexed files a page covers,
+which are uncovered and why, and what the index excluded. Modules and workflows cut by
+a limit are disclosed rather than silently dropped.
+
+| Limit               | Default | Variable                          |
+| ------------------- | ------- | --------------------------------- |
+| `maxPages`          | 40      | `LOOKY_WIKI_MAX_PAGES`            |
+| `maxDepth`          | 3       | `LOOKY_WIKI_MAX_DEPTH`            |
+| `maxModules`        | 16      | `LOOKY_WIKI_MAX_MODULES`          |
+| `maxWorkflows`      | 8       | `LOOKY_WIKI_MAX_WORKFLOWS`        |
+| `maxSourcesPerPage` | 12      | `LOOKY_WIKI_MAX_SOURCES_PER_PAGE` |
+
+`maxPages` counts the four fixed pages and must be at least 4. `maxDepth` must be at
+least 2. `maxModules` and `maxWorkflows` may be 0.
+
+### States
+
+| Generation  | Moves to                                |
+| ----------- | --------------------------------------- |
+| `queued`    | `running`, `failed`, `cancelled`        |
+| `running`   | `ready`, `failed`, `cancelled`          |
+| `ready`     | nothing; a newer generation replaces it |
+| `failed`    | nothing; a new generation retries       |
+| `cancelled` | nothing; a new generation retries       |
+
+| Page          | Moves to                            |
+| ------------- | ----------------------------------- |
+| `unavailable` | nothing; disclosed with a reason    |
+| `queued`      | `running`, `failed`, `cancelled`    |
+| `running`     | `ready`, `failed`, `cancelled`      |
+| `ready`       | nothing                             |
+| `failed`      | `queued`, while the generation runs |
+| `cancelled`   | `queued`, while the generation runs |
+
+A page becomes `ready` only when its body is stored. Publishing checks the whole
+generation in one transaction. Every page must be ready or unavailable, every ready
+page must have a body, and parents, depths and links must be intact. Only then does
+the generation become `ready` and replace the previous one for the same scope. A
+generation that fails the check stays running; partial pages are never published.
+On startup, generations left queued or running are marked failed, `interrupted` and
+retryable.
+
+The wiki status of a scope is `ready` only for a published generation of exactly that
+repository, commit, index key and fingerprint. Otherwise it is the latest attempt's
+state, or `unavailable` when there was none. A published generation for another
+commit or configuration is returned separately as stale, with the reason.
+
+### Stable pages, redirects and removal
+
+Page ids follow concepts, such as `module:src/billing`, and are kept across
+regenerations. When a module or workflow moves, its new concept takes over the old
+page id if at least half of their source blobs are identical. Slugs can then change.
+
+A slug resolves within one generation in this order:
+
+1. A page of this generation with that slug.
+2. A `redirect` to the page that once had the slug, if that same page id still exists.
+3. `removed`, with the old title, if that page id no longer exists.
+4. `not_found`.
+
+A slug never redirects to a different page. Retention keeps
+`LOOKY_INDEX_RETAIN_READY` published generations and `LOOKY_INDEX_RETAIN_FAILED`
+failed ones per repository. Slug history is kept so old links stay explainable.
+
+### Commands
+
+```sh
+bun run looky wiki plan --repo <git-dir> --sha <commit> [--id <repository-id>]
+bun run looky wiki status --id <repository-id> [--sha <commit>]
+bun run looky wiki index <generation-id> --id <repository-id>
+bun run looky wiki page <generation-id> <slug> --id <repository-id>
+```
 
 ## The ask_project contract
 

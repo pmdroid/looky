@@ -10,6 +10,10 @@
  *   bun run looky retrieve --repo <git-dir> --sha <commit> [--id <id>] [--mode fast|deep] [--text] <question…>
  *   bun run looky ask --repo <git-dir> --sha <commit> [--id <id>] [--mode fast|deep] <question…>
  *   bun run looky cancel <build-id>
+ *   bun run looky wiki plan --repo <git-dir> --sha <commit> [--id <repository-id>]
+ *   bun run looky wiki status --id <repository-id> [--sha <commit>]
+ *   bun run looky wiki index <generation-id> --id <repository-id>
+ *   bun run looky wiki page <generation-id> <slug> --id <repository-id>
  *   bun run looky serve
  *   bun run looky mcp --repo <git-dir> [--id <repository-id>] [--ref <ref>]
  *
@@ -21,7 +25,13 @@ import { parseArgs } from "node:util";
 import { LookyAnswerEngine } from "./answer/engine";
 import { askProject } from "./ask/ask-project";
 import { GuardedSession } from "./ask/session";
-import { loadAnswerConfig, loadAskConfig, loadIndexConfig, loadResearchConfig } from "./config";
+import {
+  loadAnswerConfig,
+  loadAskConfig,
+  loadIndexConfig,
+  loadResearchConfig,
+  loadWikiConfig,
+} from "./config";
 import type { LookyRequestContext } from "./contract/context";
 import { DEFAULT_MODE, isMode } from "./contract/input";
 import { LookyUnavailableError } from "./contract/ports";
@@ -45,6 +55,14 @@ import { startHttpServer } from "./mcp/http";
 import { lookyToolHost, McpConnection } from "./mcp/protocol";
 import { serveStdio } from "./mcp/stdio";
 import { createLookyService, dataDirFrom, localPrincipal } from "./service/bootstrap";
+import { planWiki } from "./wiki/planner";
+import {
+  listWikiGenerations,
+  priorWikiPages,
+  resolveWikiSlug,
+  wikiIndex,
+  wikiPage,
+} from "./wiki/store";
 import { loadCapacityConfig, loadServerConfig } from "./service/config";
 
 const USAGE = `Usage:
@@ -57,6 +75,10 @@ const USAGE = `Usage:
   looky retrieve --repo <git-dir> --sha <commit> [--id <id>] [--mode fast|deep] [--text] <question>
   looky ask --repo <git-dir> --sha <commit> [--id <id>] [--mode fast|deep] <question>
   looky cancel <build-id>
+  looky wiki plan --repo <git-dir> --sha <commit> [--id <repository-id>]
+  looky wiki status --id <repository-id> [--sha <commit>]
+  looky wiki index <generation-id> --id <repository-id>
+  looky wiki page <generation-id> <slug> --id <repository-id>
   looky serve
   looky mcp --repo <git-dir> [--id <repository-id>] [--ref <ref>]`;
 
@@ -152,6 +174,8 @@ async function main(argv: string[]): Promise<number> {
         return await retrieve(db, values, rest.join(" "));
       case "ask":
         return await ask(db, values, rest.join(" "));
+      case "wiki":
+        return wiki(db, rest, values);
       case "cancel": {
         const buildId = rest[0];
         if (!buildId) return fail("cancel needs a build id");
@@ -479,6 +503,80 @@ async function mcpStdio(values: {
     return 0;
   } finally {
     await service.close();
+  }
+}
+
+/**
+ * Inspect the generated wiki model. `plan` prints the bounded page plan,
+ * coverage and disclosures for a ready index without storing anything or
+ * calling a model; the other subcommands read stored generations.
+ */
+function wiki(
+  db: ReturnType<typeof openDatabase>,
+  args: readonly string[],
+  values: { repo?: string | undefined; id?: string | undefined; sha?: string | undefined },
+): number {
+  const [subcommand, ...rest] = args;
+  switch (subcommand) {
+    case "plan": {
+      if (!values.repo || !values.sha) return fail("wiki plan needs --repo and --sha");
+      const repositoryId = values.id ?? basename(resolve(values.repo));
+      const build = findReadyBuild(db, {
+        repositoryId,
+        sha: values.sha,
+        indexKey: indexKey(loadIndexConfig().limits),
+      });
+      if (!build) {
+        return fail(`No ready index for ${repositoryId}@${values.sha}; run \`looky index\` first`);
+      }
+      print(
+        planWiki(db, build.id, {
+          limits: loadWikiConfig().limits,
+          prior: priorWikiPages(db, repositoryId),
+        }),
+      );
+      return 0;
+    }
+    case "status": {
+      if (!values.id) return fail("wiki status needs --id");
+      print(
+        listWikiGenerations(db, {
+          repositoryId: values.id,
+          ...(values.sha ? { sha: values.sha } : {}),
+        }),
+      );
+      return 0;
+    }
+    case "index": {
+      const generationId = rest[0];
+      if (!generationId || !values.id) return fail("wiki index needs a generation id and --id");
+      const index = wikiIndex(db, { repositoryId: values.id, generationId });
+      if (!index) return fail(`Unknown wiki generation ${generationId}`);
+      print({ generation: index.generation, toc: index.toc, links: index.links });
+      return 0;
+    }
+    case "page": {
+      const [generationId, slug] = rest;
+      if (!generationId || !slug || !values.id) {
+        return fail("wiki page needs a generation id, a slug and --id");
+      }
+      const resolution = resolveWikiSlug(db, { repositoryId: values.id, generationId, slug });
+      if (resolution.outcome !== "page" && resolution.outcome !== "redirect") {
+        print(resolution);
+        return 1;
+      }
+      print({
+        ...resolution,
+        content: wikiPage(db, {
+          repositoryId: values.id,
+          generationId,
+          pageId: resolution.page.pageId,
+        }),
+      });
+      return 0;
+    }
+    default:
+      return fail(`Unknown wiki command ${subcommand ?? "(missing)"}\n${USAGE}`);
   }
 }
 
