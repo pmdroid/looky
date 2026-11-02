@@ -325,6 +325,30 @@ export const migrations: readonly Migration[] = [
     ALTER TABLE wiki_pages ADD COLUMN draft_key TEXT;
     ALTER TABLE wiki_pages ADD COLUMN usage TEXT;`,
   },
+  {
+    // Documentation search (PAS-999). Sections of the ready pages of a
+    // published generation, split at their headings. Every row carries its
+    // generation, and every search names one, so results never cross
+    // repositories or commits. `wiki_search_generations` marks generations
+    // already indexed; generations published before this version are indexed
+    // on their first search. Deleting a generation deletes its rows.
+    version: 7,
+    sql: `CREATE VIRTUAL TABLE wiki_search_fts USING fts5(
+      generation_id UNINDEXED, page_id UNINDEXED, anchor UNINDEXED,
+      title, heading, body,
+      tokenize = "unicode61 remove_diacritics 2 tokenchars '_'"
+    );
+    CREATE TABLE wiki_search_generations (
+      generation_id TEXT PRIMARY KEY NOT NULL
+        REFERENCES wiki_generations (id) ON DELETE CASCADE,
+      sections INTEGER NOT NULL,
+      indexed_at TEXT NOT NULL
+    ) STRICT;
+    CREATE TRIGGER wiki_search_cleanup AFTER DELETE ON wiki_generations BEGIN
+      DELETE FROM wiki_search_fts WHERE generation_id = old.id;
+      DELETE FROM wiki_search_generations WHERE generation_id = old.id;
+    END;`,
+  },
 ];
 
 export function schemaVersion(db: Database): number {

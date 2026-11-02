@@ -30,6 +30,7 @@ import {
   type WikiUsage,
 } from "./model";
 import type { PriorWikiPage, WikiHistory } from "./planner";
+import { indexWikiSearch } from "./search";
 
 export class WikiStateError extends Error {
   override readonly name = "WikiStateError";
@@ -838,6 +839,8 @@ export function publishWikiGeneration(db: Database, generationId: string): WikiG
            generation_id = excluded.generation_id, recorded_at = excluded.recorded_at
          WHERE wiki_slug_aliases.page_id = excluded.page_id`,
       ).run(generation.repositoryId, timestamp, generationId);
+      // Search rows commit with publication, so search never sees a partial wiki.
+      indexWikiSearch(db, generationId);
       return transitionGeneration(db, generationId, "ready", ", finished_at = ?", [timestamp]);
     })
     .immediate();
@@ -902,6 +905,22 @@ export function wikiStatus(db: Database, scope: WikiScope): WikiStatus {
   if (active) return { ...withStale, state: active.state };
   if (latest) return { ...withStale, state: latest.state };
   return { ...withStale, state: "unavailable" };
+}
+
+/** How many pages of a generation are in each state, for progress. */
+export function wikiPageCounts(
+  db: Database,
+  generationId: string,
+): Readonly<Partial<Record<WikiPageState, number>>> {
+  const counts: Partial<Record<WikiPageState, number>> = {};
+  for (const row of db
+    .query<{ state: WikiPageState; n: number }, [string]>(
+      "SELECT state, COUNT(*) AS n FROM wiki_pages WHERE generation_id = ? GROUP BY state",
+    )
+    .all(generationId)) {
+    counts[row.state] = row.n;
+  }
+  return counts;
 }
 
 // ---------------------------------------------------------------------------
