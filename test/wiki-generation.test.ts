@@ -421,6 +421,31 @@ describe("wiki generation", () => {
     }
   });
 
+  test("caveats without a verified citation are labelled as not verified", async () => {
+    const responder: WikiResponder = (call) => ({
+      ...groundedPage(call),
+      caveats: [
+        "The subsystem retries failed runs indefinitely [E99].",
+        "Recovery never loses a checkpoint.",
+      ],
+    });
+    const h = harness(wikiModel(responder));
+    const generation = await generate(h);
+    expect(generation.state).toBe("ready");
+    for (const content of contents(h, generation.id)) {
+      if (!content.body) continue;
+      const body = content.body.text;
+      expect(body).toContain(
+        "- **Not verified against the source:** The subsystem retries failed runs indefinitely.",
+      );
+      expect(body).toContain(
+        "- **Not verified against the source:** Recovery never loses a checkpoint.",
+      );
+      expect(body).not.toMatch(/^- The subsystem retries/m);
+      expect(body).not.toMatch(/^- Recovery never loses/m);
+    }
+  });
+
   test("citations kept in caveats are persisted and headings carry no citations", async () => {
     const responder: WikiResponder = (call) => {
       const page = groundedPage(call);

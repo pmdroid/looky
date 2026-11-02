@@ -532,9 +532,14 @@ function render(
   for (const caveat of draft.caveats) {
     const checked = run(caveat);
     tally(checked);
-    if (checked.text.length > 0) {
+    if (checked.text.length === 0) continue;
+    if (checked.citedIds.size > 0) {
       caveats.push(checked.text);
       refs.push(...checked.evidence);
+    } else {
+      // A caveat is a claim too. Without verified support it is labelled, not stated as fact.
+      const plain = checked.text.replace(CITATION_GROUP, "").trim();
+      if (plain.length > 0) caveats.push(`**Not verified against the source:** ${plain}`);
     }
   }
   if (draft.summary.trim().length > 0 && !summaryKept) {

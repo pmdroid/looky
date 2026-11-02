@@ -621,16 +621,38 @@ async function generateWiki(
     ...(config.sourceLinkTemplate ? { sourceLinkTemplate: config.sourceLinkTemplate } : {}),
   });
   let current: string | undefined;
+  let building: string | undefined;
+  const interrupted = new AbortController();
+  // Ctrl-C cancels whatever is running: the generation, or the index build
+  // before it, so no generation and no model call starts afterwards.
   const interrupt = () => {
+    interrupted.abort(new Error("Interrupted"));
     if (current) generator.cancel(current);
+    else if (building) index.cancel(building);
+  };
+  const stopped = () => {
+    console.error("looky: interrupted; no wiki generation was started");
+    return 130;
   };
   process.once("SIGINT", interrupt);
   try {
     for (;;) {
+      if (interrupted.signal.aborted) return stopped();
       const started = await generator.start({ repositoryId, sha });
       if (started.state === "indexing") {
         console.error(`looky: indexing ${repositoryId}@${sha} (${started.progress.phase})`);
-        await index.waitForBuild(started.buildId);
+        building = started.buildId;
+        if (interrupted.signal.aborted) {
+          index.cancel(building);
+          return stopped();
+        }
+        try {
+          await index.waitForBuild(started.buildId, interrupted.signal);
+        } catch (error) {
+          if (interrupted.signal.aborted) return stopped();
+          throw error;
+        }
+        building = undefined;
         continue;
       }
       if (started.state === "unsupported_revision") return fail(started.message);
@@ -639,6 +661,8 @@ async function generateWiki(
         return 1;
       }
       current = started.generation.id;
+      // An interrupt that arrived while start() was planning cancels the new generation.
+      if (interrupted.signal.aborted && started.state !== "ready") generator.cancel(current);
       if (started.state !== "ready") {
         console.error(`looky: writing wiki generation ${current}`);
       }

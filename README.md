@@ -866,7 +866,9 @@ Each page is written like an answer, from the same parts:
    is kept only for the page's parent, children and planned links. Citation markers and
    path-and-line references are checked against the inspected evidence, and invalid ones
    are removed and counted.
-4. A section without a verified citation is dropped. A page with no grounded section
+4. The summary and every section need a verified citation, or they are left out. A
+   caveat without one is kept but labelled as not verified against the source.
+   A section without a verified citation is dropped. A page with no grounded section
    gets one repair request, then fails. Inferred sections are labelled. Intent is shown
    as documented only when it cites documentation; otherwise it is listed as not stated
    in the source.
@@ -932,6 +934,7 @@ incomplete and never replaces the last published one.
 
 ```sh
 bun run looky wiki plan --repo <git-dir> --sha <commit> [--id <repository-id>]
+# Ctrl-C cancels the index build or the generation; nothing starts after it.
 bun run looky wiki generate --repo <git-dir> --sha <commit> [--id <repository-id>]
 bun run looky wiki status --id <repository-id> [--sha <commit>]
 bun run looky wiki index <generation-id> --id <repository-id>
