@@ -44,10 +44,10 @@ import { LinkPolicy } from "./links";
 import { Markdown } from "./markdown";
 import { shortSha } from "./presentation";
 import { watchIndex } from "./index-watch";
+import { compactCitations } from "./citations";
 import { validSlug } from "./route";
 import {
   breadcrumbs,
-  compactCitations,
   describeCoverage,
   describeStale,
   describeWiki,
