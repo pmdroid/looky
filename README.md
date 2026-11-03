@@ -847,7 +847,7 @@ nothing, so the same index, limits and history always give the same plan.
 | 0     | Overview, from the README, root documents, manifests, each module's main file and root-level code |
 | 1     | Architecture, which needs at least two code modules                                               |
 | 1     | Modules, which needs at least one code module                                                     |
-| 2     | One page per major module, the modules with the most code files first                             |
+| 2     | One page per major module, most code files first, with up to two docs named after it              |
 | 3     | Submodule pages for large modules, only when `maxDepth` is at least 3                             |
 | 1     | Workflows, which needs an import flow that crosses two or more modules                            |
 | 2     | One page per key workflow, the flows that reach the most modules first                            |
