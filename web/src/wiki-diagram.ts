@@ -52,7 +52,7 @@ export function structureDiagram(index: WikiIndexView, pageId: string): Diagram 
       (item) => item.parentPageId === pageId && item.kind === "module",
     );
     if (page.kind === "overview" || page.kind === "architecture" || holdsModules) {
-      return { kind: "modules", ids: new Set(modules), arrows: imports };
+      return { kind: "modules", ids: new Set(imports.flat()), arrows: imports };
     }
     if (page.kind === "module") {
       const arrows = imports.filter(([from, to]) => from === pageId || to === pageId);
