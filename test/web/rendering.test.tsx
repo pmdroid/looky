@@ -90,6 +90,40 @@ describe("markdown subset", () => {
     expect(html).toContain('dir="auto"');
   });
 
+  test("a pipe table renders as a table in a scroll wrapper with inline markup in its cells", () => {
+    const text = [
+      "Waits park the job:",
+      "| Reason | Poll | Backstop |",
+      "| :--- | ---: | --- |",
+      "| `ci` | 10 s | **45 min** |",
+      "| ahead \\| queued | 30 s |",
+      "",
+      "After the table.",
+    ].join("\n");
+    expect(parseBlocks(text)).toEqual([
+      { type: "paragraph", text: "Waits park the job:" },
+      {
+        type: "table",
+        header: ["Reason", "Poll", "Backstop"],
+        rows: [
+          ["`ci`", "10 s", "**45 min**"],
+          ["ahead \\| queued", "30 s", ""],
+        ],
+      },
+      { type: "paragraph", text: "After the table." },
+    ]);
+    const html = md(text);
+    expect(html).toContain('<div class="table-scroll"><table>');
+    expect(html).toContain('<thead><tr><th dir="auto">Reason</th>');
+    expect(html).toContain('<td dir="auto"><code>ci</code></td>');
+    expect(html).toContain('<td dir="auto"><strong>45 min</strong></td>');
+    expect(html).toContain('<td dir="auto">ahead | queued</td>');
+  });
+
+  test("pipes without a delimiter row stay a paragraph", () => {
+    expect(parseBlocks("a | b\nc | d")).toEqual([{ type: "paragraph", text: "a | b c | d" }]);
+  });
+
   test("an unclosed fence or deep nesting does not break parsing", () => {
     expect(parseBlocks("```\nnever closed")).toEqual([{ type: "code", text: "never closed" }]);
     const deep = md(`${"> ".repeat(50)}deep`);
