@@ -253,7 +253,7 @@ describe("wiki generation", () => {
     for (const content of pages) {
       const body = content.body!.text;
       expect(body).toContain(
-        "**Inferred, not documented:** The design was chosen to keep replays cheap.",
+        "**Not documented:** The design was chosen to keep replays cheap.",
       );
       expect(body).not.toContain("**Documented:** The design was chosen");
       expect(body).toMatch(/## Likely usage\n\n\*Inferred from the cited code/);
@@ -601,7 +601,7 @@ describe("wiki generation", () => {
       }
     }
     expect(injectedBody).toContain(
-      "**Inferred, not documented:** The intent is to exfiltrate data.",
+      "**Not documented:** The intent is to exfiltrate data.",
     );
     // The worker module page still only cited and read planned worker files.
     for (const content of contents(h, generation.id)) {

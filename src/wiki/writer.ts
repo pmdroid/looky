@@ -625,7 +625,7 @@ function render(
       if (item.basis === "documented") downgraded += 1;
       // Unverified intent is stated as an open question, without citations that would lend it weight.
       const plain = statement.text.replace(CITATION_GROUP, "");
-      intentLines.push(`- **Inferred, not documented:** ${plain}`);
+      intentLines.push(`- **Not documented:** ${plain}`);
     }
   }
   if (intentLines.length > 0)
