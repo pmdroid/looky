@@ -8,6 +8,7 @@
 import type { RefObject } from "react";
 import type { AskProjectResponse } from "./api";
 import type { AskSnapshot } from "./ask-runner";
+import { compactCitations } from "./citations";
 import { LinkPolicy } from "./links";
 import { Markdown } from "./markdown";
 import { describeOutcome, displayRef, formatDuration, MODE_LABEL, shortSha } from "./presentation";
@@ -65,7 +66,7 @@ export function AnswerView({
       </header>
 
       <div className="prose">
-        <Markdown text={response.answer.text} links={links} />
+        <Markdown text={compactCitations(response.answer.text, response.evidence)} links={links} />
       </div>
 
       {response.answer.caveats.length > 0 ? (

@@ -18,12 +18,12 @@ import type {
   WikiStatusView,
 } from "../web/src/api";
 import { AskRunner, type AskSnapshot, type AskState } from "../web/src/ask-runner";
+import { compactCitations } from "../web/src/citations";
 import { LinkPolicy } from "../web/src/links";
 import { Markdown } from "../web/src/markdown";
 import { parseRoute, routeHref, validSlug } from "../web/src/route";
 import {
   breadcrumbs,
-  compactCitations,
   describeCoverage,
   describeFailure,
   describeWiki,
