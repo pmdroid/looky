@@ -4,7 +4,7 @@
  * React escapes every string, and links go through a {@link LinkPolicy}.
  *
  * Supported: paragraphs, headings, bullet and numbered lists, block quotes,
- * fenced code, thematic breaks, inline code, bold, italic, backslash escapes
+ * fenced code, pipe tables, thematic breaks, inline code, bold, italic, backslash escapes
  * and links. A `wiki:` link the policy allows becomes an in-app link marked
  * with `data-wiki-slug`; the caller handles its clicks.
  */
@@ -28,6 +28,7 @@ export type Block =
     }
   | { readonly type: "quote"; readonly blocks: Block[] }
   | { readonly type: "code"; readonly text: string }
+  | { readonly type: "table"; readonly header: string[]; readonly rows: string[][] }
   | { readonly type: "rule" };
 
 const FENCE = /^ {0,3}(`{3,}|~{3,})/;
@@ -36,7 +37,22 @@ const BULLET = /^ {0,3}[-*+]\s+(.*)$/;
 const NUMBERED = /^ {0,3}(\d{1,9})[.)]\s+(.*)$/;
 const QUOTE = /^ {0,3}>\s?(.*)$/;
 const RULE = /^ {0,3}([-*_])(?: *\1){2,} *$/;
+const TABLE_DELIMITER = /^ {0,3}\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?\s*$/;
 const MAX_DEPTH = 4;
+
+function tableCells(line: string): string[] {
+  return line
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/(?<!\\)\|$/, "")
+    .split(/(?<!\\)\|/)
+    .map((cell) => cell.trim());
+}
+
+function startsTable(lines: readonly string[], index: number): boolean {
+  const next = lines[index + 1];
+  return lines[index]!.includes("|") && next !== undefined && TABLE_DELIMITER.test(next);
+}
 
 export function parseBlocks(source: string, depth = 0): Block[] {
   const lines = source.replace(/\r\n?/g, "\n").split("\n");
@@ -85,6 +101,18 @@ export function parseBlocks(source: string, depth = 0): Block[] {
       );
       continue;
     }
+    if (startsTable(lines, index)) {
+      const header = tableCells(line);
+      const rows: string[][] = [];
+      index += 2;
+      while (index < lines.length && lines[index]!.includes("|") && lines[index]!.trim() !== "") {
+        const cells = tableCells(lines[index]!);
+        rows.push(header.map((_, column) => cells[column] ?? ""));
+        index += 1;
+      }
+      blocks.push({ type: "table", header, rows });
+      continue;
+    }
     const bullet = BULLET.exec(line);
     const numbered = NUMBERED.exec(line);
     if (bullet || numbered) {
@@ -125,7 +153,8 @@ export function parseBlocks(source: string, depth = 0): Block[] {
         RULE.test(current) ||
         QUOTE.test(current) ||
         BULLET.test(current) ||
-        NUMBERED.test(current)
+        NUMBERED.test(current) ||
+        startsTable(lines, index)
       ) {
         break;
       }
@@ -253,6 +282,33 @@ function renderBlocks(
           <pre key={index} tabIndex={0}>
             <code>{block.text}</code>
           </pre>
+        );
+      case "table":
+        return (
+          <div key={index} className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  {block.header.map((cell, column) => (
+                    <th key={column} dir="auto">
+                      {renderInline(cell, links)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {block.rows.map((row, rowIndex) => (
+                  <tr key={rowIndex}>
+                    {row.map((cell, column) => (
+                      <td key={column} dir="auto">
+                        {renderInline(cell, links)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         );
       case "rule":
         return <hr key={index} />;

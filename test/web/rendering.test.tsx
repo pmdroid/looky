@@ -90,7 +90,7 @@ describe("markdown subset", () => {
     expect(html).toContain('dir="auto"');
   });
 
-  test("a pipe table renders as a scrollable table with inline markup in its cells", () => {
+  test("a pipe table renders as a table in a scroll wrapper with inline markup in its cells", () => {
     const text = [
       "Waits park the job:",
       "| Reason | Poll | Backstop |",
@@ -113,7 +113,7 @@ describe("markdown subset", () => {
       { type: "paragraph", text: "After the table." },
     ]);
     const html = md(text);
-    expect(html).toContain('<div class="table-scroll" tabindex="0"><table>');
+    expect(html).toContain('<div class="table-scroll"><table>');
     expect(html).toContain('<thead><tr><th dir="auto">Reason</th>');
     expect(html).toContain('<td dir="auto"><code>ci</code></td>');
     expect(html).toContain('<td dir="auto"><strong>45 min</strong></td>');

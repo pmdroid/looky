@@ -768,6 +768,30 @@ input[aria-invalid="true"] {
   color: inherit;
 }
 
+.prose .table-scroll {
+  margin: 0 0 1em;
+  overflow-x: auto;
+}
+
+.prose table {
+  border-collapse: collapse;
+  font-size: var(--step-0);
+  line-height: 1.5;
+}
+
+.prose th,
+.prose td {
+  padding: 0.4em 0.75em;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.prose th {
+  border-bottom-color: var(--line-strong);
+  font-weight: 600;
+}
+
 .answer-section {
   max-width: 70ch;
   margin-top: 2rem;
