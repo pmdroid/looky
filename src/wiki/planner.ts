@@ -108,6 +108,8 @@ const MAX_MODULE_LINKS = 8;
 const MAX_SUBMODULES_PER_MODULE = 6;
 const SUBMODULE_MIN_FILES = 3;
 const MAX_TESTS_PER_PAGE = 2;
+const MAX_DOCS_PER_PAGE = 2;
+const SHORTEST_PREFIX_WORD = 4;
 const WORKFLOW_IMPORT_DEPTH = 4;
 
 /** Plan a wiki for one ready build. Throws {@link WikiPlanError} if the build is not ready. */
@@ -320,6 +322,11 @@ export function planWiki(db: Database, buildId: string, options: PlanWikiOptions
   const moduleDrafts = new Map<string, Draft>();
   for (const module of plannedModules) {
     const members = rankWithin(module.members);
+    const docs = uniqueFiles([
+      ...files.filter((file) => file.kind === "docs" && file.path.startsWith(`${module.path}/`)),
+      ...files.filter((file) => file.kind === "docs" && docNamesModule(file.path, module.path)),
+    ]).slice(0, MAX_DOCS_PER_PAGE);
+    const tests = testsFor(module.members.map((file) => file.path));
     const draft: Draft = {
       conceptKey: `module:${module.path}`,
       kind: "module",
@@ -331,9 +338,9 @@ export function planWiki(db: Database, buildId: string, options: PlanWikiOptions
       origin: module.path,
       unavailableReason: null,
       sources: pick([
-        ...members.slice(0, Math.max(1, limits.maxSourcesPerPage - MAX_TESTS_PER_PAGE - 1)),
-        ...testsFor(module.members.map((file) => file.path)),
-        ...files.filter((file) => file.kind === "docs" && file.path.startsWith(`${module.path}/`)),
+        ...members.slice(0, Math.max(1, limits.maxSourcesPerPage - tests.length - docs.length)),
+        ...tests,
+        ...docs,
         ...members,
       ]),
       links: [],
@@ -913,6 +920,23 @@ function workflowName(path: string): string {
     .slice(0, -1)
     .filter((dir) => !SOURCE_ROOTS.has(dir) && !PACKAGE_ROOTS.has(dir));
   return dirs.length > 0 && ENTRY_STEMS.has(stem) ? `${dirs.at(-1)!}-${stem}` : stem;
+}
+
+function nameWords(name: string): string[] {
+  return name
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+}
+
+function docNamesModule(docPath: string, modulePath: string): boolean {
+  const docWords = nameWords(stemOf(docPath));
+  return nameWords(lastSegment(modulePath)).every((word) =>
+    docWords.some(
+      (docWord) =>
+        docWord === word || (word.length >= SHORTEST_PREFIX_WORD && docWord.startsWith(word)),
+    ),
+  );
 }
 
 function moduleTitle(path: string): string {

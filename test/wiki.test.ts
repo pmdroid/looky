@@ -323,6 +323,7 @@ describe("generated wiki model", () => {
     expect(recovery.sources.map((source) => source.path)).toEqual([
       "src/recovery/recover-run.ts",
       "test/recovery.test.ts",
+      "docs/recovery.md",
     ]);
     expect(bySlug.get("architecture")!.sources.map((s) => s.path)).toContain(
       "config/recovery.yaml",
@@ -803,6 +804,39 @@ describe("generated wiki model", () => {
     expect(
       p.pages.filter((page) => page.state === "queued").every((page) => page.sources.length > 0),
     ).toBe(true);
+  });
+
+  test("a module page reads the docs named after it, wherever they live", async () => {
+    initRepo(otherRepo);
+    write(otherRepo, "src/config/load.ts", "export function load() {\n  return {};\n}\n");
+    write(otherRepo, "src/runner-backend/dispatch.ts", "export function dispatch() {}\n");
+    write(otherRepo, "docs/configuration.md", "# Configuration\n\nHow settings load.\n");
+    write(otherRepo, "docs/local-config.md", "# Local config\n\nOverrides for one machine.\n");
+    write(otherRepo, "docs/runner-enrollment.md", "# Runner enrollment\n\nJoining a runner.\n");
+    write(otherRepo, "docs/conf.md", "# Conf\n\nA talk.\n");
+    const otherSha = commitAll(otherRepo, "docs");
+    const p = await plan(service(database()), otherSha, LIMITS, "other");
+    const sources = (slug: string) =>
+      p.pages.find((page) => page.slug === slug)!.sources.map((source) => source.path);
+    expect(sources("modules/config")).toEqual([
+      "src/config/load.ts",
+      "docs/configuration.md",
+      "docs/local-config.md",
+    ]);
+    expect(sources("modules/runner-backend")).toEqual(["src/runner-backend/dispatch.ts"]);
+  });
+
+  test("a module page keeps room for its docs when it has many files", async () => {
+    initRepo(otherRepo);
+    for (let n = 0; n < 14; n += 1) {
+      write(otherRepo, `src/config/part${n}.ts`, `export const part${n} = ${n};\n`);
+    }
+    write(otherRepo, "docs/configuration.md", "# Configuration\n\nHow settings load.\n");
+    const otherSha = commitAll(otherRepo, "many");
+    const p = await plan(service(database()), otherSha, LIMITS, "other");
+    const config = p.pages.find((page) => page.slug === "modules/config")!;
+    expect(config.sources).toHaveLength(LIMITS.maxSourcesPerPage);
+    expect(config.sources.map((source) => source.path)).toContain("docs/configuration.md");
   });
 
   test("retention retires old wiki generations and keeps slug history", async () => {
