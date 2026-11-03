@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { renderToStaticMarkup } from "react-dom/server";
 import type { WikiIndexView, WikiPageKind, WikiPageMeta } from "../web/src/api";
 import { structureDiagram } from "../web/src/wiki-diagram";
+import { WikiDiagram } from "../web/src/WikiDiagram";
 
 function page(slug: string, kind: WikiPageKind, parent: string | null = null): WikiPageMeta {
   return {
@@ -102,5 +104,20 @@ describe("structure diagrams", () => {
     expect(structureDiagram(index, "pg_modules/web")?.nodes).toHaveLength(2);
     const lonely = { ...index, links: [] } as unknown as WikiIndexView;
     expect(structureDiagram(lonely, "pg_modules/core")).toBeUndefined();
+  });
+
+  test("the diagram links other ready pages and needs no inline styles", () => {
+    const html = renderToStaticMarkup(
+      <WikiDiagram
+        diagram={structureDiagram(index, "pg_modules/db")!}
+        hrefFor={(slug) => `/wiki/${slug}`}
+        go={() => undefined}
+      />,
+    );
+    expect(html).toContain(`href="/wiki/modules/core"`);
+    expect(html).not.toContain(`href="/wiki/modules/db"`);
+    expect(html).toContain("diagram-node-focus");
+    expect(html).toContain("What this module imports");
+    expect(html).not.toContain("style=");
   });
 });
