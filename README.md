@@ -557,7 +557,9 @@ and runs `bun run serve` with `LOOKY_BROWSER_ASSETS_DIR` pointing there. Every o
 - **Reading.** The sidebar lists every page of the hierarchy. Pages without generated text
   are listed but not linked. A page shows breadcrumbs, its kind and scope, the source
   revision and the commit it was generated from, a table of contents, the generated
-  prose, related pages and its cited ranges as links pinned to the commit. The overview
+  prose, related pages and its cited ranges as a numbered Sources list of links pinned to
+  the commit. In the prose, each run of citations is shown as numbers, such as `[1][3]`,
+  that link to that list; stored bodies, search and MCP keep the full references. The overview
   also shows coverage and what the plan left out.
 - **Safety.** Page bodies are rendered through the same Markdown subset as answers, never
   as HTML. Only `wiki:` links to ready pages of the same generation become in-app links,

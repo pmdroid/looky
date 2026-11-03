@@ -14,6 +14,7 @@ import {
   type WikiPageKind,
   type WikiPageMeta,
   type WikiPageState,
+  type WikiSourceView,
   type WikiStatusView,
 } from "./api";
 import { shortSha, type Tone } from "./presentation";
@@ -333,3 +334,28 @@ export const RELATION_LABEL: Record<RelatedPage["relation"], string> = {
   used_by: "Used by",
   related: "Related",
 };
+
+const CITATION_LINK = /\[([^[\]\n]+)\]\(([^()\s]+)\)/g;
+const CITATION_GROUPS = /(?:[ \t]*\((?:[ \t]*\[[^[\]\n]+\]\([^()\s]+\)[ \t]*,?)+[ \t]*\))+/g;
+
+function sourceLabel(source: WikiSourceView): string {
+  return source.startLine === source.endLine
+    ? `${source.path}:${source.startLine}`
+    : `${source.path}:${source.startLine}-${source.endLine}`;
+}
+
+export function compactCitations(markdown: string, citations: readonly WikiSourceView[]): string {
+  const numbers = new Map(citations.map((source, index) => [sourceLabel(source), index + 1]));
+  return markdown.replace(CITATION_GROUPS, (whole) => {
+    const cited = new Map<number, string>();
+    for (const [, label, href] of whole.matchAll(CITATION_LINK)) {
+      const number = numbers.get(label!);
+      if (number === undefined) return whole;
+      cited.set(number, href!);
+    }
+    const links = [...cited]
+      .sort(([a], [b]) => a - b)
+      .map(([number, href]) => `[\\[${number}\\]](${href})`);
+    return ` ${links.join("")}`;
+  });
+}
