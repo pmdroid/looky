@@ -45,6 +45,8 @@ import { Markdown } from "./markdown";
 import { shortSha } from "./presentation";
 import { watchIndex } from "./index-watch";
 import { validSlug } from "./route";
+import { structureDiagram } from "./wiki-diagram";
+import { WikiDiagram } from "./WikiDiagram";
 import {
   breadcrumbs,
   describeCoverage,
@@ -693,6 +695,7 @@ function WikiPage({
   );
   const crumbs = breadcrumbs(index.pages, page.pageId);
   const related = relatedPages(index, page.pageId);
+  const diagram = structureDiagram(index, page.pageId);
   const coverage = props.landing ? describeCoverage(index) : undefined;
   const anchors = { list: view.headings.map((heading) => heading.anchor), idFor: headingId };
   const askPage: AskPage | undefined =
@@ -818,6 +821,8 @@ function WikiPage({
           </ol>
         </nav>
       ) : null}
+
+      {diagram ? <WikiDiagram diagram={diagram} hrefFor={hrefFor} go={go} /> : null}
 
       {view.body ? (
         // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
