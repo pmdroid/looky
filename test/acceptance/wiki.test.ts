@@ -219,7 +219,7 @@ function expectGrounded(wikiAt: Published, sha: string, otherSha?: string): void
     // A reason without cited documentation is an open question.
     expect(markdown).not.toMatch(/\*\*Documented:\*\* It was built this way to satisfy auditors/);
     if (markdown.includes("satisfy auditors")) {
-      expect(markdown).toContain("**Not stated in the source at this commit:** It was built");
+      expect(markdown).toContain("**Not documented:** It was built");
     }
     // Every citation is an exact range of a file at this commit, linked at this commit.
     expect(view.citations.length).toBeGreaterThan(0);

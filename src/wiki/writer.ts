@@ -33,7 +33,7 @@ import { type WikiNeighbour, wikiPagePrompt, wikiSystemPrompt } from "./prompts"
 import type { InspectedBlob } from "./store";
 
 /** Bump when the writer's research, validation or rendering changes generated pages. */
-export const WIKI_WRITER_VERSION = 2;
+export const WIKI_WRITER_VERSION = 3;
 
 /** Research limits for one page. Inside the page budget, so synthesis keeps its share. */
 export const DEFAULT_WIKI_RESEARCH_LIMITS: ResearchLimits = {
@@ -427,6 +427,7 @@ const NAME_SPAN = /^[A-Za-z_$./][\w$./-]*(?:\(\))?$/;
 /** Language literals a page may name without the evidence spelling them out. */
 const LITERALS = new Set(["true", "false", "null", "undefined", "None", "nil", "NaN"]);
 export const NOT_FOUND_LABEL = "(not found in the inspected source)";
+const DRAFT_NOTES = "Notes on this draft, not checked against the source:";
 
 export function evidenceVocabulary(
   evidence: readonly Evidence[],
@@ -453,6 +454,9 @@ export function nameIsSupported(span: string, vocabulary: EvidenceVocabulary): b
   if (span.length < 3 || !NAME_SPAN.test(span) || LITERALS.has(span)) return true;
   const name = span.replace(/\(\)$/, "").replace(/^\.\//, "").replace(/\/+$/, "");
   if (name.length === 0 || vocabulary.paths.has(name)) return true;
+  if (name.includes("/") && !looksLikeFile(span, name, vocabulary)) {
+    return vocabulary.text.includes(name);
+  }
   if (name.includes("/")) {
     // A path is known only as an inspected or planned file or directory, or as an
     // import specifier the evidence uses for one. Being mentioned in source text is
@@ -469,6 +473,16 @@ export function nameIsSupported(span: string, vocabulary: EvidenceVocabulary): b
   // Whole identifiers only: `dispatch` is not shown by evidence that only has `dispatchAll`.
   const segments = name.match(WORD) ?? [];
   return segments.length > 0 && segments.every((segment) => vocabulary.words.has(segment));
+}
+
+function looksLikeFile(span: string, name: string, vocabulary: EvidenceVocabulary): boolean {
+  const first = name.replace(/^(?:\.{1,2}\/)+/, "").split("/")[0]!;
+  return (
+    /\.[A-Za-z0-9]+$/.test(name) ||
+    span.trim().endsWith("/") ||
+    name.startsWith(".") ||
+    vocabulary.paths.has(first)
+  );
 }
 
 /**
@@ -611,13 +625,14 @@ function render(
       if (item.basis === "documented") downgraded += 1;
       // Unverified intent is stated as an open question, without citations that would lend it weight.
       const plain = statement.text.replace(CITATION_GROUP, "");
-      intentLines.push(`- **Not stated in the source at this commit:** ${plain}`);
+      intentLines.push(`- **Not documented:** ${plain}`);
     }
   }
   if (intentLines.length > 0)
     parts.push(`## Intent and open questions\n\n${intentLines.join("\n")}`);
 
   const caveats: string[] = [];
+  const notes: string[] = [];
   for (const caveat of draft.caveats) {
     const checked = run(caveat);
     tally(checked);
@@ -628,44 +643,44 @@ function render(
     } else {
       // A caveat is a claim too. Without verified support it is labelled, not stated as fact.
       const plain = checked.text.replace(CITATION_GROUP, "").trim();
-      if (plain.length > 0) caveats.push(`**Not verified against the source:** ${plain}`);
+      if (plain.length > 0) notes.push(plain);
     }
   }
   if (draft.summary.trim().length > 0 && !summaryKept) {
-    caveats.push("The drafted summary was left out because it cited no inspected evidence.");
+    notes.push("The drafted summary was left out because it cited no inspected evidence.");
   }
   if (invalid > 0) {
-    caveats.push(
+    notes.push(
       `${invalid} source reference${invalid === 1 ? "" : "s"} in the draft did not match ` +
         "inspected evidence and " +
         `${invalid === 1 ? "was" : "were"} removed.`,
     );
   }
   if (unknown > 0) {
-    caveats.push(
+    notes.push(
       `${unknown} name${unknown === 1 ? "" : "s"} in the draft did not appear in the inspected ` +
         `source and ${unknown === 1 ? "is" : "are"} marked as not found; treat ` +
         `${unknown === 1 ? "it" : "them"} as unverified.`,
     );
   }
   if (dropped > 0) {
-    caveats.push(
+    notes.push(
       `${dropped} drafted section${dropped === 1 ? " was" : "s were"} left out because ` +
         `${dropped === 1 ? "it was" : "they were"} not supported by cited evidence or did not fit.`,
     );
   }
   if (downgraded > 0) {
-    caveats.push(
+    notes.push(
       "A stated reason was not backed by cited documentation, so it is listed as an open question.",
     );
   }
   if (context.omitted > 0) {
-    caveats.push(
+    notes.push(
       `${context.omitted} inspected source range${context.omitted === 1 ? "" : "s"} did not fit ` +
         "the input budget and were not used.",
     );
   }
-  for (const gap of bundle.gaps) caveats.push(gap);
+  for (const gap of bundle.gaps) notes.push(gap);
   if (caveats.length > 0) {
     parts.push(`## Caveats\n\n${[...new Set(caveats)].map((item) => `- ${item}`).join("\n")}`);
   }
@@ -678,6 +693,9 @@ function render(
       "are conclusions drawn from the code, and intent is only called documented when cited " +
       "documentation states it.*",
   );
+  if (notes.length > 0) {
+    parts.push(`${DRAFT_NOTES}\n\n${[...new Set(notes)].map((item) => `- ${item}`).join("\n")}`);
+  }
 
   return {
     body: parts.join("\n\n"),
