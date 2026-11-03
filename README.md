@@ -562,6 +562,10 @@ and runs `bun run serve` with `LOOKY_BROWSER_ASSETS_DIR` pointing there. Every o
 - **Safety.** Page bodies are rendered through the same Markdown subset as answers, never
   as HTML. Only `wiki:` links to ready pages of the same generation become in-app links,
   and only the page's own cited source links open outside.
+- **Diagrams.** Overview, architecture, the modules section, module and workflow pages
+  show a dependency diagram drawn from the index's resolved imports, never from model
+  output. Importers sit above what they import, and each ready page in it is a link. A
+  page with fewer than two connected modules has none.
 - **Search.** "Search the docs" searches the generated pages of the published wiki on
   screen, never the source and never another repository or commit. A result opens its
   page at the matched heading.
