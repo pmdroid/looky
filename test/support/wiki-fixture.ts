@@ -66,6 +66,7 @@ export function wikiModel(
   options: {
     readonly id?: string;
     readonly usageReported?: boolean;
+    readonly outputTokens?: (call: WikiCall) => number;
     /** Runs before the reply; may wait or throw, for cancellation and crash tests. */
     readonly before?: (call: WikiCall, index: number) => Promise<void> | void;
   } = {},
@@ -93,7 +94,7 @@ export function wikiModel(
       return {
         text,
         inputTokens: Math.ceil((request.system.length + request.prompt.length) / 4),
-        outputTokens: Math.min(request.maxOutputTokens, 300),
+        outputTokens: options.outputTokens?.(call) ?? Math.min(request.maxOutputTokens, 300),
         ...(options.usageReported !== undefined ? { usageReported: options.usageReported } : {}),
       };
     },

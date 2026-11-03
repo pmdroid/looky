@@ -107,6 +107,13 @@ export interface WriteWikiPageOptions {
   readonly now?: () => number;
 }
 
+const CHARS_PER_RETRY_TOKEN = 2;
+
+function nextOutputTokens(remaining: { maxModelCalls: number; maxOutputTokens: number }): number {
+  const share = remaining.maxModelCalls > 1 ? 0.6 : 1;
+  return Math.max(1, Math.floor(remaining.maxOutputTokens * share));
+}
+
 export async function writeWikiPage(
   session: ResearchSession,
   input: WikiPageInput,
@@ -141,12 +148,8 @@ export async function writeWikiPage(
   let rejected = 0;
   for (;;) {
     const remaining = session.remaining();
-    const share = remaining.maxModelCalls > 1 ? 0.6 : 1;
-    const reply = await session.model({
-      system,
-      prompt,
-      maxOutputTokens: Math.max(1, Math.floor(remaining.maxOutputTokens * share)),
-    });
+    const maxOutputTokens = nextOutputTokens(remaining);
+    const reply = await session.model({ system, prompt, maxOutputTokens });
     try {
       return render(reply.text, bundle, input, {
         // Only evidence the model was shown can support its claims.
@@ -165,10 +168,16 @@ export async function writeWikiPage(
           ? error
           : new WikiPageError("invalid_output", error.message);
       }
-      prompt =
-        `${fitted.prompt}\n\nYour previous reply was rejected: ${error.message}. Reply with only ` +
-        "the JSON object. Every section needs explanatory sentences and citation markers that " +
-        "use ids and lines shown in the evidence.";
+      const cutOff = reply.outputTokens >= maxOutputTokens;
+      prompt = cutOff
+        ? `${fitted.prompt}\n\nYour previous reply was rejected: it was cut off at the output ` +
+          "limit before the JSON object was complete. Write a shorter page of at most about " +
+          `${Math.min(Math.floor(maxChars / 2), nextOutputTokens(left) * CHARS_PER_RETRY_TOKEN)} ` +
+          "characters, with fewer sections and shorter tables, and " +
+          "reply with only the JSON object."
+        : `${fitted.prompt}\n\nYour previous reply was rejected: ${error.message}. Reply with only ` +
+          "the JSON object. Every section needs explanatory sentences and citation markers that " +
+          "use ids and lines shown in the evidence.";
     }
   }
 }
