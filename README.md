@@ -974,7 +974,8 @@ model fingerprint, the provider that served the call and the validation counts.
 
 Limits are finite at three levels. A page runs under its own budget. Its first model
 call gets 60% of the page's output tokens and a repair gets the rest; when a reply used
-every token it was given, the repair asks for a page about half as long. A ledger reserves
+every token it was given, the repair asks for a shorter page, sized to about two
+characters per token it has left. A ledger reserves
 each page's budget from the generation's totals before the page starts, so pages
 running at once can never spend more than the totals together. The generation also has
 a wall-clock limit. When the totals or the time run out, the generation fails with
