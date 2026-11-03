@@ -391,6 +391,31 @@ describe("wiki generation", () => {
     expect(page.body!.provenance.rejectedReplies).toBe(1);
   });
 
+  test("a reply cut off at the output limit is retried as a shorter page", async () => {
+    const model = wikiModel(
+      (call) => (call.repair ? groundedPage(call) : '{"summary": "Cut off mid'),
+      { outputTokens: (call) => (call.repair ? 300 : call.request.maxOutputTokens) },
+    );
+    const h = harness(model);
+    const generation = await generate(h);
+    expect(generation.state).toBe("ready");
+    const repairs = model.calls.filter((call) => call.repair);
+    expect(repairs.length).toBeGreaterThan(0);
+    for (const call of repairs) {
+      expect(call.request.prompt).toContain("cut off at the output limit");
+      expect(call.request.prompt).toMatch(/at most about \d+ characters/);
+    }
+  });
+
+  test("a malformed reply that was not cut off is not asked to be shorter", async () => {
+    const model = wikiModel((call) => (call.repair ? groundedPage(call) : "not json at all"));
+    const h = harness(model);
+    await generate(h);
+    const repairs = model.calls.filter((call) => call.repair);
+    expect(repairs.length).toBeGreaterThan(0);
+    expect(repairs.some((call) => call.request.prompt.includes("cut off"))).toBe(false);
+  });
+
   test("a summary without a verified citation is left out of the published page", async () => {
     let flip = 0;
     const responder: WikiResponder = (call) => ({
