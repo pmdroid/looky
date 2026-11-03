@@ -178,6 +178,25 @@ describe("answer view", () => {
     );
   });
 
+  test("citations in the answer show as numbers of the Sources list", () => {
+    const html = renderToStaticMarkup(
+      <AnswerView
+        snapshot={snapshot}
+        response={answer({
+          answer: {
+            text: `Recovery replays the run ([src/a.ts:3-9](${LINK})).`,
+            outcome: "supported",
+            caveats: [],
+          },
+        })}
+        sourceLinks={[LINK, null]}
+      />,
+    );
+    expect(html).toContain(`>[1]</a>`);
+    expect(html).not.toContain(">src/a.ts:3-9</a>");
+    expect(html).toContain("src/a.ts:3–9");
+  });
+
   test("without a source link template, citations are plain path and line text", () => {
     const html = renderToStaticMarkup(
       <AnswerView
