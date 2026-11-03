@@ -15,3 +15,26 @@ describe("wiki page prompt", () => {
     expect(prompt).not.toContain("right after the claims");
   });
 });
+
+describe("wiki page prompt, shaped like a reference page", () => {
+  const prompt = wikiSystemPrompt("module", 12_000);
+
+  test("lets a section use numbered steps, short lists and tables where they fit", () => {
+    expect(prompt).toContain("a numbered list for steps that happen in order");
+    expect(prompt).toContain("a table for settings, states, limits or constants");
+    expect(prompt).toContain("one name per item");
+  });
+
+  test("asks for the concrete values a reader needs", () => {
+    expect(prompt).toContain("defaults, limits, timeouts, commands, file locations");
+  });
+
+  test("tells the model what gets a summary or reason dropped or downgraded", () => {
+    expect(prompt).toContain("A summary without a citation group is dropped");
+    expect(prompt).toContain("When a document in the evidence explains why");
+  });
+
+  test("keeps caveats to limits of the code, not of what was inspected", () => {
+    expect(prompt).toContain("not what the evidence did or did not show");
+  });
+});
