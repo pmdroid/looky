@@ -403,7 +403,9 @@ describe("wiki generation", () => {
     expect(repairs.length).toBeGreaterThan(0);
     for (const call of repairs) {
       expect(call.request.prompt).toContain("cut off at the output limit");
-      expect(call.request.prompt).toMatch(/at most about \d+ characters/);
+      const asked = Number(/at most about (\d+) characters/.exec(call.request.prompt)?.[1]);
+      expect(asked).toBeGreaterThan(0);
+      expect(asked).toBeLessThanOrEqual(call.request.maxOutputTokens * 2);
     }
   });
 
