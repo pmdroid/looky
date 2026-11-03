@@ -526,7 +526,8 @@ and runs `bun run serve` with `LOOKY_BROWSER_ASSETS_DIR` pointing there. Every o
 - **Answers.** The full prose comes first. Caveats, the certainty (outcome and any
   question for the team), the cited ranges at the SHA, and the mode, revision and
   committed-source scope follow. Answer text is untrusted. It is rendered through a small
-  Markdown subset directly to React elements, without an HTML path. A link is clickable
+  Markdown subset (headings, paragraphs, lists, quotes, code, emphasis and pipe tables)
+  directly to React elements, without an HTML path. A link is clickable
   only when it equals one of the answer's `sourceLinks` and uses http or https.
 - **Access.** The screen works from 320 px wide to desktop. All controls are labelled and
   reachable by keyboard. Ctrl or ⌘ + Enter asks and Escape cancels. Status changes are
