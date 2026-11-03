@@ -23,6 +23,7 @@ import { Markdown } from "../web/src/markdown";
 import { parseRoute, routeHref, validSlug } from "../web/src/route";
 import {
   breadcrumbs,
+  compactCitations,
   describeCoverage,
   describeFailure,
   describeWiki,
@@ -220,6 +221,44 @@ function status(overrides: Partial<WikiStatusView> = {}): WikiStatusView {
 }
 
 const INDEX_READY: IndexView = { repositoryId: "pilot", sha: SHA, state: "ready" };
+
+describe("compact citations", () => {
+  const url = (path: string) => `https://code.test/blob/${SHA}/${path}`;
+  const source = (path: string, startLine: number, endLine: number) => ({
+    path,
+    startLine,
+    endLine,
+    kind: "code" as const,
+    link: url(path),
+  });
+  const citations = [source("src/a.ts", 1, 80), source("src/a.ts", 81, 118), source("src/b.ts", 5, 5)];
+
+  test("citation groups become numbers of the page's source list, merged and in order", () => {
+    const text =
+      `Loads the file. ([src/a.ts:81-118](${url("src/a.ts")}))([src/a.ts:1-80](${url("src/a.ts")}), ` +
+      `[src/b.ts:5](${url("src/b.ts")}))\n\nAgain ([src/a.ts:1-80](${url("src/a.ts")})).`;
+    expect(compactCitations(text, citations)).toBe(
+      `Loads the file. [\\[1\\]](${url("src/a.ts")})[\\[2\\]](${url("src/a.ts")})[\\[3\\]](${url("src/b.ts")})` +
+        `\n\nAgain [\\[1\\]](${url("src/a.ts")}).`,
+    );
+  });
+
+  test("a numbered citation renders as a short link to its source", () => {
+    const html = renderToStaticMarkup(
+      <Markdown
+        text={compactCitations(`Loads it ([src/b.ts:5](${url("src/b.ts")})).`, citations)}
+        links={new LinkPolicy([url("src/b.ts")])}
+      />,
+    );
+    expect(html).toContain(`>[3]</a>`);
+    expect(html).not.toContain("src/b.ts:5");
+  });
+
+  test("links that are not listed sources stay as written", () => {
+    const text = "See ([Overview](wiki:overview)) and ([src/c.ts:1-2](https://code.test/c)).";
+    expect(compactCitations(text, citations)).toBe(text);
+  });
+});
 
 describe("wiki state", () => {
   test("no wiki yet: generation is offered as a button, never started", () => {
