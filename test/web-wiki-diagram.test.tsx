@@ -35,6 +35,7 @@ const index = {
     page("modules/db", "module", "modules"),
     page("modules/loop", "module", "modules"),
     page("modules/web", "module", "modules"),
+    page("modules/lone", "module", "modules"),
     page("workflows/run", "workflow"),
   ],
   links: [
@@ -65,6 +66,10 @@ describe("structure diagrams", () => {
       "modules/loop>modules/db",
       "modules/web>modules/db",
     ]);
+  });
+
+  test("the module overview leaves out modules without imports either way", () => {
+    expect(slugs(structureDiagram(index, "pg_architecture"))).not.toContain("modules/lone");
   });
 
   test("a module page shows what it imports and what imports it", () => {
