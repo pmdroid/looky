@@ -47,6 +47,7 @@ import { watchIndex } from "./index-watch";
 import { validSlug } from "./route";
 import {
   breadcrumbs,
+  compactCitations,
   describeCoverage,
   describeStale,
   describeWiki,
@@ -822,7 +823,12 @@ function WikiPage({
       {view.body ? (
         // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
         <div className="prose wiki-prose" onClick={onProseClick}>
-          <Markdown text={view.body.markdown} links={links} headingBase={1} anchors={anchors} />
+          <Markdown
+            text={compactCitations(view.body.markdown, view.citations)}
+            links={links}
+            headingBase={1}
+            anchors={anchors}
+          />
         </div>
       ) : (
         <div className="notice notice-warning">

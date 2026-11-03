@@ -231,7 +231,11 @@ describe("compact citations", () => {
     kind: "code" as const,
     link: url(path),
   });
-  const citations = [source("src/a.ts", 1, 80), source("src/a.ts", 81, 118), source("src/b.ts", 5, 5)];
+  const citations = [
+    source("src/a.ts", 1, 80),
+    source("src/a.ts", 81, 118),
+    source("src/b.ts", 5, 5),
+  ];
 
   test("citation groups become numbers of the page's source list, merged and in order", () => {
     const text =
