@@ -959,16 +959,19 @@ Each page is written like an answer, from the same parts:
    are removed and counted. A citation proves a range exists, not that the prose is true, so every
    function, type or file named in backticks must also appear in the evidence the model
    was shown. A path counts only as an inspected or planned file, or an import of one,
-   because source text can mention any path. Unknown names are marked "not found in the
+   because source text can mention any path. A slash-separated name that does not look like
+   a file, such as `owner/repo` or `refs/heads/main`, only has to appear in the evidence
+   text. Unknown names are marked "not found in the
    inspected source" and counted.
 4. The summary and every section need a verified citation, or they are left out. A
-   caveat without one is kept but labelled as not verified against the source.
+   caveat with one is listed under Caveats; one without is moved to the draft notes.
    A section without a verified citation is dropped. A page with no grounded section
    gets one repair request, then fails. Inferred sections are labelled. Intent is shown
-   as documented only when it cites documentation; otherwise it is listed as not stated
-   in the source.
+   as documented only when it cites documentation; otherwise it is listed as "Not documented".
 
-A page body ends with the commit it was generated from. Citations are stored with the
+A page body ends with the commit it was generated from, followed by "Notes on this
+draft, not checked against the source": uncited caveats and what validation removed or
+marked, such as a dropped summary, invalid citations or unknown names. Citations are stored with the
 path, lines and blob id they were read from. Provenance records the writer, prompt and
 model fingerprint, the provider that served the call and the validation counts.
 
