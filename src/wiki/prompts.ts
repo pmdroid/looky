@@ -9,7 +9,7 @@ import type { EvidenceBundle } from "../retrieval/research";
 import type { WikiPageKind } from "./model";
 
 /** Bump when a prompt change can change generated pages. Part of the writer fingerprint. */
-export const WIKI_PROMPT_VERSION = 1;
+export const WIKI_PROMPT_VERSION = 3;
 
 export const WIKI_SYSTEM_MARKER = "You are Looky, writing one page of a generated code wiki";
 
@@ -19,7 +19,8 @@ const SCOPE: Record<WikiPageKind, string> = {
   architecture:
     "how the major modules fit together: boundaries, dependencies, data and control flow",
   section: "a group of pages: what the group covers and how its members relate",
-  module: "one module: its responsibilities, key types and functions, how it is used and tested",
+  module:
+    "one module: its responsibilities, the few types and functions a reader needs, how it is used and tested",
   workflow:
     "one flow across modules: where it starts, each step in order, failure paths and where it ends",
 };
@@ -38,18 +39,35 @@ This page covers ${SCOPE[kind]}.
 ${UNTRUSTED}
 
 What to write:
+- Write for an engineer who is new to this codebase. Say in plain words what a part does
+  and why it matters before naming any code.
 - A short summary of what this part is responsible for.
 - Sections that explain responsibilities, key mechanisms, relationships to other parts,
-  workflows in order, error handling and relevant caveats. Choose headings that fit the
-  code; do not force a template, and skip anything the evidence does not show.
-- Natural paragraphs. Name functions, types and settings inline in backticks. No code blocks.
+  workflows in order, error handling and relevant caveats. Choose headings that name the
+  concept, not the file; do not force a template, and skip anything the evidence does not show.
+- Open every section with one or two plain sentences that say what it is about. Then use
+  the form that fits the content:
+  - paragraphs to explain behaviour and how the pieces work together;
+  - a numbered list for steps that happen in order;
+  - a short bulleted list for the few functions or settings a reader needs, one name per
+    item followed by what it does;
+  - a table for settings, states, limits or constants and their values.
+  Cover what matters and leave out the rest; do not list everything the evidence contains.
+- Be concrete: give the defaults, limits, timeouts, commands, file locations and other values
+  the evidence shows, rather than saying that something is configurable.
+- Put a function, type, file or setting in backticks only when a reader needs the name to
+  find the code or change a setting: at most about two names per paragraph, and
+  one name per item in lists and tables. Do not put ordinary words in backticks.
+  No code blocks.
 - Stay under about ${maxChars} characters in total.
 
 Citations:
-- Every section must cite the evidence it relies on with markers right after the claims:
-  [E3] for a whole evidence block or [E3:14-18] for lines inside it. Use only ids and line
-  numbers that appear in the evidence. Never invent paths, lines, symbols or URLs, and do
-  not write web links; they are removed.
+- Put one citation group at the end of each paragraph, list item or table row, covering
+  what it relies on: [E3] for a whole evidence block, [E3:14-18] for lines inside it, or
+  [E3:14-18; E5] for several. Do not cite after every sentence. Every section needs at
+  least one, and so does the summary. A summary without a citation group is dropped.
+- Use only ids and line numbers that appear in the evidence. Never invent paths, lines,
+  symbols or URLs, and do not write web links; they are removed.
 - You may link to a neighbouring wiki page with [[slug]], using only the slugs listed for
   this page. Other links are removed.
 
@@ -61,18 +79,22 @@ Observed versus inferred:
   about why something exists or was built a certain way in "intent". Use
   "basis": "documented" only when you cite documentation that states the reason;
   otherwise use "basis": "unknown" and phrase it as an open question.
+- When a document in the evidence explains why, cite it in the statement and use
+  "basis": "documented".
+- Caveats are limits of the code itself, such as a case it does not handle, each with a
+  citation; not what the evidence did or did not show.
 
 Reply with one JSON object and nothing else:
 {
-  "summary": "two to four sentences, with citation markers where they help",
+  "summary": "two to four plain sentences, with one citation group at the end",
   "sections": [
     { "heading": "short heading", "basis": "observed" | "inferred",
-      "body": "Markdown paragraphs with citation markers" }
+      "body": "Markdown paragraphs, each ending with a citation group" }
   ],
   "intent": [
     { "statement": "the reason or the open question", "basis": "documented" | "unknown" }
   ],
-  "caveats": ["a limitation of this page, such as code the evidence did not show"]
+  "caveats": ["a limit of the code, with a citation group"]
 }`;
 }
 
