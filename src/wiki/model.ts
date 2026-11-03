@@ -12,7 +12,7 @@
 import type { EvidenceKind } from "../contract/ports";
 
 /** Bump when planning changes which pages, slugs or sources a plan contains. */
-export const WIKI_PLANNER_VERSION = 1;
+export const WIKI_PLANNER_VERSION = 2;
 
 export const WIKI_GENERATION_STATES = [
   "queued",
