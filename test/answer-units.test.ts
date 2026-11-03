@@ -119,6 +119,7 @@ describe("answer prompt, shaped like a reference answer", () => {
 
   test("asks for the concrete values a reader needs", () => {
     expect(deep).toContain("defaults, limits, ports, timeouts, commands, file locations");
+    expect(deep).toContain("leave out the rest");
   });
 
   test("asks for one citation group per paragraph, list item or table row, on exact lines", () => {
