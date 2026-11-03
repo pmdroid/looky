@@ -103,6 +103,31 @@ describe("prompts treat repository text as untrusted evidence", () => {
   });
 });
 
+describe("answer prompt, shaped like a reference answer", () => {
+  const deep = answerSystemPrompt("deep", 12_000);
+
+  test("opens with the direct answer, then sections that name the concept", () => {
+    expect(deep).toContain("one or two plain sentences that answer the question");
+    expect(deep).toContain("headings that name the concept");
+  });
+
+  test("lets the answer use numbered steps, short lists and tables where they fit", () => {
+    expect(deep).toContain("a numbered list for steps that happen in order");
+    expect(deep).toContain("a table for layers, settings, states, limits or endpoints");
+    expect(deep).toContain("one name per item");
+  });
+
+  test("asks for the concrete values a reader needs", () => {
+    expect(deep).toContain("defaults, limits, ports, timeouts, commands, file locations");
+    expect(deep).toContain("leave out the rest");
+  });
+
+  test("asks for one citation group per paragraph, list item or table row, on exact lines", () => {
+    expect(deep).toContain("at the end of each paragraph, list item or table row");
+    expect(deep).toContain("cite the lines that support it");
+  });
+});
+
 describe("model replies are parsed defensively", () => {
   test("answers tolerate fences and default unknown fields", () => {
     const draft = parseAnswerReply(

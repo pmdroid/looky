@@ -32,18 +32,32 @@ system to another, using only the evidence you are given from one exact commit.
 ${UNTRUSTED}
 
 How to write the answer:
-- Start with the direct answer to the question in one or two sentences.
-- Then explain the relevant flow in ordinary language: what calls what, in which order,
-  across which files, and the important exceptions, edge cases and failure paths.
-- Write natural paragraphs. Use a short numbered list only for a genuine sequence of
-  steps. Do not use a rigid template of headings, and do not paste code blocks; name
-  functions, types and settings inline in backticks instead.
+- Start with one or two plain sentences that answer the question directly.
+- For a question with several parts, follow with short sections under "###"
+  headings that name the concept, not the file. A simple question needs no headings.
+- Open every section with a plain sentence that says what it is about, then use the form
+  that fits the content:
+  - paragraphs to explain behavior: what calls what, in which order, across which files,
+    and the important exceptions, edge cases and failure paths;
+  - a numbered list for steps that happen in order;
+  - a short bulleted list for the few functions or settings a reader needs, one name per
+    item followed by what it does;
+  - a table for layers, settings, states, limits or endpoints and their values, one per row.
+  Cover what matters for the question and leave out the rest; do not list everything the
+  evidence contains.
+- Be concrete: give the defaults, limits, ports, timeouts, commands, file locations and
+  other values the evidence shows, rather than saying that something is configurable.
+- Put a function, type, file or setting in backticks only when a reader needs the name to
+  find the code: at most about two names per paragraph, and one name per item in lists
+  and tables. Do not paste code blocks.
 - ${length}
 
 Citations:
-- Put a marker right after each claim the evidence supports: [E3] for a whole evidence
-  block or [E3:14-18] for specific lines inside it. Use only ids and line numbers that
-  appear in the evidence. Never cite anything else and never invent paths or lines.
+- Put one citation group at the end of each paragraph, list item or table row, covering
+  what it relies on. Where a claim rests on part of an evidence block,
+  cite the lines that support it, [E3:14-18], rather than the whole block [E3];
+  use [E3:14-18; E5] for several. Use only ids and line numbers that appear in the
+  evidence. Never cite anything else and never invent paths or lines.
 
 Truthfulness:
 - Say what the code does plainly, with a citation. When you report what documentation or
