@@ -9,7 +9,7 @@ import type { EvidenceBundle } from "../retrieval/research";
 import type { WikiPageKind } from "./model";
 
 /** Bump when a prompt change can change generated pages. Part of the writer fingerprint. */
-export const WIKI_PROMPT_VERSION = 2;
+export const WIKI_PROMPT_VERSION = 3;
 
 export const WIKI_SYSTEM_MARKER = "You are Looky, writing one page of a generated code wiki";
 
@@ -43,19 +43,29 @@ What to write:
   and why it matters before naming any code.
 - A short summary of what this part is responsible for.
 - Sections that explain responsibilities, key mechanisms, relationships to other parts,
-  workflows in order, error handling and relevant caveats. Choose headings that fit the
-  code; do not force a template, and skip anything the evidence does not show.
-- Flowing paragraphs of full sentences. Explain behaviour and how the pieces work together
-  instead of listing everything the evidence contains; cover what matters and leave out the rest.
+  workflows in order, error handling and relevant caveats. Choose headings that name the
+  concept, not the file; do not force a template, and skip anything the evidence does not show.
+- Open every section with one or two plain sentences that say what it is about. Then use
+  the form that fits the content:
+  - paragraphs to explain behaviour and how the pieces work together;
+  - a numbered list for steps that happen in order;
+  - a short bulleted list for the few functions or settings a reader needs, one name per
+    item followed by what it does;
+  - a table for settings, states, limits or constants and their values.
+  Cover what matters and leave out the rest; do not list everything the evidence contains.
+- Be concrete: give the defaults, limits, timeouts, commands, file locations and other values
+  the evidence shows, rather than saying that something is configurable.
 - Put a function, type, file or setting in backticks only when a reader needs the name to
-  find the code or change a setting: at most about two names per paragraph. Do not put
-  ordinary words in backticks. No code blocks.
+  find the code or change a setting: at most about two names per paragraph, and
+  one name per item in lists and tables. Do not put ordinary words in backticks.
+  No code blocks.
 - Stay under about ${maxChars} characters in total.
 
 Citations:
-- Put one citation group at the end of each paragraph, covering what that paragraph relies
-  on: [E3] for a whole evidence block, [E3:14-18] for lines inside it, or [E3:14-18; E5]
-  for several. Do not cite after every sentence. Every section needs at least one.
+- Put one citation group at the end of each paragraph, list item or table row, covering
+  what it relies on: [E3] for a whole evidence block, [E3:14-18] for lines inside it, or
+  [E3:14-18; E5] for several. Do not cite after every sentence. Every section needs at
+  least one, and so does the summary. A summary without a citation group is dropped.
 - Use only ids and line numbers that appear in the evidence. Never invent paths, lines,
   symbols or URLs, and do not write web links; they are removed.
 - You may link to a neighbouring wiki page with [[slug]], using only the slugs listed for
@@ -69,6 +79,10 @@ Observed versus inferred:
   about why something exists or was built a certain way in "intent". Use
   "basis": "documented" only when you cite documentation that states the reason;
   otherwise use "basis": "unknown" and phrase it as an open question.
+- When a document in the evidence explains why, cite it in the statement and use
+  "basis": "documented".
+- Caveats are limits of the code itself, such as a case it does not handle, each with a
+  citation; not what the evidence did or did not show.
 
 Reply with one JSON object and nothing else:
 {
@@ -80,7 +94,7 @@ Reply with one JSON object and nothing else:
   "intent": [
     { "statement": "the reason or the open question", "basis": "documented" | "unknown" }
   ],
-  "caveats": ["a limitation of this page, such as code the evidence did not show"]
+  "caveats": ["a limit of the code, with a citation group"]
 }`;
 }
 
